@@ -8,7 +8,10 @@ use Psalm\Coverage\Reporters\ConsoleReporter;
 
 class TypeCoverage
 {
-    /** @var array<class-string<\Psalm\Coverage\Reporters\TypeCoverageReportInterface>> */
+    /**
+     * @todo Make this configurable
+     * @var array<class-string<\Psalm\Coverage\Reporters\TypeCoverageReportInterface>>
+     */
     public static array $reporters = [
         ConsoleReporter::class,
     ];
