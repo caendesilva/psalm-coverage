@@ -6,5 +6,5 @@ namespace Psalm\Coverage;
 
 class FileCoverageData
 {
-    //
+    protected string $path;
 }
