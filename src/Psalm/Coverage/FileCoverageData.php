@@ -7,8 +7,8 @@ namespace Psalm\Coverage;
 class FileCoverageData
 {
     protected string $path;
-    protected int $mixedCount;
-    protected int $nonMixedCount;
+    protected int $mixedCount = 0;
+    protected int $nonMixedCount = 0;
 
     public function __construct(string $path)
     {
