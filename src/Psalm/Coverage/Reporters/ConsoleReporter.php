@@ -56,6 +56,9 @@ class ConsoleReporter implements TypeCoverageReportInterface
         $path_nonmixed_count = $file->getNonMixedCount();
         $path_mixed_count = $file->getMixedCount();
         $file_path = $file->getPath();
-        return str_pad($path_nonmixed_count ? str_pad(number_format((($path_nonmixed_count / ($path_mixed_count + $path_nonmixed_count)) * 100), 2), 5, '0', STR_PAD_LEFT)  : 'N/A', 6, ' ', STR_PAD_LEFT)." - File $file_path has $path_mixed_count mixed and $path_nonmixed_count non-mixed";
+
+        $coverage = $path_nonmixed_count ? str_pad(number_format((($path_nonmixed_count / ($path_mixed_count + $path_nonmixed_count)) * 100), 2), 5, '0', STR_PAD_LEFT) : 'N/A';
+        
+        return str_pad($coverage, 6, ' ', STR_PAD_LEFT)." - File $file_path has $path_mixed_count mixed and $path_nonmixed_count non-mixed";
     }
 }
