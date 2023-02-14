@@ -19,7 +19,7 @@ class FileCoverageData
 
     public function getPath(): string
     {
-        return $this->path;
+        return str_replace(getcwd() . DIRECTORY_SEPARATOR, '', $this->path);
     }
 
     public function getMixedCount(): int
