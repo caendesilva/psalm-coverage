@@ -56,7 +56,7 @@ class TypeCoverage
 
     public function getCoverage(): float
     {
-        return $this->coverage;
+        return round($this->coverage, 4);
     }
 
     public function __destruct()
