@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Coverage\Reporters;
 
 use Desilva\Console\Console;
+use Psalm\Coverage\FileCoverageData;
 use Psalm\Coverage\TypeCoverage;
 
 class ConsoleReporter implements TypeCoverageReportInterface
@@ -23,7 +24,9 @@ class ConsoleReporter implements TypeCoverageReportInterface
         $this->printDivider();
         $this->printHeader();
 
-        //
+        foreach ($this->coverage->getFileCoverageData() as $file) {
+            $this->printFileInfo($file);
+        }
     }
 
     protected function printDivider(): void
@@ -37,5 +40,10 @@ class ConsoleReporter implements TypeCoverageReportInterface
         $this->console->newline();
         $this->console->line("===\033[33m Type Coverage Report \033[0m===");
         $this->console->newline();
+    }
+
+    protected function printFileInfo(FileCoverageData $file)
+    {
+        //
     }
 }
