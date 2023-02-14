@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Psalm\Coverage\Reporters;
 
 use Psalm\Coverage\TypeCoverage;
+use function array_merge;
+use function implode;
 
 class MarkdownReporter implements TypeCoverageReportInterface
 {
@@ -22,13 +24,17 @@ class MarkdownReporter implements TypeCoverageReportInterface
 
         $lines = [];
         foreach ($this->coverage->getFileCoverageData() as $file) {
-            $lines[] = $this->makeTableLine(
+            $index = (int)round(($file->getPercentage() ?: -1)  * 100);
+
+            $lines[$index] = $this->makeTableLine(
                 $file->getPercentage() ?: 'N/A',
                 $this->formatPath($file->getPath()),
                 $file->getMixedCount(),
                 $file->getNonMixedCount(),
             );
         }
+
+        ksort($lines);
 
         $footer[] = $this->makeTableLine('Total:','','', $this->coverage->getCoverage());
 
