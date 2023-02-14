@@ -8,6 +8,8 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Config;
+use Psalm\Coverage\FileCoverageData;
+use Psalm\Coverage\TypeCoverage;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\IssueData;
@@ -1255,6 +1257,8 @@ class Analyzer
                 $mixed_count += $path_mixed_count;
                 $nonmixed_count += $path_nonmixed_count;
             }
+
+            TypeCoverage::addFile(new FileCoverageData($file_path, $path_mixed_count, $path_nonmixed_count));
         }
 
         return [$mixed_count, $nonmixed_count];
