@@ -8,6 +8,7 @@ class CoverageReport
 {
     protected static self $instance;
 
+    /** @var array<string, FileCoverageData> */
     protected array $fileCoverageData = [];
 
     protected function __construct()
