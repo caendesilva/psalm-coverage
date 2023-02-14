@@ -37,6 +37,12 @@ class TypeCoverage
         self::getInstance()->fileCoverageData[$file->getPath()] = $file;
     }
 
+    /** @return array<class-string<\Psalm\Coverage\Reporters\TypeCoverageReportInterface>> */
+    public function getFileCoverageData(): array
+    {
+        return $this->fileCoverageData;
+    }
+
     public function __destruct()
     {
         foreach (self::$reporters as $reporter) {
