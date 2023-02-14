@@ -6,6 +6,7 @@ namespace Psalm\Coverage;
 
 use Psalm\Coverage\Reporters\ConsoleReporter;
 use Psalm\Coverage\Reporters\JsonReporter;
+use Psalm\Coverage\Reporters\MarkdownReporter;
 
 class TypeCoverage
 {
@@ -16,6 +17,7 @@ class TypeCoverage
     public static array $reporters = [
         ConsoleReporter::class,
         JsonReporter::class,
+        MarkdownReporter::class,
     ];
 
     protected static self $instance;
