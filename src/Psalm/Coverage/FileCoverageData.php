@@ -31,4 +31,9 @@ class FileCoverageData
     {
         return $this->nonMixedCount;
     }
+
+    public function getPercentage(): float
+    {
+        return ($this->nonMixedCount / ($this->mixedCount + $this->nonMixedCount)) * 100;
+    }
 }
