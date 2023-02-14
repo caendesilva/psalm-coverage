@@ -24,4 +24,9 @@ class CoverageReport
 
         return self::$instance;
     }
+
+    public static function addFile(string $path): void
+    {
+        self::getInstance()->fileCoverageData[$path] = new FileCoverageData($path);
+    }
 }
