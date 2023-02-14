@@ -39,6 +39,6 @@ class FileCoverageData
             return false;
         }
 
-        return ($this->nonMixedCount / ($this->mixedCount + $this->nonMixedCount)) * 100;
+        return round(($this->nonMixedCount / ($this->mixedCount + $this->nonMixedCount)) * 100, 2);
     }
 }
