@@ -25,7 +25,7 @@ class ConsoleReporter implements TypeCoverageReportInterface
         $this->printHeader();
 
         foreach ($this->coverage->getFileCoverageData() as $file) {
-            $this->printFileInfo($file);
+            $this->console->line($this->formatFileInfo($file));
         }
     }
 
@@ -42,7 +42,7 @@ class ConsoleReporter implements TypeCoverageReportInterface
         $this->console->newline();
     }
 
-    protected function printFileInfo(FileCoverageData $file)
+    protected function formatFileInfo(FileCoverageData $file): string
     {
         //
     }
