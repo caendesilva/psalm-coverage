@@ -53,13 +53,9 @@ class ConsoleReporter implements TypeCoverageReportInterface
 
     protected function formatFileInfo(FileCoverageData $file): string
     {
-        $path_nonmixed_count = $file->getNonMixedCount();
-        $path_mixed_count = $file->getMixedCount();
-        $file_path = $file->getPath();
-
         $percentage = $file->getPercentage();
-        $coverage = $percentage ? str_pad(number_format(($percentage), 2), 5, '0', STR_PAD_LEFT) : 'N/A';
+        $coverage = $file->getPercentage() ? str_pad(number_format(($file->getPercentage()), 2), 5, '0', STR_PAD_LEFT) : 'N/A';
 
-        return str_pad($coverage, 6, ' ', STR_PAD_LEFT)." - File $file_path has $path_mixed_count mixed and $path_nonmixed_count non-mixed";
+        return str_pad($coverage, 6, ' ', STR_PAD_LEFT). " - File {$file->getPath()} has {$file->getMixedCount()} mixed and {$file->getNonMixedCount()} non-mixed";
     }
 }
