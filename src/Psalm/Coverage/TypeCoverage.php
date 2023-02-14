@@ -18,6 +18,8 @@ class TypeCoverage
     /** @var array<string, FileCoverageData> */
     protected array $fileCoverageData = [];
 
+    protected float $coverage = 0;
+
     protected function __construct()
     {
         //
@@ -37,10 +39,20 @@ class TypeCoverage
         self::getInstance()->fileCoverageData[$file->getPath()] = $file;
     }
 
+    public static function setCoverage(float $coverage): void
+    {
+        self::getInstance()->coverage = $coverage;
+    }
+
     /** @return array<class-string<\Psalm\Coverage\Reporters\TypeCoverageReportInterface>> */
     public function getFileCoverageData(): array
     {
         return $this->fileCoverageData;
+    }
+
+    public function getCoverage(): float
+    {
+        return $this->coverage;
     }
 
     public function __destruct()

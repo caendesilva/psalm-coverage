@@ -27,6 +27,9 @@ class ConsoleReporter implements TypeCoverageReportInterface
         foreach ($this->coverage->getFileCoverageData() as $file) {
             $this->console->line($this->formatFileInfo($file));
         }
+
+        $this->printFooter();
+
     }
 
     protected function printDivider(): void
@@ -40,6 +43,12 @@ class ConsoleReporter implements TypeCoverageReportInterface
         $this->console->newline();
         $this->console->line("===\033[33m Type Coverage Report \033[0m===");
         $this->console->newline();
+    }
+
+    protected function printFooter(): void
+    {
+        $this->console->newline();
+        $this->console->line('Total coverage: ' . $this->coverage->getCoverage() . '%');
     }
 
     protected function formatFileInfo(FileCoverageData $file): string
