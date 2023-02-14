@@ -17,11 +17,10 @@ class MarkdownReporter implements TypeCoverageReportInterface
 
     public function __invoke(): void
     {
+        $header[] = '| Coverage | File | Mixed | Non-mixed |';
+        $header[] = '| :-- | :-- | :-- | :-- |';
+
         $lines = [];
-
-        $lines[] = '| Coverage | File | Mixed | Non-mixed |';
-        $lines[] = '| :-- | :-- | :-- | :-- |';
-
         foreach ($this->coverage->getFileCoverageData() as $file) {
             $lines[] = $this->makeTableLine(
                 $file->getPercentage() ?: 'N/A',
@@ -31,9 +30,9 @@ class MarkdownReporter implements TypeCoverageReportInterface
             );
         }
 
-        $lines[] = $this->makeTableLine('Total:','','', $this->coverage->getCoverage());
+        $footer[] = $this->makeTableLine('Total:','','', $this->coverage->getCoverage());
 
-        echo implode(PHP_EOL, $lines);
+        echo implode(PHP_EOL, array_merge($header, $lines, $footer));
     }
 
     private function makeTableLine(...$args): string
