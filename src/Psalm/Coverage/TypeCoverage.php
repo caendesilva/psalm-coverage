@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Coverage;
 
-class CoverageReport
+class TypeCoverage
 {
     protected static self $instance;
 
