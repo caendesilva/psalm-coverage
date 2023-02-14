@@ -10,8 +10,10 @@ class FileCoverageData
     protected int $mixedCount = 0;
     protected int $nonMixedCount = 0;
 
-    public function __construct(string $path)
+    public function __construct(string $path, int $mixedCount, int $nonMixedCount)
     {
         $this->path = $path;
+        $this->mixedCount = $mixedCount;
+        $this->nonMixedCount = $nonMixedCount;
     }
 }
