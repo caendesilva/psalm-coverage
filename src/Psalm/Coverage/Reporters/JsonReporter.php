@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Psalm\Coverage;
+namespace Psalm\Coverage\Reporters;
 
-use Psalm\Coverage\Reporters\TypeCoverageReportInterface;
+use Psalm\Coverage\TypeCoverage;
 
 class JsonReporter implements TypeCoverageReportInterface
 {

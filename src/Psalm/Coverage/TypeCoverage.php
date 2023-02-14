@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Coverage;
 
 use Psalm\Coverage\Reporters\ConsoleReporter;
+use Psalm\Coverage\Reporters\JsonReporter;
 
 class TypeCoverage
 {
