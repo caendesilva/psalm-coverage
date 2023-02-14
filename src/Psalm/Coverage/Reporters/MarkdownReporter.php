@@ -13,6 +13,9 @@ class MarkdownReporter implements TypeCoverageReportInterface
 {
     protected TypeCoverage $coverage;
 
+    /** @todo Make configurable */
+    protected string $outputPath = 'type-coverage.md';
+
     public function __construct(TypeCoverage $coverage)
     {
         $this->coverage = $coverage;
@@ -39,7 +42,8 @@ class MarkdownReporter implements TypeCoverageReportInterface
 
         $footer[] = $this->makeTableLine('Total:','','', $this->coverage->getCoverage());
 
-        echo implode(PHP_EOL, array_merge($header, $lines, $footer));
+        $contents = implode(PHP_EOL, array_merge($header, $lines, $footer));
+        file_put_contents($this->outputPath, $contents);
     }
 
     private function makeTableLine(...$args): string
