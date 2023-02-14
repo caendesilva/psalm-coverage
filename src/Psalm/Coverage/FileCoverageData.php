@@ -16,4 +16,9 @@ class FileCoverageData
         $this->mixedCount = $mixedCount;
         $this->nonMixedCount = $nonMixedCount;
     }
+
+    public function getPath(): string
+    {
+        return $this->path;
+    }
 }
