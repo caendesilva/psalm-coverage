@@ -32,7 +32,8 @@ class FileCoverageData
         return $this->nonMixedCount;
     }
 
-    public function getPercentage(): float|false
+    /** @return float|false */
+    public function getPercentage()
     {
         if ($this->mixedCount + $this->nonMixedCount === 0) {
             return false;
