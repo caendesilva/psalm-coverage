@@ -1,6 +1,8 @@
 <?php
 
-namespace Psalm\Coverage;
+namespace Psalm\Coverage\Reports;
+
+use Psalm\Coverage\TypeCoverage;
 
 interface TypeCoverageReportInterface
 {
