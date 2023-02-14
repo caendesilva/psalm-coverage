@@ -6,5 +6,19 @@ namespace Psalm\Coverage;
 
 class CoverageReport
 {
-    //
+    protected static self $instance;
+
+    protected function __construct()
+    {
+        //
+    }
+
+    public static function getInstance(): self
+    {
+        if (!isset(self::$instance)) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
+    }
 }
