@@ -20,6 +20,22 @@ class ConsoleReporter implements TypeCoverageReportInterface
 
     public function __invoke(): void
     {
-        // TODO: Implement __invoke() method.
+        $this->printDivider();
+        $this->printHeader();
+
+        //
+    }
+
+    protected function printDivider(): void
+    {
+        $this->console->newline();
+        $this->console->line('----------------------------');
+    }
+
+    protected function printHeader(): void
+    {
+        $this->console->newline();
+        $this->console->line("===\033[33m Type Coverage Report \033[0m===");
+        $this->console->newline();
     }
 }
