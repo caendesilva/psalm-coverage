@@ -14,6 +14,7 @@ class TypeCoverage
      */
     public static array $reporters = [
         ConsoleReporter::class,
+        JsonReporter::class,
     ];
 
     protected static self $instance;
