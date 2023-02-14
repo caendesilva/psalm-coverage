@@ -1,6 +1,6 @@
 <?php
 
-namespace Psalm\Coverage\Reports;
+namespace Psalm\Coverage\Reporters;
 
 use Psalm\Coverage\TypeCoverage;
 
