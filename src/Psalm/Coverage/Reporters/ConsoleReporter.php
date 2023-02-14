@@ -58,7 +58,7 @@ class ConsoleReporter implements TypeCoverageReportInterface
         $file_path = $file->getPath();
 
         $percentage = $file->getPercentage();
-        $coverage = $path_nonmixed_count ? str_pad(number_format(($percentage), 2), 5, '0', STR_PAD_LEFT) : 'N/A';
+        $coverage = $percentage ? str_pad(number_format(($percentage), 2), 5, '0', STR_PAD_LEFT) : 'N/A';
 
         return str_pad($coverage, 6, ' ', STR_PAD_LEFT)." - File $file_path has $path_mixed_count mixed and $path_nonmixed_count non-mixed";
     }
