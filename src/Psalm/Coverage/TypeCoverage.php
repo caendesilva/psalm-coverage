@@ -36,4 +36,11 @@ class TypeCoverage
     {
         self::getInstance()->fileCoverageData[$file->getPath()] = $file;
     }
+
+    public function __destruct()
+    {
+        foreach (self::$reporters as $reporter) {
+            (new $reporter($this))->__invoke();
+        }
+    }
 }
