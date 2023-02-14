@@ -8,6 +8,8 @@ class CoverageReport
 {
     protected static self $instance;
 
+    protected array $fileCoverageData = [];
+
     protected function __construct()
     {
         //
