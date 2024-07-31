@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -29,7 +31,6 @@ use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
-use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
@@ -52,13 +53,12 @@ use Psalm\Type\Union;
 use function array_merge;
 use function array_pop;
 use function array_values;
-use function get_class;
 use function strtolower;
 
 /**
  * @internal
  */
-class CastAnalyzer
+final class CastAnalyzer
 {
     /** @var string[] */
     private const PSEUDO_CASTABLE_CLASSES = [
@@ -71,7 +71,7 @@ class CastAnalyzer
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Cast $stmt,
-        Context $context
+        Context $context,
     ): bool {
         if ($stmt instanceof PhpParser\Node\Expr\Cast\Int_) {
             if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->expr, $context) === false) {
@@ -200,9 +200,6 @@ class CastAnalyzer
                 $all_permissible = true;
 
                 foreach ($stmt_expr_type->getAtomicTypes() as $type) {
-                    if ($type instanceof TList) {
-                        $type = $type->getKeyedArray();
-                    }
                     if ($type instanceof Scalar) {
                         $objWithProps = new TObjectWithProperties(['scalar' => new Union([$type])]);
                         $permissible_atomic_types[] = $objWithProps;
@@ -247,9 +244,6 @@ class CastAnalyzer
                 $all_permissible = true;
 
                 foreach ($stmt_expr_type->getAtomicTypes() as $type) {
-                    if ($type instanceof TList) {
-                        $type = $type->getKeyedArray();
-                    }
                     if ($type instanceof Scalar) {
                         $keyed_array = new TKeyedArray([new Union([$type])], null, null, true);
                         $permissible_atomic_types[] = $keyed_array;
@@ -304,7 +298,7 @@ class CastAnalyzer
 
         IssueBuffer::maybeAdd(
             new UnrecognizedExpression(
-                'Psalm does not understand the cast ' . get_class($stmt),
+                'Psalm does not understand the cast ' . $stmt::class,
                 new CodeLocation($statements_analyzer->getSource(), $stmt),
             ),
             $statements_analyzer->getSuppressedIssues(),
@@ -317,7 +311,7 @@ class CastAnalyzer
         StatementsAnalyzer $statements_analyzer,
         Union $stmt_type,
         PhpParser\Node\Expr $stmt,
-        bool $explicit_cast = false
+        bool $explicit_cast = false,
     ): Union {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -336,10 +330,6 @@ class CastAnalyzer
 
         while ($atomic_types) {
             $atomic_type = array_pop($atomic_types);
-
-            if ($atomic_type instanceof TList) {
-                $atomic_type = $atomic_type->getKeyedArray();
-            }
 
             if ($atomic_type instanceof TInt) {
                 $valid_ints[] = $atomic_type;
@@ -403,7 +393,7 @@ class CastAnalyzer
                 $intersection_types = [$atomic_type];
 
                 if ($atomic_type->extra_types) {
-                    $intersection_types = array_merge($intersection_types, $atomic_type->extra_types);
+                    $intersection_types = [...$intersection_types, ...$atomic_type->extra_types];
                 }
 
                 foreach ($intersection_types as $intersection_type) {
@@ -485,7 +475,7 @@ class CastAnalyzer
             // todo: emit error here
         }
 
-        $valid_types = array_merge($valid_ints, $castable_types);
+        $valid_types = [...$valid_ints, ...$castable_types];
 
         if (!$valid_types) {
             $int_type = Type::getInt();
@@ -507,7 +497,7 @@ class CastAnalyzer
         StatementsAnalyzer $statements_analyzer,
         Union $stmt_type,
         PhpParser\Node\Expr $stmt,
-        bool $explicit_cast = false
+        bool $explicit_cast = false,
     ): Union {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -526,10 +516,6 @@ class CastAnalyzer
 
         while ($atomic_types) {
             $atomic_type = array_pop($atomic_types);
-
-            if ($atomic_type instanceof TList) {
-                $atomic_type = $atomic_type->getKeyedArray();
-            }
 
             if ($atomic_type instanceof TFloat) {
                 $valid_floats[] = $atomic_type;
@@ -592,7 +578,7 @@ class CastAnalyzer
                 $intersection_types = [$atomic_type];
 
                 if ($atomic_type->extra_types) {
-                    $intersection_types = array_merge($intersection_types, $atomic_type->extra_types);
+                    $intersection_types = [...$intersection_types, ...$atomic_type->extra_types];
                 }
 
                 foreach ($intersection_types as $intersection_type) {
@@ -674,7 +660,7 @@ class CastAnalyzer
             // todo: emit error here
         }
 
-        $valid_types = array_merge($valid_floats, $castable_types);
+        $valid_types = [...$valid_floats, ...$castable_types];
 
         if (!$valid_types) {
             $float_type = Type::getFloat();
@@ -697,7 +683,7 @@ class CastAnalyzer
         Context $context,
         Union $stmt_type,
         PhpParser\Node\Expr $stmt,
-        bool $explicit_cast = false
+        bool $explicit_cast = false,
     ): Union {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -721,7 +707,7 @@ class CastAnalyzer
                 || $atomic_type instanceof TNumeric
             ) {
                 if ($atomic_type instanceof TLiteralInt || $atomic_type instanceof TLiteralFloat) {
-                    $castable_types[] = new TLiteralString((string) $atomic_type->value);
+                    $castable_types[] = Type::getAtomicStringFromLiteral((string) $atomic_type->value);
                 } elseif ($atomic_type instanceof TNonspecificLiteralInt) {
                     $castable_types[] = new TNonspecificLiteralString();
                 } else {
@@ -740,20 +726,20 @@ class CastAnalyzer
             if ($atomic_type instanceof TNull
                 || $atomic_type instanceof TFalse
             ) {
-                $valid_strings[] = new TLiteralString('');
+                $valid_strings[] = Type::getAtomicStringFromLiteral('');
                 continue;
             }
 
             if ($atomic_type instanceof TTrue
             ) {
-                $valid_strings[] = new TLiteralString('1');
+                $valid_strings[] = Type::getAtomicStringFromLiteral('1');
                 continue;
             }
 
             if ($atomic_type instanceof TBool
             ) {
-                $valid_strings[] = new TLiteralString('1');
-                $valid_strings[] = new TLiteralString('');
+                $valid_strings[] = Type::getAtomicStringFromLiteral('1');
+                $valid_strings[] = Type::getAtomicStringFromLiteral('');
                 continue;
             }
 
@@ -817,10 +803,7 @@ class CastAnalyzer
                                 $parent_nodes = array_merge($return_type->parent_nodes, $parent_nodes);
                             }
 
-                            $castable_types = array_merge(
-                                $castable_types,
-                                array_values($return_type->getAtomicTypes()),
-                            );
+                            $castable_types = [...$castable_types, ...array_values($return_type->getAtomicTypes())];
 
                             continue 2;
                         }
@@ -888,7 +871,7 @@ class CastAnalyzer
     private static function checkExprGeneralUse(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Cast $stmt,
-        Context $context
+        Context $context,
     ): bool {
         $was_inside_general_use = $context->inside_general_use;
         $context->inside_general_use = true;
@@ -900,7 +883,7 @@ class CastAnalyzer
     private static function handleRedundantCast(
         Union $maybe_type,
         StatementsAnalyzer $statements_analyzer,
-        PhpParser\Node\Expr\Cast $stmt
+        PhpParser\Node\Expr\Cast $stmt,
     ): void {
         $codebase = $statements_analyzer->getCodebase();
         $project_analyzer = $statements_analyzer->getProjectAnalyzer();

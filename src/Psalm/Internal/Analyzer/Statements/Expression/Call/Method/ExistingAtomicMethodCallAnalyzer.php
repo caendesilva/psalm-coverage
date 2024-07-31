@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
 use PhpParser;
@@ -15,6 +17,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Codebase\AssertionsFromInheritanceResolver;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\MethodIdentifier;
@@ -42,16 +45,19 @@ use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
+use function array_filter;
 use function array_map;
 use function count;
 use function explode;
 use function in_array;
+use function is_string;
+use function str_starts_with;
 use function strtolower;
 
 /**
  * @internal
  */
-class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
+final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 {
     /**
      * @param  TNamedObject|TTemplateParam|null  $static_type
@@ -69,7 +75,7 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         ?string $lhs_var_id,
         MethodIdentifier $method_id,
         AtomicMethodCallAnalysisResult $result,
-        ?TemplateResult $inferred_template_result = null
+        ?TemplateResult $inferred_template_result = null,
     ): Union {
         $config = $codebase->config;
 
@@ -83,7 +89,8 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         $cased_method_id = $fq_class_name . '::' . $stmt_name->name;
 
-        $result->existent_method_ids[] = $method_id->__toString();
+
+        $result->existent_method_ids[$method_id->__toString()] = true;
 
         if ($context->collect_initializations && $context->calling_method_id) {
             [$calling_method_class] = explode('::', $context->calling_method_id);
@@ -95,6 +102,7 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         }
 
         if ($codebase->store_node_types
+            && !$stmt->isFirstClassCallable()
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {
@@ -198,7 +206,7 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         try {
             $method_storage = $codebase->methods->getStorage($declaring_method_id ?? $method_id);
-        } catch (UnexpectedValueException $e) {
+        } catch (UnexpectedValueException) {
             $method_storage = null;
         }
 
@@ -224,8 +232,12 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         if ($inferred_template_result) {
             $template_result->lower_bounds += $inferred_template_result->lower_bounds;
         }
+        if ($method_storage && $method_storage->template_types) {
+            $template_result->template_types += $method_storage->template_types;
+        }
 
         if ($codebase->store_node_types
+            && !$stmt->isFirstClassCallable()
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {
@@ -407,11 +419,14 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 }
             }
 
-            if ($method_storage->assertions) {
+            $assertionsResolver = new AssertionsFromInheritanceResolver($codebase);
+            $assertions = $assertionsResolver->resolve($method_storage, $class_storage);
+
+            if ($assertions) {
                 self::applyAssertionsToContext(
                     $stmt_name,
                     ExpressionIdentifier::getExtendedVarId($stmt->var, null, $statements_analyzer),
-                    $method_storage->assertions,
+                    $assertions,
                     $args,
                     $template_result,
                     $context,
@@ -420,30 +435,48 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             }
 
             if ($method_storage->if_true_assertions) {
+                $possibilities = array_map(
+                    static fn(Possibilities $assertion): Possibilities => $assertion->getUntemplatedCopy(
+                        $template_result,
+                        $lhs_var_id,
+                        $codebase,
+                    ),
+                    $method_storage->if_true_assertions,
+                );
+                if ($lhs_var_id === null) {
+                    $possibilities = array_filter(
+                        $possibilities,
+                        static fn(Possibilities $assertion): bool => !(is_string($assertion->var_id)
+                            && str_starts_with($assertion->var_id, '$this->')
+                        ),
+                    );
+                }
                 $statements_analyzer->node_data->setIfTrueAssertions(
                     $stmt,
-                    array_map(
-                        static fn(Possibilities $assertion): Possibilities => $assertion->getUntemplatedCopy(
-                            $template_result,
-                            $lhs_var_id,
-                            $codebase,
-                        ),
-                        $method_storage->if_true_assertions,
-                    ),
+                    $possibilities,
                 );
             }
 
             if ($method_storage->if_false_assertions) {
+                $possibilities = array_map(
+                    static fn(Possibilities $assertion): Possibilities => $assertion->getUntemplatedCopy(
+                        $template_result,
+                        $lhs_var_id,
+                        $codebase,
+                    ),
+                    $method_storage->if_false_assertions,
+                );
+                if ($lhs_var_id === null) {
+                    $possibilities = array_filter(
+                        $possibilities,
+                        static fn(Possibilities $assertion): bool => !(is_string($assertion->var_id)
+                            && str_starts_with($assertion->var_id, '$this->')
+                        ),
+                    );
+                }
                 $statements_analyzer->node_data->setIfFalseAssertions(
                     $stmt,
-                    array_map(
-                        static fn(Possibilities $assertion): Possibilities => $assertion->getUntemplatedCopy(
-                            $template_result,
-                            $lhs_var_id,
-                            $codebase,
-                        ),
-                        $method_storage->if_false_assertions,
-                    ),
+                    $possibilities,
                 );
             }
         }
@@ -512,7 +545,7 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         PhpParser\Node\Expr\MethodCall $stmt,
         PhpParser\Node\Identifier $stmt_name,
         Context $context,
-        string $fq_class_name
+        string $fq_class_name,
     ): ?Union {
         $method_name = strtolower($stmt_name->name);
         if (!in_array($method_name, ['__get', '__set'], true)) {
@@ -544,7 +577,7 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             case '__set':
                 // If `@psalm-seal-properties` is set, the property must be defined with
                 // a `@property` annotation
-                if (($class_storage->sealed_properties || $codebase->config->seal_all_properties)
+                if (($class_storage->hasSealedProperties($codebase->config))
                     && !isset($class_storage->pseudo_property_set_types['$' . $prop_name])
                 ) {
                     IssueBuffer::maybeAdd(
@@ -642,7 +675,7 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             case '__get':
                 // If `@psalm-seal-properties` is set, the property must be defined with
                 // a `@property` annotation
-                if (($class_storage->sealed_properties || $codebase->config->seal_all_properties)
+                if (($class_storage->hasSealedProperties($codebase->config))
                     && !isset($class_storage->pseudo_property_get_types['$' . $prop_name])
                 ) {
                     IssueBuffer::maybeAdd(

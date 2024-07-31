@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Type\Atomic;
 
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
@@ -20,6 +23,7 @@ use function substr;
  */
 final class TIterable extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     use HasIntersectionTrait;
     /**
      * @use GenericTrait<array{Union, Union}>
@@ -31,19 +35,13 @@ final class TIterable extends Atomic
      */
     public array $type_params;
 
-    /**
-     * @var string
-     */
-    public $value = 'iterable';
+    public string $value = 'iterable';
 
-    /**
-     * @var bool
-     */
-    public $has_docblock_params = false;
+    public bool $has_docblock_params = false;
 
     /**
      * @param array{Union, Union}|array<never, never> $type_params
-     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties> $extra_types
+     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $extra_types
      */
     public function __construct(array $type_params = [], array $extra_types = [], bool $from_docblock = false)
     {
@@ -54,7 +52,7 @@ final class TIterable extends Atomic
             $this->type_params = [Type::getMixed(), Type::getMixed()];
         }
         $this->extra_types = $extra_types;
-        $this->from_docblock = $from_docblock;
+        parent::__construct($from_docblock);
     }
 
     public function getKey(bool $include_extra = true): string
@@ -94,7 +92,7 @@ final class TIterable extends Atomic
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id
+        int $analysis_php_version_id,
     ): ?string {
         return $analysis_php_version_id >= 7_01_00 ? 'iterable' : null;
     }
@@ -115,7 +113,7 @@ final class TIterable extends Atomic
         }
 
         foreach ($this->type_params as $i => $type_param) {
-            if (!$type_param->equals($other_type->type_params[$i], $ensure_source_equality)) {
+            if (!$type_param->equals($other_type->type_params[$i], $ensure_source_equality, false)) {
                 return false;
             }
         }
@@ -160,7 +158,7 @@ final class TIterable extends Atomic
         ?string $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        int $depth = 0
+        int $depth = 0,
     ): self {
         $types = $this->replaceTypeParamsTemplateTypesWithStandins(
             $template_result,

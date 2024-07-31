@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests;
 
 use Psalm\Config;
@@ -357,6 +359,15 @@ class BinaryOperationTest extends TestCase
                 'code' => '<?php
                     $a = "Hey " . "Jude,";',
             ],
+            'concatenationNonFalsyLiteralStringWithString' => [
+                'code' => '<?php
+                    function foo(): string {}
+                    $a = "Hey " . foo();',
+                'assertions' => [
+                    '$a===' => 'non-falsy-string',
+                ],
+                'ignored_issues' => ['InvalidReturnType'],
+            ],
             'concatenationWithNumberInWeakMode' => [
                 'code' => '<?php
                     $a = "hi" . 5;',
@@ -487,6 +498,30 @@ class BinaryOperationTest extends TestCase
                     /** @var int */
                     $bar = 123;
                     foobar($foo . $bar);
+                ',
+            ],
+            'concatenateNonFalsyStringWithUndefinedConstant' => [
+                'code' => '<?php
+                    /**
+                     * @param non-falsy-string $arg
+                     * @return non-falsy-string
+                     */
+                    function foo( $arg ) {
+                        /** @psalm-suppress UndefinedConstant */
+                        return FOO . $arg;
+                    }
+                ',
+            ],
+            'concatenateNonEmptyStringWithUndefinedConstant' => [
+                'code' => '<?php
+                    /**
+                     * @param non-empty-string $arg
+                     * @return non-empty-string
+                     */
+                    function foo( $arg ) {
+                        /** @psalm-suppress UndefinedConstant */
+                        return FOO . $arg;
+                    }
                 ',
             ],
             'possiblyInvalidAdditionOnBothSides' => [
@@ -929,6 +964,40 @@ class BinaryOperationTest extends TestCase
                     '$b' => 'float|int',
                 ],
             ],
+            'incrementInLoop' => [
+                'code' => '<?php
+                    for ($i = 0; $i < 10; $i++) {
+                        if (rand(0,1)) {
+                            break;
+                        }
+                    }
+                    for ($j = 100; $j < 110; $j++) {
+                        if (rand(0,1)) {
+                            break;
+                        }
+                    }',
+                'assertions' => [
+                    '$i' => 'int<0, 10>',
+                    '$j' => 'int<100, 110>',
+                ],
+            ],
+            'decrementInLoop' => [
+                'code' => '<?php
+                    for ($i = 10; $i > 0; $i--) {
+                        if (rand(0,1)) {
+                            break;
+                        }
+                    }
+                    for ($j = 110; $j > 100; $j--) {
+                        if (rand(0,1)) {
+                            break;
+                        }
+                    }',
+                'assertions' => [
+                    '$i' => 'int<0, 10>',
+                    '$j' => 'int<100, 110>',
+                ],
+            ],
             'coalesceFilterOutNullEvenWithTernary' => [
                 'code' => '<?php
 
@@ -988,6 +1057,67 @@ class BinaryOperationTest extends TestCase
                     '$a===' => 'non-falsy-string',
                     '$b===' => 'non-falsy-string',
                 ],
+            ],
+            'unaryMinusOverflows' => [
+                'code' => <<<'PHP'
+                    <?php
+                    $a = -(1 << 63);
+                    PHP,
+                'assertions' => [
+                    '$a===' => 'float(9.2233720368548E+18)',
+                ],
+            ],
+            'invalidArrayOperations' => [
+                'code' => <<<'PHP'
+                    <?php
+
+                    $a1 = 1 + [];
+                    $a2 = [] + 1;
+                    // This is the one exception to this rule
+                    $a3 = [] + [];
+
+                    $b1 = 1 - [];
+                    $b2 = [] - 1;
+                    $b3 = [] - [];
+
+                    $c1 = 1 * [];
+                    $c2 = [] * 1;
+                    $c3 = [] * [];
+
+                    $d1 = 1 / [];
+                    $d2 = [] / 1;
+                    $d3 = [] / [];
+
+                    $e1 = 1 ** [];
+                    $e2 = [] ** 1;
+                    $e3 = [] ** [];
+
+                    $f1 = 1 % [];
+                    $f2 = [] % 1;
+                    $f3 = [] % [];
+
+                    PHP,
+                'assertions' => [
+                    '$a1' => 'float|int',
+                    '$a2' => 'float|int',
+                    '$a3' => 'array<never, never>',
+                    '$b1' => 'float|int',
+                    '$b2' => 'float|int',
+                    '$b3' => 'float|int',
+                    '$c1' => 'float|int',
+                    '$c2' => 'float|int',
+                    '$c3' => 'float|int',
+                    '$d1' => 'float|int',
+                    '$d2' => 'float|int',
+                    '$d3' => 'float|int',
+                    '$e1' => 'float|int',
+                    '$e2' => 'float|int',
+                    '$e3' => 'float|int',
+                    '$f1' => 'float|int',
+                    '$f2' => 'float|int',
+                    '$f3' => 'float|int',
+                ],
+                'ignored_issues' => ['InvalidOperand'],
             ],
         ];
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -29,11 +31,9 @@ use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
-use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
-use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNonEmptyArray;
 use Psalm\Type\Atomic\TObjectWithProperties;
@@ -54,12 +54,12 @@ use const PHP_INT_MAX;
 /**
  * @internal
  */
-class ArrayAnalyzer
+final class ArrayAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Array_ $stmt,
-        Context $context
+        Context $context,
     ): bool {
         // if the array is empty, this special type allows us to match any other array type against it
         if (count($stmt->items) === 0) {
@@ -242,8 +242,8 @@ class ArrayAnalyzer
         StatementsAnalyzer $statements_analyzer,
         Context $context,
         ArrayCreationInfo $array_creation_info,
-        PhpParser\Node\Expr\ArrayItem $item,
-        Codebase $codebase
+        PhpParser\Node\ArrayItem $item,
+        Codebase $codebase,
     ): void {
         if ($item->unpack) {
             if (ExpressionAnalyzer::analyze($statements_analyzer, $item->value, $context) === false) {
@@ -334,19 +334,32 @@ class ArrayAnalyzer
                 } elseif ($key_type->isSingleIntLiteral()) {
                     $item_key_value = $key_type->getSingleIntLiteral()->value;
 
-                    if ($item_key_value >= $array_creation_info->int_offset) {
-                        if ($item_key_value === $array_creation_info->int_offset) {
+                    if ($item_key_value <= PHP_INT_MAX
+                        && $item_key_value > $array_creation_info->int_offset
+                    ) {
+                        if ($item_key_value - 1 === $array_creation_info->int_offset) {
                             $item_is_list_item = true;
                         }
-                        $array_creation_info->int_offset = $item_key_value + 1;
+                        $array_creation_info->int_offset = $item_key_value;
                     }
                 }
             } else {
                 $key_type = Type::getArrayKey();
             }
         } else {
+            if ($array_creation_info->int_offset === PHP_INT_MAX) {
+                IssueBuffer::maybeAdd(
+                    new InvalidArrayOffset(
+                        'Cannot add an item with an offset beyond PHP_INT_MAX',
+                        new CodeLocation($statements_analyzer->getSource(), $item),
+                    ),
+                );
+                return;
+            }
+
             $item_is_list_item = true;
-            $item_key_value = $array_creation_info->int_offset++;
+            $item_key_value = ++$array_creation_info->int_offset;
+
             $key_atomic_type = new TLiteralInt($item_key_value);
             $array_creation_info->item_key_atomic_types[] = $key_atomic_type;
             $key_type = new Union([$key_atomic_type]);
@@ -506,17 +519,14 @@ class ArrayAnalyzer
     private static function handleUnpackedArray(
         StatementsAnalyzer $statements_analyzer,
         ArrayCreationInfo $array_creation_info,
-        PhpParser\Node\Expr\ArrayItem $item,
+        PhpParser\Node\ArrayItem $item,
         Union $unpacked_array_type,
-        Codebase $codebase
+        Codebase $codebase,
     ): void {
         $all_non_empty = true;
 
         $has_possibly_undefined = false;
         foreach ($unpacked_array_type->getAtomicTypes() as $unpacked_atomic_type) {
-            if ($unpacked_atomic_type instanceof TList) {
-                $unpacked_atomic_type = $unpacked_atomic_type->getKeyedArray();
-            }
             if ($unpacked_atomic_type instanceof TKeyedArray) {
                 foreach ($unpacked_atomic_type->properties as $key => $property_value) {
                     if ($property_value->possibly_undefined) {
@@ -536,10 +546,20 @@ class ArrayAnalyzer
                             continue 2;
                         }
                         $new_offset = $key;
-                        $array_creation_info->item_key_atomic_types[] = new TLiteralString($new_offset);
+                        $array_creation_info->item_key_atomic_types[] = Type::getAtomicStringFromLiteral($new_offset);
                         $array_creation_info->all_list = false;
                     } else {
-                        $new_offset = $array_creation_info->int_offset++;
+                        if ($array_creation_info->int_offset === PHP_INT_MAX) {
+                            IssueBuffer::maybeAdd(
+                                new InvalidArrayOffset(
+                                    'Cannot add an item with an offset beyond PHP_INT_MAX',
+                                    new CodeLocation($statements_analyzer->getSource(), $item->value),
+                                ),
+                                $statements_analyzer->getSuppressedIssues(),
+                            );
+                            continue 2;
+                        }
+                        $new_offset = ++$array_creation_info->int_offset;
                         $array_creation_info->item_key_atomic_types[] = new TLiteralInt($new_offset);
                     }
 

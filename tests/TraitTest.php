@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests;
 
-use Psalm\Issue\ConstantDeclarationInTrait;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
@@ -1233,9 +1234,18 @@ class TraitTest extends TestCase
                     <?php
                     trait A { const B = 0; }
                     PHP,
-                'error_message' => ConstantDeclarationInTrait::getIssueType(),
+                'error_message' => 'ConstantDeclarationInTrait',
                 'ignored_issues' => [],
                 'php_version' => '8.1',
+            ],
+            'duplicateTraitProperty' => [
+                'code' => '<?php
+                    trait T {
+                        public mixed $foo = 5;
+                        protected static mixed $foo;
+                    }
+                    ',
+                'error_message' => 'DuplicateProperty',
             ],
         ];
     }

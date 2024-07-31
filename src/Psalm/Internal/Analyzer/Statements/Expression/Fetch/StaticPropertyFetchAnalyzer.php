@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
 use PhpParser;
@@ -37,12 +39,12 @@ use function strtolower;
 /**
  * @internal
  */
-class StaticPropertyFetchAnalyzer
+final class StaticPropertyFetchAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\StaticPropertyFetch $stmt,
-        Context $context
+        Context $context,
     ): bool {
         if (!$stmt->class instanceof PhpParser\Node\Name) {
             self::analyzeVariableStaticPropertyFetch($statements_analyzer, $stmt->class, $stmt, $context);
@@ -51,10 +53,10 @@ class StaticPropertyFetchAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        if (count($stmt->class->parts) === 1
-            && in_array(strtolower($stmt->class->parts[0]), ['self', 'static', 'parent'], true)
+        if (count($stmt->class->getParts()) === 1
+            && in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)
         ) {
-            if ($stmt->class->parts[0] === 'parent') {
+            if ($stmt->class->getFirst() === 'parent') {
                 $fq_class_name = $statements_analyzer->getParentFQCLN();
 
                 if ($fq_class_name === null) {
@@ -81,7 +83,7 @@ class StaticPropertyFetchAnalyzer
             ) {
                 $codebase->file_reference_provider->addMethodReferenceToClassMember(
                     $context->calling_method_id,
-                    'use:' . $stmt->class->parts[0] . ':' . md5($statements_analyzer->getFilePath()),
+                    'use:' . $stmt->class->getFirst() . ':' . md5($statements_analyzer->getFilePath()),
                     false,
                 );
             }
@@ -134,12 +136,26 @@ class StaticPropertyFetchAnalyzer
 
         if ($stmt->name instanceof PhpParser\Node\VarLikeIdentifier) {
             $prop_name = $stmt->name->name;
-        } elseif (($stmt_name_type = $statements_analyzer->node_data->getType($stmt->name))
-            && $stmt_name_type->isSingleStringLiteral()
-        ) {
-            $prop_name = $stmt_name_type->getSingleStringLiteral()->value;
         } else {
-            $prop_name = null;
+            $was_inside_general_use = $context->inside_general_use;
+
+            $context->inside_general_use = true;
+
+            if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->name, $context) === false) {
+                $context->inside_general_use = $was_inside_general_use;
+
+                return false;
+            }
+
+            $context->inside_general_use = $was_inside_general_use;
+
+            if (($stmt_name_type = $statements_analyzer->node_data->getType($stmt->name))
+                && $stmt_name_type->isSingleStringLiteral()
+            ) {
+                $prop_name = $stmt_name_type->getSingleStringLiteral()->value;
+            } else {
+                $prop_name = null;
+            }
         }
 
         if (!$prop_name) {
@@ -154,7 +170,6 @@ class StaticPropertyFetchAnalyzer
         }
 
         if (!$fq_class_name
-            || !$context->check_classes
             || !$context->check_variables
             || ExpressionAnalyzer::isMock($fq_class_name)
         ) {
@@ -249,7 +264,7 @@ class StaticPropertyFetchAnalyzer
                 : null,
         )
         ) {
-            if ($context->inside_isset) {
+            if ($context->inside_isset || !$context->check_classes) {
                 return true;
             }
 
@@ -418,7 +433,7 @@ class StaticPropertyFetchAnalyzer
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $stmt_class,
         PhpParser\Node\Expr\StaticPropertyFetch $stmt,
-        Context $context
+        Context $context,
     ): void {
         $was_inside_general_use = $context->inside_general_use;
 

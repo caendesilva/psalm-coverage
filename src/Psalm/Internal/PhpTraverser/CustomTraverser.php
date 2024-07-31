@@ -16,7 +16,7 @@ use function is_array;
 /**
  * @internal
  */
-class CustomTraverser extends NodeTraverser
+final class CustomTraverser extends NodeTraverser
 {
     public function __construct()
     {
@@ -27,9 +27,8 @@ class CustomTraverser extends NodeTraverser
      * Recursively traverse a node.
      *
      * @param Node $node node to traverse
-     * @return Node Result of traversal (may be original node or new one)
      */
-    protected function traverseNode(Node $node): Node
+    protected function traverseNode(Node $node): void
     {
         foreach ($node->getSubNodeNames() as $name) {
             $subNode = &$node->$name;
@@ -60,7 +59,7 @@ class CustomTraverser extends NodeTraverser
                 }
 
                 if ($traverseChildren) {
-                    $subNode = $this->traverseNode($subNode);
+                    $this->traverseNode($subNode);
                     if ($this->stopTraversal) {
                         break;
                     }
@@ -88,8 +87,6 @@ class CustomTraverser extends NodeTraverser
                 }
             }
         }
-
-        return $node;
     }
 
     /**
@@ -124,7 +121,7 @@ class CustomTraverser extends NodeTraverser
                 }
 
                 if ($traverseChildren) {
-                    $node = $this->traverseNode($node);
+                    $this->traverseNode($node);
                     if ($this->stopTraversal) {
                         break;
                     }
@@ -147,7 +144,7 @@ class CustomTraverser extends NodeTraverser
                         } elseif (false === $return) {
                             throw new LogicException(
                                 'bool(false) return from leaveNode() no longer supported. ' .
-                                'Return NodeTraverser::REMOVE_NODE instead',
+                                'Return NodeVisitor::REMOVE_NODE instead',
                             );
                         } else {
                             throw new LogicException(

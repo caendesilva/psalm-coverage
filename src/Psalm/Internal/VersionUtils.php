@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal;
 
+use Composer\InstalledVersions;
 use OutOfBoundsException;
-use PackageVersions\Versions;
 use Phar;
 
 use function class_exists;
@@ -89,11 +91,17 @@ final class VersionUtils
     {
         try {
             return [
-                self::PSALM_PACKAGE => Versions::getVersion(self::PSALM_PACKAGE),
-                self::PHP_PARSER_PACKAGE => Versions::getVersion(self::PHP_PARSER_PACKAGE),
+                self::PSALM_PACKAGE => self::getVersion(self::PSALM_PACKAGE),
+                self::PHP_PARSER_PACKAGE => self::getVersion(self::PHP_PARSER_PACKAGE),
             ];
-        } catch (OutOfBoundsException $ex) {
+        } catch (OutOfBoundsException) {
         }
         return null;
+    }
+
+    private static function getVersion(string $packageName): string
+    {
+        return InstalledVersions::getPrettyVersion($packageName)
+            . '@' . InstalledVersions::getReference($packageName);
     }
 }

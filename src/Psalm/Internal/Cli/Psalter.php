@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Cli;
 
 use AssertionError;
-use Composer\XdebugHandler\XdebugHandler;
 use Psalm\Config;
 use Psalm\Exception\UnsupportedIssueToFixException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\CliUtils;
 use Psalm\Internal\Composer;
 use Psalm\Internal\ErrorHandler;
+use Psalm\Internal\Fork\PsalmRestarter;
 use Psalm\Internal\IncludeCollector;
 use Psalm\Internal\Provider\ClassLikeStorageCacheProvider;
 use Psalm\Internal\Provider\FileProvider;
@@ -30,6 +32,7 @@ use function array_key_exists;
 use function array_map;
 use function array_shift;
 use function array_slice;
+use function assert;
 use function chdir;
 use function count;
 use function explode;
@@ -43,7 +46,6 @@ use function getcwd;
 use function getopt;
 use function implode;
 use function in_array;
-use function ini_set;
 use function is_array;
 use function is_dir;
 use function is_numeric;
@@ -54,7 +56,8 @@ use function preg_last_error_msg;
 use function preg_replace;
 use function preg_split;
 use function realpath;
-use function strpos;
+use function str_contains;
+use function str_starts_with;
 use function strtolower;
 use function substr;
 use function trim;
@@ -89,6 +92,7 @@ final class Psalter
         'add-newline-between-docblock-annotations:',
         'no-cache',
         'no-progress',
+        'memory-limit:',
     ];
 
     /** @param array<int,string> $argv */
@@ -100,19 +104,24 @@ final class Psalter
 
         ErrorHandler::install($argv);
 
-        self::setMemoryLimit();
-
         $args = array_slice($argv, 1);
 
         // get options from command line
         $options = getopt(implode('', self::SHORT_OPTIONS), self::LONG_OPTIONS);
+        if ($options === false) {
+            fwrite(STDERR, 'Failed to parse cli options' . PHP_EOL);
+            exit(1);
+        }
 
         self::validateCliArguments($args);
+
+        CliUtils::setMemoryLimit($options);
 
         self::syncShortOptions($options);
 
         if (isset($options['c']) && is_array($options['c'])) {
-            die('Too many config files provided' . PHP_EOL);
+            fwrite(STDERR, 'Too many config files provided' . PHP_EOL);
+            exit(1);
         }
 
         if (array_key_exists('h', $options)) {
@@ -194,16 +203,20 @@ final class Psalter
             exit(1);
         }
 
-        $current_dir = (string)getcwd() . DIRECTORY_SEPARATOR;
+        $current_dir = (string) getcwd();
 
         if (isset($options['r']) && is_string($options['r'])) {
             $root_path = realpath($options['r']);
 
-            if (!$root_path) {
-                die('Could not locate root directory ' . $current_dir . DIRECTORY_SEPARATOR . $options['r'] . PHP_EOL);
+            if ($root_path === false) {
+                fwrite(
+                    STDERR,
+                    'Could not locate root directory ' . $current_dir . DIRECTORY_SEPARATOR . $options['r'] . PHP_EOL,
+                );
+                exit(1);
             }
 
-            $current_dir = $root_path . DIRECTORY_SEPARATOR;
+            $current_dir = $root_path;
         }
 
         $vendor_dir = CliUtils::getVendorDir($current_dir);
@@ -216,12 +229,18 @@ final class Psalter
             // we ignore the FQN because of a hack in scoper.inc that needs full path
             // phpcs:ignore SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName
             static fn(): ?\Composer\Autoload\ClassLoader =>
-                CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir)
+                CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir),
         );
-
+        $ini_handler = new PsalmRestarter('PSALTER');
+        $ini_handler->disableExtensions([
+            'grpc',
+            'uopz',
+            'pcov',
+            'blackfire',
+        ]);
 
         // If Xdebug is enabled, restart without it
-        (new XdebugHandler('PSALTER'))->check();
+        $ini_handler->check();
 
         $paths_to_check = CliUtils::getPathsToCheck($options['f'] ?? null);
 
@@ -298,7 +317,8 @@ final class Psalter
 
         if (array_key_exists('issues', $options)) {
             if (!is_string($options['issues']) || !$options['issues']) {
-                die('Expecting a comma-separated list of issues' . PHP_EOL);
+                fwrite(STDERR, 'Expecting a comma-separated list of issues' . PHP_EOL);
+                exit(1);
             }
 
             $issues = explode(',', $options['issues']);
@@ -333,7 +353,11 @@ final class Psalter
             );
 
             if ($allow_backwards_incompatible_changes === null) {
-                die('--allow-backwards-incompatible-changes expects a boolean value [true|false|1|0]' . PHP_EOL);
+                fwrite(
+                    STDERR,
+                    '--allow-backwards-incompatible-changes expects a boolean value [true|false|1|0]' . PHP_EOL,
+                );
+                exit(1);
             }
 
             $project_analyzer->getCodebase()->allow_backwards_incompatible_changes
@@ -348,7 +372,11 @@ final class Psalter
             );
 
             if ($doc_block_add_new_line_before_return === null) {
-                die('--add-newline-between-docblock-annotations expects a boolean value [true|false|1|0]' . PHP_EOL);
+                fwrite(
+                    STDERR,
+                    '--add-newline-between-docblock-annotations expects a boolean value [true|false|1|0]' . PHP_EOL,
+                );
+                exit(1);
             }
 
             ParsedDocblock::addNewLineBetweenAnnotations($doc_block_add_new_line_before_return);
@@ -373,7 +401,7 @@ final class Psalter
 
         foreach ($keyed_issues as $issue_name => $_) {
             // MissingParamType requires the scanning of all files to inform possible params
-            if (strpos($issue_name, 'Unused') !== false
+            if (str_contains($issue_name, 'Unused')
                 || $issue_name === 'MissingParamType'
                 || $issue_name === 'UnnecessaryVarAnnotation'
                 || $issue_name === 'all'
@@ -436,22 +464,13 @@ final class Psalter
         IssueBuffer::finish($project_analyzer, false, $start_time);
     }
 
-    private static function setMemoryLimit(): void
-    {
-        $memLimit = CliUtils::getMemoryLimitInBytes();
-        // Magic number is 4096M in bytes
-        if ($memLimit > 0 && $memLimit < 8 * 1_024 * 1_024 * 1_024) {
-            ini_set('memory_limit', (string) (8 * 1_024 * 1_024 * 1_024));
-        }
-    }
-
     /** @param array<int,string> $args */
     private static function validateCliArguments(array $args): void
     {
         array_map(
             static function (string $arg): void {
-                if (strpos($arg, '--') === 0 && $arg !== '--') {
-                    $arg_name = preg_replace('/=.*$/', '', substr($arg, 2), 1);
+                if (str_starts_with($arg, '--') && $arg !== '--') {
+                    $arg_name = (string) preg_replace('/=.*$/', '', substr($arg, 2), 1);
 
                     if ($arg_name === 'alter') {
                         // valid option for psalm, ignored by psalter
@@ -502,16 +521,18 @@ final class Psalter
     private static function loadCodeowners(Providers $providers): array
     {
         if (file_exists('CODEOWNERS')) {
-            $codeowners_file_path = realpath('CODEOWNERS');
+            $codeowners_file_path = (string) realpath('CODEOWNERS');
         } elseif (file_exists('.github/CODEOWNERS')) {
-            $codeowners_file_path = realpath('.github/CODEOWNERS');
+            $codeowners_file_path = (string) realpath('.github/CODEOWNERS');
         } elseif (file_exists('docs/CODEOWNERS')) {
-            $codeowners_file_path = realpath('docs/CODEOWNERS');
+            $codeowners_file_path = (string) realpath('docs/CODEOWNERS');
         } else {
-            die('Cannot use --codeowner without a CODEOWNERS file' . PHP_EOL);
+            fwrite(STDERR, 'Cannot use --codeowner without a CODEOWNERS file' . PHP_EOL);
+            exit(1);
         }
 
         $codeowners_file = file_get_contents($codeowners_file_path);
+        assert($codeowners_file != false);
 
         $codeowner_lines = array_map(
             static function (string $line): array {
@@ -530,7 +551,7 @@ final class Psalter
 
                     // currently we don’t match wildcard files or files that could appear anywhere
                     // in the repo
-                    return $line && $line[0] === '/' && strpos($line, '*') === false;
+                    return $line && $line[0] === '/' && !str_contains($line, '*');
                 },
             ),
         );
@@ -558,7 +579,8 @@ final class Psalter
         }
 
         if (!$codeowner_files) {
-            die('Could not find any available entries in CODEOWNERS' . PHP_EOL);
+            fwrite(STDERR, 'Could not find any available entries in CODEOWNERS' . PHP_EOL);
+            exit(1);
         }
 
         return $codeowner_files;
@@ -574,11 +596,13 @@ final class Psalter
         /** @psalm-suppress MixedAssignment */
         foreach ($desired_codeowners as $desired_codeowner) {
             if (!is_string($desired_codeowner)) {
-                die('Invalid --codeowner ' . (string)$desired_codeowner . PHP_EOL);
+                fwrite(STDERR, 'Invalid --codeowner ' . (string) $desired_codeowner . PHP_EOL);
+                exit(1);
             }
 
             if ($desired_codeowner[0] !== '@') {
-                die('--codeowner option must start with @' . PHP_EOL);
+                fwrite(STDERR, '--codeowner option must start with @' . PHP_EOL);
+                exit(1);
             }
 
             $matched_file = false;
@@ -591,7 +615,8 @@ final class Psalter
             }
 
             if (!$matched_file) {
-                die('User/group ' . $desired_codeowner . ' does not own any PHP files' . PHP_EOL);
+                fwrite(STDERR, 'User/group ' . $desired_codeowner . ' does not own any PHP files' . PHP_EOL);
+                exit(1);
             }
         }
 

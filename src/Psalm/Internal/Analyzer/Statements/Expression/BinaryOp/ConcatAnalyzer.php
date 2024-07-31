@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression\BinaryOp;
 
+use AssertionError;
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Config;
@@ -33,6 +36,7 @@ use Psalm\Type\Atomic\TLowercaseString;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNonEmptyNonspecificLiteralString;
 use Psalm\Type\Atomic\TNonEmptyString;
+use Psalm\Type\Atomic\TNonFalsyString;
 use Psalm\Type\Atomic\TNonspecificLiteralString;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TNumericString;
@@ -41,7 +45,6 @@ use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
-use function assert;
 use function count;
 use function reset;
 use function strlen;
@@ -49,7 +52,7 @@ use function strlen;
 /**
  * @internal
  */
-class ConcatAnalyzer
+final class ConcatAnalyzer
 {
     private const MAX_LITERALS = 64;
 
@@ -58,7 +61,7 @@ class ConcatAnalyzer
         PhpParser\Node\Expr $left,
         PhpParser\Node\Expr $right,
         Context $context,
-        Union &$result_type = null
+        Union &$result_type = null,
     ): void {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -173,13 +176,17 @@ class ConcatAnalyzer
                                 break 2;
                             }
 
-                            $result_type_parts[] = new TLiteralString($literal);
+                            $result_type_parts[] = Type::getAtomicStringFromLiteral($literal);
                         }
                     }
 
                     if ($literal_concat) {
-                        assert(count($result_type_parts) === $combinations);
-                        assert(count($result_type_parts) !== 0); // #8163
+                        if (count($result_type_parts) === 0) {
+                            throw new AssertionError("The number of parts cannot be 0!");
+                        }
+                        if (count($result_type_parts) !== $combinations) {
+                            throw new AssertionError("The number of parts does not match!");
+                        }
                         $result_type = new Union($result_type_parts);
                     }
                 }
@@ -250,6 +257,19 @@ class ConcatAnalyzer
 
                 $has_numeric_and_non_empty = $has_numeric_type && $has_non_empty;
 
+                $non_falsy_string = $numeric_type->getBuilder()->addType(new TNonFalsyString())->freeze();
+                $left_non_falsy = UnionTypeComparator::isContainedBy(
+                    $codebase,
+                    $left_type,
+                    $non_falsy_string,
+                );
+
+                $right_non_falsy = UnionTypeComparator::isContainedBy(
+                    $codebase,
+                    $right_type,
+                    $non_falsy_string,
+                );
+
                 $all_literals = $left_type->allLiterals() && $right_type->allLiterals();
 
                 if ($has_non_empty) {
@@ -257,9 +277,10 @@ class ConcatAnalyzer
                         $result_type = new Union([new TNonEmptyNonspecificLiteralString]);
                     } elseif ($all_lowercase) {
                         $result_type = Type::getNonEmptyLowercaseString();
+                    } elseif ($all_non_empty || $has_numeric_and_non_empty || $left_non_falsy || $right_non_falsy) {
+                        $result_type = Type::getNonFalsyString();
                     } else {
-                        $result_type = $all_non_empty || $has_numeric_and_non_empty ?
-                            Type::getNonFalsyString() : Type::getNonEmptyString();
+                        $result_type = Type::getNonEmptyString();
                     }
                 } else {
                     if ($all_literals) {
@@ -271,6 +292,31 @@ class ConcatAnalyzer
                     }
                 }
             }
+        } elseif ($left_type || $right_type) {
+            /**
+             * @var Union $known_operand
+             */
+            $known_operand = $right_type ?? $left_type;
+
+            if ($known_operand->isSingle()) {
+                $known_operands_atomic = $known_operand->getSingleAtomic();
+
+                if ($known_operands_atomic instanceof TNonEmptyString) {
+                    $result_type = Type::getNonEmptyString();
+                }
+
+                if ($known_operands_atomic instanceof TNonFalsyString) {
+                    $result_type = Type::getNonFalsyString();
+                }
+
+                if ($known_operands_atomic instanceof TLiteralString) {
+                    if ($known_operands_atomic->value) {
+                        $result_type = Type::getNonFalsyString();
+                    } elseif ($known_operands_atomic->value !== '') {
+                        $result_type = Type::getNonEmptyString();
+                    }
+                }
+            }
         }
     }
 
@@ -279,7 +325,7 @@ class ConcatAnalyzer
         PhpParser\Node\Expr $operand,
         Union $operand_type,
         string $side,
-        Context $context
+        Context $context,
     ): void {
         $codebase = $statements_analyzer->getCodebase();
         $config = Config::getInstance();
@@ -393,7 +439,7 @@ class ConcatAnalyzer
                     )) {
                         try {
                             $storage = $codebase->methods->getStorage($to_string_method_id);
-                        } catch (UnexpectedValueException $e) {
+                        } catch (UnexpectedValueException) {
                             continue;
                         }
 

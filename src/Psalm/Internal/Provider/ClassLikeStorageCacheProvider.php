@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Provider;
 
 use Psalm\Config;
+use Psalm\Internal\Cache;
 use Psalm\Storage\ClassLikeStorage;
 use RuntimeException;
 use UnexpectedValueException;
@@ -10,30 +13,21 @@ use UnexpectedValueException;
 use function array_merge;
 use function dirname;
 use function file_exists;
-use function file_put_contents;
 use function filemtime;
-use function get_class;
 use function hash;
-use function igbinary_serialize;
-use function igbinary_unserialize;
 use function is_dir;
 use function is_null;
 use function mkdir;
-use function serialize;
 use function strtolower;
-use function unlink;
-use function unserialize;
 
 use const DIRECTORY_SEPARATOR;
-use const LOCK_EX;
-use const PHP_VERSION_ID;
 
 /**
  * @internal
  */
 class ClassLikeStorageCacheProvider
 {
-    private Config $config;
+    private readonly Cache $cache;
 
     private string $modified_timestamps = '';
 
@@ -41,7 +35,7 @@ class ClassLikeStorageCacheProvider
 
     public function __construct(Config $config)
     {
-        $this->config = $config;
+        $this->cache = new Cache($config);
 
         $storage_dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'Storage' . DIRECTORY_SEPARATOR;
 
@@ -61,10 +55,10 @@ class ClassLikeStorageCacheProvider
                 throw new UnexpectedValueException($dependent_file_path . ' must exist');
             }
 
-            $this->modified_timestamps .= ' ' . filemtime($dependent_file_path);
+            $this->modified_timestamps .= ' ' . (int) filemtime($dependent_file_path);
         }
 
-        $this->modified_timestamps .= $this->config->computeHash();
+        $this->modified_timestamps .= $config->computeHash();
     }
 
     public function writeToCache(ClassLikeStorage $storage, string $file_path, string $file_contents): void
@@ -80,17 +74,16 @@ class ClassLikeStorageCacheProvider
         }
 
         $cache_location = $this->getCacheLocationForClass($fq_classlike_name_lc, $file_path, true);
-        if ($this->config->use_igbinary) {
-            file_put_contents($cache_location, igbinary_serialize($storage), LOCK_EX);
-        } else {
-            file_put_contents($cache_location, serialize($storage), LOCK_EX);
-        }
+        $this->cache->saveItem($cache_location, $storage);
     }
 
+    /**
+     * @param lowercase-string $fq_classlike_name_lc
+     */
     public function getLatestFromCache(
         string $fq_classlike_name_lc,
         ?string $file_path,
-        ?string $file_contents
+        ?string $file_contents,
     ): ClassLikeStorage {
         $cached_value = $this->loadFromCache($fq_classlike_name_lc, $file_path);
 
@@ -101,10 +94,10 @@ class ClassLikeStorageCacheProvider
         $cache_hash = $this->getCacheHash($file_path, $file_contents);
 
         /** @psalm-suppress TypeDoesNotContainType */
-        if (@get_class($cached_value) === '__PHP_Incomplete_Class'
+        if (@$cached_value::class === '__PHP_Incomplete_Class'
             || $cache_hash !== $cached_value->hash
         ) {
-            unlink($this->getCacheLocationForClass($fq_classlike_name_lc, $file_path));
+            $this->cache->deleteItem($this->getCacheLocationForClass($fq_classlike_name_lc, $file_path));
 
             throw new UnexpectedValueException($fq_classlike_name_lc . ' should not be outdated');
         }
@@ -114,46 +107,32 @@ class ClassLikeStorageCacheProvider
 
     private function getCacheHash(?string $_unused_file_path, ?string $file_contents): string
     {
-        $data = $file_contents ? $file_contents : $this->modified_timestamps;
-        return PHP_VERSION_ID >= 8_01_00 ? hash('xxh128', $data) : hash('md4', $data);
+        $data = $file_contents ?: $this->modified_timestamps;
+        return hash('xxh128', $data);
     }
 
     /**
-     * @psalm-suppress MixedAssignment
+     * @param lowercase-string $fq_classlike_name_lc
      */
     private function loadFromCache(string $fq_classlike_name_lc, ?string $file_path): ?ClassLikeStorage
     {
-        $cache_location = $this->getCacheLocationForClass($fq_classlike_name_lc, $file_path);
-
-        if (file_exists($cache_location)) {
-            if ($this->config->use_igbinary) {
-                $storage = igbinary_unserialize(Providers::safeFileGetContents($cache_location));
-
-                if ($storage instanceof ClassLikeStorage) {
-                    return $storage;
-                }
-
-                return null;
-            }
-
-            $storage = unserialize(Providers::safeFileGetContents($cache_location));
-
-            if ($storage instanceof ClassLikeStorage) {
-                return $storage;
-            }
-
-            return null;
+        $storage = $this->cache->getItem($this->getCacheLocationForClass($fq_classlike_name_lc, $file_path));
+        if ($storage instanceof ClassLikeStorage) {
+            return $storage;
         }
 
         return null;
     }
 
+    /**
+     * @param lowercase-string $fq_classlike_name_lc
+     */
     private function getCacheLocationForClass(
         string $fq_classlike_name_lc,
         ?string $file_path,
-        bool $create_directory = false
+        bool $create_directory = false,
     ): string {
-        $root_cache_directory = $this->config->getCacheDirectory();
+        $root_cache_directory = $this->cache->getCacheDirectory();
 
         if (!$root_cache_directory) {
             throw new UnexpectedValueException('No cache directory defined');
@@ -181,11 +160,11 @@ class ClassLikeStorageCacheProvider
 
         $data = $file_path ? strtolower($file_path) . ' ' : '';
         $data .= $fq_classlike_name_lc;
-        $file_path_sha = PHP_VERSION_ID >= 8_01_00 ? hash('xxh128', $data) : hash('md4', $data);
+        $file_path_sha = hash('xxh128', $data);
 
         return $parser_cache_directory
             . DIRECTORY_SEPARATOR
             . $file_path_sha
-            . ($this->config->use_igbinary ? '-igbinary' : '');
+            . ($this->cache->use_igbinary ? '-igbinary' : '');
     }
 }

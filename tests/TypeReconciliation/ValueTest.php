@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests\TypeReconciliation;
 
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -271,17 +273,6 @@ class ValueTest extends TestCase
                     if ($s === "a" || $s === "b") {
                         if ($s === "a") {}
                     }',
-            ],
-            'moreValueReconciliation' => [
-                'code' => '<?php
-                    $a = rand(0, 1) ? "a" : "b";
-                    $b = rand(0, 1) ? "a" : "b";
-
-                    $s = rand(0, 1) ? $a : $b;
-                    if (rand(0, 1)) $s = "c";
-
-                    if ($s === $a) {
-                    } elseif ($s === $b) {}',
             ],
             'negativeInts' => [
                 'code' => '<?php

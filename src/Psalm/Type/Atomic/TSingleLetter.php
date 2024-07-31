@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Type\Atomic;
 
 /**
@@ -7,6 +9,6 @@ namespace Psalm\Type\Atomic;
  *
  * @psalm-immutable
  */
-final class TSingleLetter extends TString
+final class TSingleLetter extends TNonEmptyString
 {
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
@@ -20,12 +22,12 @@ use Psalm\Type\Atomic\TGenericObject;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyOf;
 use Psalm\Type\Atomic\TKeyedArray;
-use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNever;
 use Psalm\Type\Atomic\TNonEmptyArray;
+use Psalm\Type\Atomic\TNonEmptyMixed;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TObject;
 use Psalm\Type\Atomic\TObjectWithProperties;
@@ -35,18 +37,18 @@ use Psalm\Type\Atomic\TTemplateKeyOf;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Atomic\TTemplateValueOf;
 use Psalm\Type\Atomic\TValueOf;
+use Psalm\Type\Union;
 
 use function array_merge;
 use function array_values;
 use function assert;
 use function count;
-use function get_class;
 use function strtolower;
 
 /**
  * @internal
  */
-class AtomicTypeComparator
+final class AtomicTypeComparator
 {
     /**
      * Does the input param atomic type match the given param atomic type
@@ -57,14 +59,10 @@ class AtomicTypeComparator
         Atomic $container_type_part,
         bool $allow_interface_equality = false,
         bool $allow_float_int_equality = true,
-        ?TypeComparisonResult $atomic_comparison_result = null
+        ?TypeComparisonResult $atomic_comparison_result = null,
     ): bool {
-        if ($input_type_part instanceof TList) {
-            $input_type_part = $input_type_part->getKeyedArray();
-        }
-        if ($container_type_part instanceof TList) {
-            $container_type_part = $container_type_part->getKeyedArray();
-        }
+
+
         if (($container_type_part instanceof TTemplateParam
                 || ($container_type_part instanceof TNamedObject
                     && $container_type_part->extra_types))
@@ -81,14 +79,43 @@ class AtomicTypeComparator
             );
         }
 
+        if ($input_type_part instanceof TValueOf) {
+            if ($container_type_part instanceof TValueOf) {
+                return UnionTypeComparator::isContainedBy(
+                    $codebase,
+                    $input_type_part->type,
+                    $container_type_part->type,
+                    false,
+                    false,
+                    null,
+                    false,
+                    false,
+                );
+            } elseif ($container_type_part instanceof Scalar) {
+                return UnionTypeComparator::isContainedBy(
+                    $codebase,
+                    TValueOf::getValueType($input_type_part->type, $codebase) ?? $input_type_part->type,
+                    new Union([$container_type_part]),
+                    false,
+                    false,
+                    null,
+                    false,
+                    false,
+                );
+            }
+        }
+
         if ($container_type_part instanceof TMixed
             || ($container_type_part instanceof TTemplateParam
                 && $container_type_part->as->isMixed()
                 && !$container_type_part->extra_types
                 && $input_type_part instanceof TMixed)
         ) {
-            if (get_class($container_type_part) === TEmptyMixed::class
-                && get_class($input_type_part) === TMixed::class
+            if ($input_type_part::class === TMixed::class
+                && (
+                    $container_type_part::class === TEmptyMixed::class
+                    || $container_type_part::class === TNonEmptyMixed::class
+                )
             ) {
                 if ($atomic_comparison_result) {
                     $atomic_comparison_result->type_coerced = true;
@@ -283,14 +310,14 @@ class AtomicTypeComparator
             );
         }
 
-        if (get_class($container_type_part) === TNamedObject::class
+        if ($container_type_part::class === TNamedObject::class
             && $input_type_part instanceof TEnumCase
             && $input_type_part->value === $container_type_part->value
         ) {
             return true;
         }
 
-        if (get_class($input_type_part) === TNamedObject::class
+        if ($input_type_part::class === TNamedObject::class
             && $container_type_part instanceof TEnumCase
             && $input_type_part->value === $container_type_part->value
         ) {
@@ -298,7 +325,7 @@ class AtomicTypeComparator
                 $atomic_comparison_result->type_coerced = true;
             }
 
-            return false;
+            return true;
         }
 
         if ($container_type_part instanceof TEnumCase
@@ -353,8 +380,8 @@ class AtomicTypeComparator
             return true;
         }
 
-        if (get_class($input_type_part) === TObject::class
-            && get_class($container_type_part) === TObject::class
+        if ($input_type_part::class === TObject::class
+            && $container_type_part::class === TObject::class
         ) {
             return true;
         }
@@ -773,14 +800,10 @@ class AtomicTypeComparator
         Codebase $codebase,
         Atomic $type1_part,
         Atomic $type2_part,
-        bool $allow_interface_equality = true
+        bool $allow_interface_equality = true,
     ): bool {
-        if ($type1_part instanceof TList) {
-            $type1_part = $type1_part->getKeyedArray();
-        }
-        if ($type2_part instanceof TList) {
-            $type2_part = $type2_part->getKeyedArray();
-        }
+
+
         if ((self::isLegacyTListLike($type1_part)
                 && self::isLegacyTNonEmptyListLike($type2_part))
             || (self::isLegacyTListLike($type2_part)
@@ -795,9 +818,9 @@ class AtomicTypeComparator
             );
         }
 
-        if ((get_class($type1_part) === TArray::class
+        if (($type1_part::class === TArray::class
                 && $type2_part instanceof TNonEmptyArray)
-            || (get_class($type2_part) === TArray::class
+            || ($type2_part::class === TArray::class
                 && $type1_part instanceof TNonEmptyArray)
         ) {
             return UnionTypeComparator::canExpressionTypesBeIdentical(

@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Report;
 
-use Psalm\Config;
+use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Report;
 
 use function sprintf;
@@ -34,7 +36,7 @@ final class GithubActionsReport extends Report
 
             $output .= sprintf(
                 '::%1$s %2$s::%3$s',
-                ($issue_data->severity === Config::REPORT_ERROR ? 'error' : 'warning'),
+                ($issue_data->severity === IssueData::SEVERITY_ERROR ? 'error' : 'warning'),
                 $properties,
                 $data,
             ) . "\n";
@@ -55,8 +57,7 @@ final class GithubActionsReport extends Report
         );
     }
 
-    /** @param mixed $value */
-    private function escapeProperty($value): string
+    private function escapeProperty(mixed $value): string
     {
         return strtr(
             (string) $value,

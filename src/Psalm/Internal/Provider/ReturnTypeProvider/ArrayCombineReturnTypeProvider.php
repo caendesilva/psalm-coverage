@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -13,13 +15,12 @@ use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Union;
 
 use function array_combine;
-use function assert;
 use function count;
 
 /**
  * @internal
  */
-class ArrayCombineReturnTypeProvider implements FunctionReturnTypeProviderInterface
+final class ArrayCombineReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>
@@ -120,8 +121,6 @@ class ArrayCombineReturnTypeProvider implements FunctionReturnTypeProviderInterf
             $keys_array,
             $values,
         );
-
-        assert($result !== false);
 
         if (!$result) {
             return Type::getEmptyArray();

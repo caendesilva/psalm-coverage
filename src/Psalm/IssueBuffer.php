@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm;
 
 use Psalm\CodeLocation\Raw;
@@ -15,6 +17,7 @@ use Psalm\Issue\ConfigIssue;
 use Psalm\Issue\MixedIssue;
 use Psalm\Issue\TaintedInput;
 use Psalm\Issue\UnusedBaselineEntry;
+use Psalm\Issue\UnusedIssueHandlerSuppression;
 use Psalm\Issue\UnusedPsalmSuppress;
 use Psalm\Plugin\EventHandler\Event\AfterAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\BeforeAddIssueEvent;
@@ -71,12 +74,13 @@ use function sha1;
 use function sprintf;
 use function str_repeat;
 use function str_replace;
+use function str_starts_with;
 use function strlen;
-use function strpos;
 use function trim;
 use function usort;
 
 use const DEBUG_BACKTRACE_IGNORE_ARGS;
+use const PHP_EOL;
 use const PSALM_VERSION;
 use const STDERR;
 
@@ -85,43 +89,39 @@ final class IssueBuffer
     /**
      * @var array<string, list<IssueData>>
      */
-    protected static $issues_data = [];
+    private static array $issues_data = [];
 
     /**
      * @var array<int, array>
      */
-    protected static $console_issues = [];
+    private static array $console_issues = [];
 
     /**
      * @var array<string, int>
      */
-    protected static $fixable_issue_counts = [];
+    private static array $fixable_issue_counts = [];
 
-    /**
-     * @var int
-     */
-    protected static $error_count = 0;
+    private static int $error_count = 0;
 
     /**
      * @var array<string, bool>
      */
-    protected static $emitted = [];
+    private static array $emitted = [];
 
-    /** @var int */
-    protected static $recording_level = 0;
+    private static int $recording_level = 0;
 
     /** @var array<int, array<int, CodeIssue>> */
-    protected static $recorded_issues = [];
+    private static array $recorded_issues = [];
 
     /**
      * @var array<string, array<int, int>>
      */
-    protected static $unused_suppressions = [];
+    private static array $unused_suppressions = [];
 
     /**
      * @var array<string, array<int, bool>>
      */
-    protected static $used_suppressions = [];
+    private static array $used_suppressions = [];
 
     /** @var array<array-key,mixed> */
     private static array $server = [];
@@ -133,6 +133,14 @@ final class IssueBuffer
      */
     public static function accepts(CodeIssue $e, array $suppressed_issues = [], bool $is_fixable = false): bool
     {
+        $config = Config::getInstance();
+        $project_analyzer = ProjectAnalyzer::getInstance();
+        $codebase = $project_analyzer->getCodebase();
+        $event = new BeforeAddIssueEvent($e, $is_fixable, $codebase);
+        if ($config->eventDispatcher->dispatchBeforeAddIssue($event) === false) {
+            return false;
+        }
+
         if (self::isSuppressed($e, $suppressed_issues)) {
             return false;
         }
@@ -155,7 +163,7 @@ final class IssueBuffer
      */
     public static function addUnusedSuppression(string $file_path, int $offset, string $issue_type): void
     {
-        if (strpos($issue_type, 'Tainted') === 0) {
+        if (str_starts_with($issue_type, 'Tainted')) {
             return;
         }
 
@@ -182,7 +190,7 @@ final class IssueBuffer
     {
         $config = Config::getInstance();
 
-        $fqcn_parts = explode('\\', get_class($e));
+        $fqcn_parts = explode('\\', $e::class);
         $issue_type = array_pop($fqcn_parts);
         $file_path = $e->getFilePath();
 
@@ -190,7 +198,7 @@ final class IssueBuffer
             return true;
         }
 
-        $suppressed_issue_position = array_search($issue_type, $suppressed_issues);
+        $suppressed_issue_position = array_search($issue_type, $suppressed_issues, true);
 
         if ($suppressed_issue_position !== false) {
             if (is_int($suppressed_issue_position)) {
@@ -203,7 +211,7 @@ final class IssueBuffer
         $parent_issue_type = Config::getParentIssueType($issue_type);
 
         if ($parent_issue_type) {
-            $suppressed_issue_position = array_search($parent_issue_type, $suppressed_issues);
+            $suppressed_issue_position = array_search($parent_issue_type, $suppressed_issues, true);
 
             if ($suppressed_issue_position !== false) {
                 if (is_int($suppressed_issue_position)) {
@@ -216,7 +224,7 @@ final class IssueBuffer
 
         $suppress_all_position = $config->disable_suppress_all
             ? false
-            : array_search('all', $suppressed_issues);
+            : array_search('all', $suppressed_issues, true);
 
         if ($suppress_all_position !== false) {
             if (is_int($suppress_all_position)) {
@@ -258,11 +266,6 @@ final class IssueBuffer
         $project_analyzer = ProjectAnalyzer::getInstance();
         $codebase = $project_analyzer->getCodebase();
 
-        $event = new BeforeAddIssueEvent($e, $is_fixable, $codebase);
-        if ($config->eventDispatcher->dispatchBeforeAddIssue($event) === false) {
-            return false;
-        }
-
         $fqcn_parts = explode('\\', get_class($e));
         $issue_type = array_pop($fqcn_parts);
 
@@ -270,7 +273,7 @@ final class IssueBuffer
             return false;
         }
 
-        $is_tainted = strpos($issue_type, 'Tainted') === 0;
+        $is_tainted = str_starts_with($issue_type, 'Tainted');
 
         if ($codebase->taint_flow_graph && !$is_tainted) {
             return false;
@@ -302,7 +305,7 @@ final class IssueBuffer
 
         if ($reporting_level === Config::REPORT_INFO) {
             if ($is_tainted || !self::alreadyEmitted($emitted_key)) {
-                self::$issues_data[$e->getFilePath()][] = $e->toIssueData(Config::REPORT_INFO);
+                self::$issues_data[$e->getFilePath()][] = $e->toIssueData(IssueData::SEVERITY_INFO);
 
                 if ($is_fixable) {
                     self::addFixableIssue($issue_type);
@@ -331,7 +334,7 @@ final class IssueBuffer
 
         if ($is_tainted || !self::alreadyEmitted($emitted_key)) {
             ++self::$error_count;
-            self::$issues_data[$e->getFilePath()][] = $e->toIssueData(Config::REPORT_ERROR);
+            self::$issues_data[$e->getFilePath()][] = $e->toIssueData(IssueData::SEVERITY_ERROR);
 
             if ($is_fixable) {
                 self::addFixableIssue($issue_type);
@@ -539,7 +542,7 @@ final class IssueBuffer
         bool $is_full,
         float $start_time,
         bool $add_stats = false,
-        array $issue_baseline = []
+        array $issue_baseline = [],
     ): void {
         if (!$project_analyzer->stdout_report_options) {
             throw new UnexpectedValueException('Cannot finish without stdout report options');
@@ -570,81 +573,120 @@ final class IssueBuffer
             foreach (self::$issues_data as $file_path => $file_issues) {
                 usort(
                     $file_issues,
-                    static fn(IssueData $d1, IssueData $d2): int =>
-                        [$d1->file_path, $d1->line_from, $d1->column_from]
-                            <=>
-                        [$d2->file_path, $d2->line_from, $d2->column_from]
+                    static fn(IssueData $d1, IssueData $d2): int => [$d1->file_path, $d1->line_from, $d1->column_from]
+                        <=>
+                        [$d2->file_path, $d2->line_from, $d2->column_from],
                 );
                 self::$issues_data[$file_path] = $file_issues;
             }
 
             // make a copy so what gets saved in cache is unaffected by baseline
             $issues_data = self::$issues_data;
+        }
 
-            if (!empty($issue_baseline)) {
-                // Set severity for issues in baseline to INFO
-                foreach ($issues_data as $file_path => $file_issues) {
-                    foreach ($file_issues as $key => $issue_data) {
-                        $file = $issue_data->file_name;
-                        $file = str_replace('\\', '/', $file);
-                        $type = $issue_data->type;
+        if (!empty($issue_baseline)) {
+            // Set severity for issues in baseline to INFO
+            foreach ($issues_data as $file_path => $file_issues) {
+                foreach ($file_issues as $key => $issue_data) {
+                    $file = $issue_data->file_name;
+                    $file = str_replace('\\', '/', $file);
+                    $type = $issue_data->type;
 
-                        if (isset($issue_baseline[$file][$type]) && $issue_baseline[$file][$type]['o'] > 0) {
-                            if ($issue_baseline[$file][$type]['o'] === count($issue_baseline[$file][$type]['s'])) {
-                                $position = array_search(
-                                    trim($issue_data->selected_text),
-                                    $issue_baseline[$file][$type]['s'],
-                                    true,
-                                );
+                    if (isset($issue_baseline[$file][$type]) && $issue_baseline[$file][$type]['o'] > 0) {
+                        if ($issue_baseline[$file][$type]['o'] === count($issue_baseline[$file][$type]['s'])) {
+                            $position = array_search(
+                                str_replace("\r\n", "\n", trim($issue_data->selected_text)),
+                                $issue_baseline[$file][$type]['s'],
+                                true,
+                            );
 
-                                if ($position !== false) {
-                                    $issue_data->severity = Config::REPORT_INFO;
-                                    array_splice($issue_baseline[$file][$type]['s'], $position, 1);
-                                    $issue_baseline[$file][$type]['o']--;
-                                }
-                            } else {
-                                $issue_baseline[$file][$type]['s'] = [];
-                                $issue_data->severity = Config::REPORT_INFO;
+                            if ($position !== false) {
+                                $issue_data->severity = IssueData::SEVERITY_INFO;
+                                array_splice($issue_baseline[$file][$type]['s'], $position, 1);
                                 $issue_baseline[$file][$type]['o']--;
                             }
-                        }
-
-                        $issues_data[$file_path][$key] = $issue_data;
-                    }
-                }
-
-                if ($codebase->config->find_unused_baseline_entry) {
-                    foreach ($issue_baseline as $file_path => $issues) {
-                        foreach ($issues as $issue_name => $issue) {
-                            if ($issue['o'] !== 0) {
-                                $issues_data[$file_path][] = new IssueData(
-                                    Config::REPORT_ERROR,
-                                    0,
-                                    0,
-                                    UnusedBaselineEntry::getIssueType(),
-                                    sprintf(
-                                        'Baseline for issue "%s" has %d extra %s.',
-                                        $issue_name,
-                                        $issue['o'],
-                                        $issue['o'] === 1 ? 'entry' : 'entries',
-                                    ),
-                                    $file_path,
-                                    '',
-                                    '',
-                                    '',
-                                    0,
-                                    0,
-                                    0,
-                                    0,
-                                    0,
-                                    0,
-                                    UnusedBaselineEntry::SHORTCODE,
-                                    UnusedBaselineEntry::ERROR_LEVEL,
-                                );
-                            }
+                        } else {
+                            $issue_baseline[$file][$type]['s'] = [];
+                            $issue_data->severity = IssueData::SEVERITY_INFO;
+                            $issue_baseline[$file][$type]['o']--;
                         }
                     }
+
+                    $issues_data[$file_path][$key] = $issue_data;
                 }
+            }
+
+            if ($codebase->config->find_unused_baseline_entry) {
+                foreach ($issue_baseline as $file_path => $issues) {
+                    foreach ($issues as $issue_name => $issue) {
+                        if ($issue['o'] !== 0) {
+                            $issues_data[$file_path][] = new IssueData(
+                                IssueData::SEVERITY_ERROR,
+                                0,
+                                0,
+                                UnusedBaselineEntry::getIssueType(),
+                                sprintf(
+                                    'Baseline for issue "%s" has %d extra %s.',
+                                    $issue_name,
+                                    $issue['o'],
+                                    $issue['o'] === 1 ? 'entry' : 'entries',
+                                ),
+                                $file_path,
+                                '',
+                                '',
+                                '',
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                UnusedBaselineEntry::SHORTCODE,
+                                UnusedBaselineEntry::ERROR_LEVEL,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($codebase->config->find_unused_issue_handler_suppression) {
+            if ($is_full && !$codebase->diff_run) {
+                foreach ($codebase->config->getIssueHandlers() as $type => $handler) {
+                    foreach ($handler->getFilters() as $filter) {
+                        if ($filter->suppressions > 0 && $filter->getErrorLevel() == Config::REPORT_SUPPRESS) {
+                            continue;
+                        }
+                        $issues_data['config'][] = new IssueData(
+                            IssueData::SEVERITY_ERROR,
+                            0,
+                            0,
+                            UnusedIssueHandlerSuppression::getIssueType(),
+                            sprintf(
+                                'Suppressed issue type "%s" for %s was not thrown.',
+                                $type,
+                                str_replace(
+                                    $codebase->config->base_dir,
+                                    '',
+                                    implode(', ', [...$filter->getFiles(), ...$filter->getDirectories()]),
+                                ),
+                            ),
+                            $codebase->config->source_filename ?? '',
+                            '',
+                            '',
+                            '',
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            UnusedIssueHandlerSuppression::SHORTCODE,
+                            UnusedIssueHandlerSuppression::ERROR_LEVEL,
+                        );
+                    }
+                }
+            } else {
             }
         }
 
@@ -671,7 +713,7 @@ final class IssueBuffer
 
             try {
                 $source_control_info = (new GitInfoCollector())->collect();
-            } catch (RuntimeException $e) {
+            } catch (RuntimeException) {
                 // do nothing
             }
 
@@ -707,7 +749,7 @@ final class IssueBuffer
 
         if (in_array(
             $project_analyzer->stdout_report_options->format,
-            [Report::TYPE_CONSOLE, Report::TYPE_PHP_STORM],
+            [Report::TYPE_CONSOLE, Report::TYPE_PHP_STORM, Report::TYPE_GITHUB_ACTIONS],
         )) {
             echo str_repeat('-', 30) . "\n";
 
@@ -789,14 +831,19 @@ final class IssueBuffer
                     echo "\n";
                 }
             }
+
+            if ($codebase->config->find_unused_issue_handler_suppression && (!$is_full || $codebase->diff_run)) {
+                fwrite(
+                    STDERR,
+                    PHP_EOL . 'To whom it may concern: Psalm cannot detect unused issue handler suppressions when'
+                    . PHP_EOL . 'analyzing individual files and folders or running in diff mode. Run on the full'
+                    . PHP_EOL . 'project with diff mode off to enable unused issue handler detection.' . PHP_EOL,
+                );
+            }
         }
 
         if ($is_full && $start_time) {
-            $codebase->file_reference_provider->removeDeletedFilesFromReferences();
-
-            if ($project_analyzer->project_cache_provider) {
-                $project_analyzer->project_cache_provider->processSuccessfulRun($start_time, PSALM_VERSION);
-            }
+            $project_analyzer->finish($start_time, PSALM_VERSION);
         }
 
         if ($error_count
@@ -836,7 +883,7 @@ final class IssueBuffer
         $foreground = "30";
 
         // text style, 1 = bold
-        $style = "1";
+        $style = "2";
 
         if ($project_analyzer->stdout_report_options->use_color) {
             echo "\e[{$background};{$style}m{$paddingTop}\e[0m" . "\n";
@@ -856,7 +903,7 @@ final class IssueBuffer
     public static function getOutput(
         array $issues_data,
         ReportOptions $report_options,
-        array $mixed_counts = [0, 0]
+        array $mixed_counts = [0, 0],
     ): string {
         $total_expression_count = $mixed_counts[0] + $mixed_counts[1];
         $mixed_expression_count = $mixed_counts[0];
@@ -865,89 +912,100 @@ final class IssueBuffer
 
         $format = $report_options->format;
 
-        switch ($format) {
-            case Report::TYPE_COMPACT:
-                $output = new CompactReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_EMACS:
-                $output = new EmacsReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_TEXT:
-                $output = new TextReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_JSON:
-                $output = new JsonReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_BY_ISSUE_LEVEL:
-                $output = new ByIssueLevelAndTypeReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_JSON_SUMMARY:
-                $output = new JsonSummaryReport(
-                    $normalized_data,
-                    self::$fixable_issue_counts,
-                    $report_options,
-                    $mixed_expression_count,
-                    $total_expression_count,
-                );
-                break;
-
-            case Report::TYPE_SONARQUBE:
-                $output = new SonarqubeReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_PYLINT:
-                $output = new PylintReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_CHECKSTYLE:
-                $output = new CheckstyleReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_XML:
-                $output = new XmlReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_JUNIT:
-                $output = new JunitReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_CONSOLE:
-                $output = new ConsoleReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_GITHUB_ACTIONS:
-                $output = new GithubActionsReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_PHP_STORM:
-                $output = new PhpStormReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_SARIF:
-                $output = new SarifReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_CODECLIMATE:
-                $output = new CodeClimateReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            case Report::TYPE_COUNT:
-                $output = new CountReport($normalized_data, self::$fixable_issue_counts, $report_options);
-                break;
-
-            default:
-                throw new RuntimeException('Unexpected report format: ' . $report_options->format);
-        }
+        $output = match ($format) {
+            Report::TYPE_COMPACT => new CompactReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_EMACS => new EmacsReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_TEXT => new TextReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_JSON => new JsonReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_BY_ISSUE_LEVEL => new ByIssueLevelAndTypeReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_JSON_SUMMARY => new JsonSummaryReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+                $mixed_expression_count,
+                $total_expression_count,
+            ),
+            Report::TYPE_SONARQUBE => new SonarqubeReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_PYLINT => new PylintReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_CHECKSTYLE => new CheckstyleReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_XML => new XmlReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_JUNIT => new JunitReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_CONSOLE => new ConsoleReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_GITHUB_ACTIONS => new GithubActionsReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_PHP_STORM => new PhpStormReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_SARIF => new SarifReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_CODECLIMATE => new CodeClimateReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+            Report::TYPE_COUNT => new CountReport(
+                $normalized_data,
+                self::$fixable_issue_counts,
+                $report_options,
+            ),
+        };
 
         return $output->create();
     }
 
-    protected static function alreadyEmitted(string $message): bool
+    public static function alreadyEmitted(string $message): bool
     {
         $sham = sha1($message);
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Type\Atomic;
 
 use Psalm\Codebase;
@@ -18,7 +20,7 @@ use function implode;
 trait HasIntersectionTrait
 {
     /**
-     * @var array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties>
+     * @var array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject>
      */
     public array $extra_types = [];
 
@@ -29,7 +31,7 @@ trait HasIntersectionTrait
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format
+        bool $use_phpdoc_format,
     ): string {
         if (!$this->extra_types) {
             return '';
@@ -39,7 +41,7 @@ trait HasIntersectionTrait
             '&',
             array_map(
                 /**
-                 * @param TNamedObject|TTemplateParam|TIterable|TObjectWithProperties $extra_type
+                 * @param TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject $extra_type
                  */
                 static fn(Atomic $extra_type): string => $extra_type->toNamespacedString(
                     $namespace,
@@ -53,7 +55,7 @@ trait HasIntersectionTrait
     }
 
     /**
-     * @param TNamedObject|TTemplateParam|TIterable|TObjectWithProperties $type
+     * @param TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject $type
      * @return static
      */
     public function addIntersectionType(Atomic $type): self
@@ -65,7 +67,7 @@ trait HasIntersectionTrait
     }
 
     /**
-     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties> $types
+     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $types
      * @return static
      */
     public function setIntersectionTypes(array $types): self
@@ -79,7 +81,7 @@ trait HasIntersectionTrait
     }
 
     /**
-     * @return array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties>
+     * @return array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject>
      */
     public function getIntersectionTypes(): array
     {
@@ -87,11 +89,11 @@ trait HasIntersectionTrait
     }
 
     /**
-     * @return array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties>|null
+     * @return array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject>|null
      */
     protected function replaceIntersectionTemplateTypesWithArgTypes(
         TemplateResult $template_result,
-        ?Codebase $codebase
+        ?Codebase $codebase,
     ): ?array {
         if (!$this->extra_types) {
             return null;
@@ -125,7 +127,7 @@ trait HasIntersectionTrait
     }
 
     /**
-     * @return array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties>|null
+     * @return array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject>|null
      */
     protected function replaceIntersectionTemplateTypesWithStandins(
         TemplateResult $template_result,
@@ -137,7 +139,7 @@ trait HasIntersectionTrait
         ?string $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        int $depth = 0
+        int $depth = 0,
     ): ?array {
         if (!$this->extra_types) {
             return null;

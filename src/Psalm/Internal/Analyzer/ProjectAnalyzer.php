@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer;
 
-use Amp\Loop;
 use Fidry\CpuCoreCounter\CpuCoreCounter;
 use Fidry\CpuCoreCounter\NumberOfCpuCoreNotFound;
 use InvalidArgumentException;
@@ -15,8 +16,6 @@ use Psalm\FileManipulation;
 use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\LanguageServer\LanguageServer;
-use Psalm\Internal\LanguageServer\ProtocolStreamReader;
-use Psalm\Internal\LanguageServer\ProtocolStreamWriter;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileProvider;
@@ -65,7 +64,6 @@ use function array_map;
 use function array_merge;
 use function array_shift;
 use function clearstatcache;
-use function cli_set_process_title;
 use function count;
 use function defined;
 use function dirname;
@@ -76,44 +74,35 @@ use function file_exists;
 use function fwrite;
 use function implode;
 use function in_array;
-use function ini_get;
 use function is_dir;
 use function is_file;
 use function microtime;
 use function mkdir;
 use function number_format;
-use function pcntl_fork;
 use function preg_match;
 use function rename;
 use function sprintf;
-use function stream_set_blocking;
-use function stream_socket_accept;
-use function stream_socket_client;
-use function stream_socket_server;
+use function str_ends_with;
+use function str_starts_with;
 use function strlen;
 use function strpos;
 use function strtolower;
 use function substr;
 use function usort;
-use function version_compare;
 
 use const PHP_EOL;
-use const PHP_OS;
-use const PHP_VERSION;
 use const PSALM_VERSION;
 use const STDERR;
-use const STDIN;
-use const STDOUT;
 
 /**
  * @internal
  */
-class ProjectAnalyzer
+final class ProjectAnalyzer
 {
     /**
      * Cached config
      */
-    private Config $config;
+    private readonly Config $config;
 
     public static ProjectAnalyzer $instance;
 
@@ -122,15 +111,15 @@ class ProjectAnalyzer
      */
     private Codebase $codebase;
 
-    private FileProvider $file_provider;
+    private readonly FileProvider $file_provider;
 
-    private ClassLikeStorageProvider $classlike_storage_provider;
+    private readonly ClassLikeStorageProvider $classlike_storage_provider;
 
     private ?ParserCacheProvider $parser_cache_provider = null;
 
     public ?ProjectCacheProvider $project_cache_provider = null;
 
-    private FileReferenceProvider $file_reference_provider;
+    private readonly FileReferenceProvider $file_reference_provider;
 
     public Progress $progress;
 
@@ -139,8 +128,6 @@ class ProjectAnalyzer
     public bool $debug_performance = false;
 
     public bool $show_issues = true;
-
-    public int $threads;
 
     /**
      * @var array<string, bool>
@@ -177,13 +164,6 @@ class ProjectAnalyzer
      */
     private array $to_refactor = [];
 
-    public ?ReportOptions $stdout_report_options = null;
-
-    /**
-     * @var array<ReportOptions>
-     */
-    public array $generated_report_options;
-
     /**
      * @var array<int, class-string<CodeIssue>>
      */
@@ -211,15 +191,9 @@ class ProjectAnalyzer
         UnnecessaryVarAnnotation::class,
     ];
 
-    /**
-     * When this is true, the language server will send the diagnostic code with a help link.
-     */
-    public bool $language_server_use_extended_diagnostic_codes = false;
+    private const PHP_VERSION_REGEX = '^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\..*)?$';
 
-    /**
-     * If this is true then the language server will send log messages to the client with additional information.
-     */
-    public bool $language_server_verbose = false;
+    private const PHP_SUPPORTED_VERSIONS_REGEX = '^(5\.[456]|7\.[01234]|8\.[0123])(\..*)?$';
 
     /**
      * @param array<ReportOptions> $generated_report_options
@@ -227,13 +201,22 @@ class ProjectAnalyzer
     public function __construct(
         Config $config,
         Providers $providers,
-        ?ReportOptions $stdout_report_options = null,
-        array $generated_report_options = [],
-        int $threads = 1,
-        ?Progress $progress = null
+        public ?ReportOptions $stdout_report_options = null,
+        public array $generated_report_options = [],
+        public int $threads = 1,
+        ?Progress $progress = null,
+        ?Codebase $codebase = null,
     ) {
         if ($progress === null) {
             $progress = new VoidProgress();
+        }
+
+        if ($codebase === null) {
+            $codebase = new Codebase(
+                $config,
+                $providers,
+                $progress,
+            );
         }
 
         $this->parser_cache_provider = $providers->parser_cache_provider;
@@ -243,19 +226,11 @@ class ProjectAnalyzer
         $this->file_reference_provider = $providers->file_reference_provider;
 
         $this->progress = $progress;
-        $this->threads = $threads;
         $this->config = $config;
 
         $this->clearCacheDirectoryIfConfigOrComposerLockfileChanged();
 
-        $this->codebase = new Codebase(
-            $config,
-            $providers,
-            $progress,
-        );
-
-        $this->stdout_report_options = $stdout_report_options;
-        $this->generated_report_options = $generated_report_options;
+        $this->codebase = $codebase;
 
         $this->config->processPluginFileExtensions($this);
         $file_extensions = $this->config->getFileExtensions();
@@ -264,7 +239,7 @@ class ProjectAnalyzer
             $file_paths = $this->file_provider->getFilesInDir(
                 $dir_name,
                 $file_extensions,
-                [$this->config, 'isInProjectDirs'],
+                $this->config->isInProjectDirs(...),
             );
 
             foreach ($file_paths as $file_path) {
@@ -276,7 +251,7 @@ class ProjectAnalyzer
             $file_paths = $this->file_provider->getFilesInDir(
                 $dir_name,
                 $file_extensions,
-                [$this->config, 'isInExtraDirs'],
+                $this->config->isInExtraDirs(...),
             );
 
             foreach ($file_paths as $file_path) {
@@ -363,7 +338,7 @@ class ProjectAnalyzer
 
         foreach ($report_file_paths as $report_file_path) {
             foreach ($mapping as $extension => $type) {
-                if (substr($report_file_path, -strlen($extension)) === $extension) {
+                if (str_ends_with($report_file_path, $extension)) {
                     $o = new ReportOptions();
 
                     $o->format = $type;
@@ -394,126 +369,29 @@ class ProjectAnalyzer
         );
     }
 
-    public function server(?string $address = '127.0.0.1:12345', bool $socket_server_mode = false): void
+    public function serverMode(LanguageServer $server): void
     {
+        $server->logInfo("Initializing: Visiting Autoload Files...");
         $this->visitAutoloadFiles();
         $this->codebase->diff_methods = true;
+        $server->logInfo("Initializing: Loading Reference Cache...");
         $this->file_reference_provider->loadReferenceCache();
         $this->codebase->enterServerMode();
 
-        if (ini_get('pcre.jit') === '1'
-            && PHP_OS === 'Darwin'
-            && version_compare(PHP_VERSION, '7.3.0') >= 0
-            && version_compare(PHP_VERSION, '7.4.0') < 0
-        ) {
-            // do nothing
-        } else {
-            $cpu_count = self::getCpuCount();
+        $cpu_count = self::getCpuCount();
 
-            // let's not go crazy
-            $usable_cpus = $cpu_count - 2;
+        // let's not go crazy
+        $usable_cpus = $cpu_count - 2;
 
-            if ($usable_cpus > 1) {
-                $this->threads = $usable_cpus;
-            }
+        if ($usable_cpus > 1) {
+            $this->threads = $usable_cpus;
         }
 
+        $server->logInfo("Initializing: Initialize Plugins...");
         $this->config->initializePlugins($this);
 
         foreach ($this->config->getProjectDirectories() as $dir_name) {
             $this->checkDirWithConfig($dir_name, $this->config);
-        }
-
-        @cli_set_process_title('Psalm ' . PSALM_VERSION . ' - PHP Language Server');
-
-        if (!$socket_server_mode && $address) {
-            // Connect to a TCP server
-            $socket = stream_socket_client('tcp://' . $address, $errno, $errstr);
-            if ($socket === false) {
-                fwrite(STDERR, "Could not connect to language client. Error $errno\n$errstr");
-                exit(1);
-            }
-            stream_set_blocking($socket, false);
-            new LanguageServer(
-                new ProtocolStreamReader($socket),
-                new ProtocolStreamWriter($socket),
-                $this,
-            );
-            Loop::run();
-        } elseif ($socket_server_mode && $address) {
-            // Run a TCP Server
-            $tcpServer = stream_socket_server('tcp://' . $address, $errno, $errstr);
-            if ($tcpServer === false) {
-                fwrite(STDERR, "Could not listen on $address. Error $errno\n$errstr");
-                exit(1);
-            }
-            fwrite(STDOUT, "Server listening on $address\n");
-
-            $fork_available = true;
-            if (!extension_loaded('pcntl')) {
-                fwrite(STDERR, "PCNTL is not available. Only a single connection will be accepted\n");
-                $fork_available = false;
-            }
-
-            $disabled_functions = array_map('trim', explode(',', ini_get('disable_functions')));
-            if (in_array('pcntl_fork', $disabled_functions)) {
-                fwrite(
-                    STDERR,
-                    "pcntl_fork() is disabled by php configuration (disable_functions directive)."
-                    . " Only a single connection will be accepted\n",
-                );
-                $fork_available = false;
-            }
-
-            while ($socket = stream_socket_accept($tcpServer, -1)) {
-                fwrite(STDOUT, "Connection accepted\n");
-                stream_set_blocking($socket, false);
-                if ($fork_available) {
-                    // If PCNTL is available, fork a child process for the connection
-                    // An exit notification will only terminate the child process
-                    $pid = pcntl_fork();
-                    if ($pid === -1) {
-                        fwrite(STDERR, "Could not fork\n");
-                        exit(1);
-                    }
-
-                    if ($pid === 0) {
-                        // Child process
-                        $reader = new ProtocolStreamReader($socket);
-                        $reader->on(
-                            'close',
-                            static function (): void {
-                                fwrite(STDOUT, "Connection closed\n");
-                            },
-                        );
-                        new LanguageServer(
-                            $reader,
-                            new ProtocolStreamWriter($socket),
-                            $this,
-                        );
-                        // Just for safety
-                        exit(0);
-                    }
-                } else {
-                    // If PCNTL is not available, we only accept one connection.
-                    // An exit notification will terminate the server
-                    new LanguageServer(
-                        new ProtocolStreamReader($socket),
-                        new ProtocolStreamWriter($socket),
-                        $this,
-                    );
-                    Loop::run();
-                }
-            }
-        } else {
-            // Use STDIO
-            stream_set_blocking(STDIN, false);
-            new LanguageServer(
-                new ProtocolStreamReader(STDIN),
-                new ProtocolStreamWriter(STDOUT),
-                $this,
-            );
-            Loop::run();
         }
     }
 
@@ -624,6 +502,7 @@ class ProjectAnalyzer
 
             $this->codebase->infer_types_from_usage = true;
         } else {
+            $this->codebase->diff_run = true;
             $this->progress->debug(count($diff_files) . ' changed files: ' . "\n");
             $this->progress->debug('    ' . implode("\n    ", $diff_files) . "\n");
 
@@ -711,7 +590,7 @@ class ProjectAnalyzer
                 && $destination_pos === (strlen($destination) - 1)
             ) {
                 foreach ($this->codebase->classlike_storage_provider->getAll() as $class_storage) {
-                    if (strpos($source, substr($class_storage->name, 0, $source_pos)) === 0) {
+                    if (str_starts_with($source, substr($class_storage->name, 0, $source_pos))) {
                         $this->to_refactor[$class_storage->name]
                             = substr($destination, 0, -1) . substr($class_storage->name, $source_pos);
                     }
@@ -1037,7 +916,7 @@ class ProjectAnalyzer
     private function checkDirWithConfig(string $dir_name, Config $config, bool $allow_non_project_files = false): void
     {
         $file_extensions = $config->getFileExtensions();
-        $filter = $allow_non_project_files ? null : [$this->config, 'isInProjectDirs'];
+        $filter = $allow_non_project_files ? null : $this->config->isInProjectDirs(...);
 
         $file_paths = $this->file_provider->getFilesInDir(
             $dir_name,
@@ -1067,7 +946,7 @@ class ProjectAnalyzer
     /**
      * @return list<string>
      */
-    protected function getDiffFiles(): array
+    private function getDiffFiles(): array
     {
         if (!$this->parser_cache_provider || !$this->project_cache_provider) {
             throw new UnexpectedValueException('Parser cache provider cannot be null here');
@@ -1149,6 +1028,9 @@ class ProjectAnalyzer
      */
     public function checkPaths(array $paths_to_check): void
     {
+        $this->progress->write($this->generatePHPVersionMessage());
+        $this->progress->startScanningFiles();
+
         $this->config->visitPreloadedStubFiles($this->codebase, $this->progress);
         $this->visitAutoloadFiles();
 
@@ -1168,15 +1050,16 @@ class ProjectAnalyzer
 
         $this->file_reference_provider->loadReferenceCache();
 
-        $this->progress->write($this->generatePHPVersionMessage());
-        $this->progress->startScanningFiles();
-
         $this->config->initializePlugins($this);
 
 
         $this->codebase->scanFiles($this->threads);
 
         $this->config->visitStubFiles($this->codebase, $this->progress);
+
+        $event = new AfterCodebasePopulatedEvent($this->codebase);
+
+        $this->config->eventDispatcher->dispatchAfterCodebasePopulated($event);
 
         $this->progress->startAnalyzingFiles();
 
@@ -1200,6 +1083,15 @@ class ProjectAnalyzer
                 . PHP_EOL . 'when analyzing individual files and folders. Run on the full project to enable'
                 . PHP_EOL . 'complete unused code detection.' . PHP_EOL,
             );
+        }
+    }
+
+    public function finish(float $start_time, string $psalm_version): void
+    {
+        $this->codebase->file_reference_provider->removeDeletedFilesFromReferences();
+
+        if ($this->project_cache_provider) {
+            $this->project_cache_provider->processSuccessfulRun($start_time, $psalm_version);
         }
     }
 
@@ -1244,9 +1136,14 @@ class ProjectAnalyzer
         return $this->file_provider->fileExists($file_path);
     }
 
+    public function isDirectory(string $file_path): bool
+    {
+        return $this->file_provider->isDirectory($file_path);
+    }
+
     public function alterCodeAfterCompletion(
         bool $dry_run = false,
-        bool $safe_types = false
+        bool $safe_types = false,
     ): void {
         $this->codebase->alter_code = true;
         $this->codebase->infer_types_from_usage = true;
@@ -1270,8 +1167,16 @@ class ProjectAnalyzer
      */
     public function setPhpVersion(string $version, string $source): void
     {
-        if (!preg_match('/^(5\.[456]|7\.[01234]|8\.[012])(\..*)?$/', $version)) {
-            throw new UnexpectedValueException('Expecting a version number in the format x.y');
+        if (!preg_match('/' . self::PHP_VERSION_REGEX . '/', $version)) {
+            throw new UnexpectedValueException('Expecting a version number in the format x.y or x.y.z');
+        }
+
+        if (!preg_match('/' . self::PHP_SUPPORTED_VERSIONS_REGEX . '/', $version)) {
+            throw new UnexpectedValueException(
+                'Psalm supports PHP version ">=5.4". The specified version '
+                . $version
+                . " is either not supported or doesn't exist.",
+            );
         }
 
         [$php_major_version, $php_minor_version] = explode('.', $version);
@@ -1282,8 +1187,7 @@ class ProjectAnalyzer
         $analysis_php_version_id = $php_major_version * 10_000 + $php_minor_version * 100;
 
         if ($this->codebase->analysis_php_version_id !== $analysis_php_version_id) {
-            // reset lexer and parser when php version changes
-            StatementsProvider::clearLexer();
+            // reset parser when php version changes
             StatementsProvider::clearParser();
         }
 
@@ -1352,7 +1256,7 @@ class ProjectAnalyzer
         MethodIdentifier $original_method_id,
         Context $this_context,
         string $root_file_path,
-        string $root_file_name
+        string $root_file_name,
     ): void {
         $fq_class_name = $original_method_id->fq_class_name;
 
@@ -1399,7 +1303,7 @@ class ProjectAnalyzer
 
     public function getFunctionLikeAnalyzer(
         MethodIdentifier $method_id,
-        string $file_path
+        string $file_path,
     ): ?FunctionLikeAnalyzer {
         $file_analyzer = new FileAnalyzer(
             $this,
@@ -1432,15 +1336,6 @@ class ProjectAnalyzer
     {
         if (defined('PHP_WINDOWS_VERSION_MAJOR')) {
             // No support desired for Windows at the moment
-            return 1;
-        }
-
-        // PHP 7.3 with JIT on OSX is screwed for multi-threads
-        if (ini_get('pcre.jit') === '1'
-            && PHP_OS === 'Darwin'
-            && version_compare(PHP_VERSION, '7.3.0') >= 0
-            && version_compare(PHP_VERSION, '7.4.0') < 0
-        ) {
             return 1;
         }
 

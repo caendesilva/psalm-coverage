@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
 use AssertionError;
@@ -13,6 +15,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
+use Psalm\Issue\DirectConstructorCall;
 use Psalm\Issue\InvalidMethodCall;
 use Psalm\Issue\InvalidScope;
 use Psalm\Issue\NullReference;
@@ -27,10 +30,13 @@ use Psalm\Issue\UndefinedMagicMethod;
 use Psalm\Issue\UndefinedMethod;
 use Psalm\IssueBuffer;
 use Psalm\Type;
+use Psalm\Type\Atomic\TConditional;
 use Psalm\Type\Atomic\TNamedObject;
+use Psalm\Type\Atomic\TObject;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
 
+use function array_merge;
 use function array_reduce;
 use function count;
 use function is_string;
@@ -39,14 +45,14 @@ use function strtolower;
 /**
  * @internal
  */
-class MethodCallAnalyzer extends CallAnalyzer
+final class MethodCallAnalyzer extends CallAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\MethodCall $stmt,
         Context $context,
         bool $real_method_call = true,
-        ?TemplateResult $template_result = null
+        ?TemplateResult $template_result = null,
     ): bool {
         $was_inside_call = $context->inside_call;
 
@@ -90,6 +96,18 @@ class MethodCallAnalyzer extends CallAnalyzer
                     return false;
                 }
             }
+
+            if ($stmt->name instanceof PhpParser\Node\Identifier
+                && strtolower($stmt->name->name) === '__construct'
+            ) {
+                IssueBuffer::maybeAdd(
+                    new DirectConstructorCall(
+                        'Constructors should not be called directly',
+                        new CodeLocation($statements_analyzer->getSource(), $stmt),
+                    ),
+                    $statements_analyzer->getSuppressedIssues(),
+                );
+            }
         }
 
         $lhs_var_id = ExpressionIdentifier::getExtendedVarId(
@@ -106,21 +124,6 @@ class MethodCallAnalyzer extends CallAnalyzer
             $class_type = $stmt_var_type;
         } elseif (!$class_type) {
             $statements_analyzer->node_data->setType($stmt, Type::getMixed());
-        }
-
-        if (!$context->check_classes) {
-            if (ArgumentsAnalyzer::analyze(
-                $statements_analyzer,
-                $stmt->getArgs(),
-                null,
-                null,
-                true,
-                $context,
-            ) === false) {
-                return false;
-            }
-
-            return true;
         }
 
         if ($class_type
@@ -176,6 +179,17 @@ class MethodCallAnalyzer extends CallAnalyzer
 
         $lhs_types = $class_type->getAtomicTypes();
 
+        foreach ($lhs_types as $k => $lhs_type_part) {
+            if ($lhs_type_part instanceof TConditional) {
+                $lhs_types = array_merge(
+                    $lhs_types,
+                    $lhs_type_part->if_type->getAtomicTypes(),
+                    $lhs_type_part->else_type->getAtomicTypes(),
+                );
+                unset($lhs_types[$k]);
+            }
+        }
+
         $result = new AtomicMethodCallAnalysisResult();
 
         $possible_new_class_types = [];
@@ -226,7 +240,7 @@ class MethodCallAnalyzer extends CallAnalyzer
         if (count($possible_new_class_types) > 0) {
             $class_type = array_reduce(
                 $possible_new_class_types,
-                static fn(?Union $type_1, Union $type_2): Union => Type::combineUnionTypes($type_1, $type_2, $codebase)
+                static fn(?Union $type_1, Union $type_2): Union => Type::combineUnionTypes($type_1, $type_2, $codebase),
             );
         }
 
@@ -399,7 +413,7 @@ class MethodCallAnalyzer extends CallAnalyzer
             $types = $class_type->getAtomicTypes();
 
             foreach ($types as $key => &$type) {
-                if (!$type instanceof TNamedObject) {
+                if (!$type instanceof TNamedObject && !$type instanceof TObject && !$type instanceof TConditional) {
                     unset($types[$key]);
                 } else {
                     $type = $type->setFromDocblock(false);

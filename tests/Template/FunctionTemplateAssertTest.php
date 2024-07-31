@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests\Template;
 
 use Psalm\Tests\TestCase;
@@ -916,6 +918,27 @@ class FunctionTemplateAssertTest extends TestCase
                     $numbersT->assert($mixed);
                     acceptsArray($mixed);',
             ],
+            'assertObjectShape' => [
+                'code' => '<?php
+                    final class Foo
+                    {
+                        public const STATUS_OK = "ok";
+                        public const STATUS_FAIL = "fail";
+                    }
+
+                    $foo = new stdClass();
+
+                    /** @psalm-assert object{status: Foo::STATUS_*} $bar */
+                    function assertObjectShape(object $bar): void {
+                    }
+
+                    assertObjectShape($foo);
+                    $status = $foo->status;
+                ',
+                'assertions' => [
+                    '$status===' => "'fail'|'ok'",
+                ],
+            ],
         ];
     }
 
@@ -1195,6 +1218,23 @@ class FunctionTemplateAssertTest extends TestCase
                         if (is_string($data["id"])) {}
                     }',
                 'error_message' => 'InvalidDocblock',
+            ],
+            'assertObjectShapeOnFinalClass' => [
+                'code' => '<?php
+                    final class Foo
+                    {
+                    }
+
+                    $foo = new Foo();
+
+                    /** @psalm-assert object{status: string} $bar */
+                    function assertObjectShape(object $bar): void {
+                    }
+
+                    assertObjectShape($foo);
+                    $status = $foo->status;
+                ',
+                'error_message' => 'Type Foo for $foo is never',
             ],
         ];
     }

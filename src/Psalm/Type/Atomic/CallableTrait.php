@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Type\Atomic;
 
 use Psalm\Codebase;
@@ -22,29 +24,24 @@ trait CallableTrait
     /**
      * @var list<FunctionLikeParameter>|null
      */
-    public $params = [];
+    public ?array $params = [];
 
-    /**
-     * @var Union|null
-     */
-    public $return_type;
+    public ?Union $return_type = null;
 
-    /**
-     * @var ?bool
-     */
-    public $is_pure;
+    public ?bool $is_pure = null;
 
     /**
      * Constructs a new instance of a generic type
      *
      * @param list<FunctionLikeParameter> $params
+     * @deprecated
      */
     public function __construct(
         string $value = 'callable',
         ?array $params = null,
         ?Union $return_type = null,
         ?bool $is_pure = null,
-        bool $from_docblock = false
+        bool $from_docblock = false,
     ) {
         $this->value = $value;
         $this->params = $params;
@@ -77,11 +74,10 @@ trait CallableTrait
         $cloned->is_pure = $is_pure;
         return $cloned;
     }
-    public function getKey(bool $include_extra = true): string
+
+    public function getParamString(): string
     {
         $param_string = '';
-        $return_type_string = '';
-
         if ($this->params !== null) {
             $param_string .= '(';
             foreach ($this->params as $i => $param) {
@@ -95,11 +91,26 @@ trait CallableTrait
             $param_string .= ')';
         }
 
+        return $param_string;
+    }
+
+    public function getReturnTypeString(): string
+    {
+        $return_type_string = '';
+
         if ($this->return_type !== null) {
             $return_type_multiple = count($this->return_type->getAtomicTypes()) > 1;
             $return_type_string = ':' . ($return_type_multiple ? '(' : '')
                 . $this->return_type->getId() . ($return_type_multiple ? ')' : '');
         }
+
+        return $return_type_string;
+    }
+
+    public function getKey(bool $include_extra = true): string
+    {
+        $param_string = $this->getParamString();
+        $return_type_string = $this->getReturnTypeString();
 
         return ($this->is_pure ? 'pure-' : ($this->is_pure === null ? '' : 'impure-'))
             . $this->value . $param_string . $return_type_string;
@@ -112,7 +123,7 @@ trait CallableTrait
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format
+        bool $use_phpdoc_format,
     ): string {
         if ($use_phpdoc_format) {
             if ($this instanceof TNamedObject) {
@@ -167,7 +178,7 @@ trait CallableTrait
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id
+        int $analysis_php_version_id,
     ): string {
         if ($this instanceof TNamedObject) {
             return parent::toNamespacedString($namespace, $aliased_classes, $this_class, true);
@@ -217,7 +228,7 @@ trait CallableTrait
         ?string $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        int $depth = 0
+        int $depth = 0,
     ): ?array {
         $replaced = false;
         $params = $this->params;
@@ -285,7 +296,7 @@ trait CallableTrait
      */
     protected function replaceCallableTemplateTypesWithArgTypes(
         TemplateResult $template_result,
-        ?Codebase $codebase
+        ?Codebase $codebase,
     ): ?array {
         $replaced = false;
 

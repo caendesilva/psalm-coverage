@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests\Template;
 
 use Psalm\Tests\TestCase;
@@ -461,6 +463,31 @@ class ConditionalReturnTypeTest extends TestCase
                     '$c' => 'string',
                 ],
             ],
+            'InheritFuncNumArgs' => [
+                'code' => '<?php
+                    abstract class A
+                    {
+                        /**
+                         * @psalm-return (func_num_args() is 1 ? string : int)
+                         */
+                        public static function get(bool $a, ?bool $b = null)
+                        {
+                            if ($b) {
+                                return 1;
+                            }
+                            return "";
+                        }
+                    }
+
+                    class B extends A
+                    {
+
+                        public static function getB(bool $a): int
+                        {
+                            return self::get($a, true);
+                        }
+                    }',
+            ],
             'namespaceFuncNumArgs' => [
                 'code' => '<?php
                     namespace Foo;
@@ -759,7 +786,7 @@ class ConditionalReturnTypeTest extends TestCase
                          * @template TSource as self::SOURCE_*
                          * @param TSource $source
                          * @return (TSource is "BODY" ? object|list : array)
-                         * @psalm-taint-source
+                         * @psalm-taint-source input
                          */
                         public function getParams(
                             string $source = self::SOURCE_GET
@@ -884,6 +911,105 @@ class ConditionalReturnTypeTest extends TestCase
                 ],
                 'ignored_issues' => [],
                 'php_version' => '7.2',
+            ],
+            'ineritedreturnTypeBasedOnPhpVersionId' => [
+                'code' => '<?php
+                    class A {
+                    /**
+                     * @psalm-return (PHP_VERSION_ID is int<70300, max> ? string : int)
+                     */
+                    function getSomething()
+                    {
+                        return mt_rand(1, 10) > 5 ? "a value" : 42;
+                    }
+
+                    /**
+                     * @psalm-return (PHP_VERSION_ID is int<70100, max> ? string : int)
+                     */
+                    function getSomethingElse()
+                    {
+                        return mt_rand(1, 10) > 5 ? "a value" : 42;
+                    }
+                    }
+
+                    class B extends A {}
+
+                    $class = new B();
+                    $something = $class->getSomething();
+                    $somethingElse = $class->getSomethingElse();
+                ',
+                'assertions' => [
+                    '$something' => 'int',
+                    '$somethingElse' => 'string',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '7.2',
+            ],
+            'ineritedConditionalTemplatedReturnType' => [
+                'code' => '<?php
+                    /** @template InstanceType */
+                    interface ContainerInterface
+                    {
+                        /**
+                         * @template TRequestedInstance extends InstanceType
+                         * @param class-string<TRequestedInstance>|string $name
+                         * @return ($name is class-string ? TRequestedInstance : InstanceType)
+                         */
+                        public function build(string $name): mixed;
+                    }
+
+                    /**
+                     * @template InstanceType
+                     * @template-implements ContainerInterface<InstanceType>
+                     */
+                    abstract class MixedContainer implements ContainerInterface
+                    {
+                        /** @param InstanceType $instance */
+                        public function __construct(private readonly mixed $instance)
+                        {}
+
+                        public function build(string $name): mixed
+                        {
+                            return $this->instance;
+                        }
+                    }
+
+                    /**
+                     * @template InstanceType of object
+                     * @template-extends MixedContainer<InstanceType>
+                     */
+                    abstract class ObjectContainer extends MixedContainer
+                    {
+                        public function build(string $name): object
+                        {
+                            return parent::build($name);
+                        }
+                    }
+
+                    /** @template-extends ObjectContainer<stdClass> */
+                    final class SpecificObjectContainer extends ObjectContainer
+                    {
+                    }
+
+                    final class SpecificObject extends stdClass {}
+
+                    $container = new SpecificObjectContainer(new stdClass());
+                    $object = $container->build(SpecificObject::class);
+                    $nonSpecificObject = $container->build("whatever");
+
+                    /** @var ObjectContainer<object> $container */
+                    $container = null;
+                    $justObject = $container->build("whatever");
+                    $specificObject = $container->build(stdClass::class);
+                ',
+                'assertions' => [
+                    '$object===' => 'SpecificObject',
+                    '$nonSpecificObject===' => 'stdClass',
+                    '$justObject===' => 'object',
+                    '$specificObject===' => 'stdClass',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '8.1',
             ],
         ];
     }

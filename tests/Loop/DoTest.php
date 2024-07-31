@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests\Loop;
 
 use Psalm\Tests\TestCase;
@@ -245,7 +247,7 @@ class DoTest extends TestCase
                     $c = null;
 
                     do {
-                        if (!$c) {
+                        if ($c === null || $c === "" || $c === "0") {
                             foo($c);
                         } else {
                             bar($c);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Cli;
 
 use Psalm\Internal\CliUtils;
@@ -11,8 +13,6 @@ use Symfony\Component\Console\Application;
 
 use function dirname;
 use function getcwd;
-
-use const DIRECTORY_SEPARATOR;
 
 // phpcs:disable PSR1.Files.SideEffects
 
@@ -27,13 +27,13 @@ final class Plugin
     public static function run(): void
     {
         CliUtils::checkRuntimeRequirements();
-        $current_dir = (string)getcwd() . DIRECTORY_SEPARATOR;
+        $current_dir = (string) getcwd();
         $vendor_dir = CliUtils::getVendorDir($current_dir);
         CliUtils::requireAutoloaders($current_dir, false, $vendor_dir);
 
         $app = new Application('psalm-plugin', PSALM_VERSION);
 
-        $psalm_root = dirname(__DIR__, 4) . DIRECTORY_SEPARATOR;
+        $psalm_root = dirname(__DIR__, 4);
 
         $plugin_list_factory = new PluginListFactory($current_dir, $psalm_root);
 

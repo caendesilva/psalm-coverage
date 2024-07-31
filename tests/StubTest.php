@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests;
 
 use Psalm\Config;
@@ -13,8 +15,10 @@ use Psalm\Internal\IncludeCollector;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
+use Psalm\Internal\VersionUtils;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
+use function assert;
 use function define;
 use function defined;
 use function dirname;
@@ -37,11 +41,11 @@ class StubTest extends TestCase
         self::$config = new TestConfig();
 
         if (!defined('PSALM_VERSION')) {
-            define('PSALM_VERSION', '4.0.0');
+            define('PSALM_VERSION', VersionUtils::getPsalmVersion());
         }
 
         if (!defined('PHP_PARSER_VERSION')) {
-            define('PHP_PARSER_VERSION', '4.0.0');
+            define('PHP_PARSER_VERSION', VersionUtils::getPhpParserVersion());
         }
     }
 
@@ -111,7 +115,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -153,6 +157,7 @@ class StubTest extends TestCase
 
         $path = $this->getOperatingSystemStyledPath('tests/fixtures/stubs/systemclass.phpstub');
         $stub_files = $this->project_analyzer->getConfig()->getStubFiles();
+        assert(!empty($stub_files));
         $this->assertStringContainsString($path, reset($stub_files));
     }
 
@@ -175,6 +180,7 @@ class StubTest extends TestCase
 
         $path = $this->getOperatingSystemStyledPath('tests/fixtures/stubs/systemclass.phpstub');
         $stub_files = $this->project_analyzer->getConfig()->getStubFiles();
+        assert(!empty($stub_files));
         $this->assertStringContainsString($path, reset($stub_files));
     }
 
@@ -198,7 +204,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -236,7 +242,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -278,7 +284,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -310,17 +316,17 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
             '<?php
                 namespace Ns {
                     class MyClass {
-                    
+
                         public const OBJECT = "object";
                         private const EXCEPTION = "exception";
-                        
+
                         /**
                          * @return mixed
                          * @psalm-suppress InvalidReturnType
@@ -332,7 +338,7 @@ class StubTest extends TestCase
                          * @psalm-suppress InvalidReturnType
                          */
                         public function create2(string $s) {}
-                        
+
                         /**
                          * @return mixed
                          * @psalm-suppress InvalidReturnType
@@ -384,7 +390,7 @@ class StubTest extends TestCase
 
                     $y1 = (new \Ns\MyClass)->creAte2("object");
                     $y2 = (new \Ns\MyClass)->creaTe2("exception");
-                    
+
                     $const1 = (new \Ns\MyClass)->creAte3(\Ns\MyClass::OBJECT);
                     $const2 = (new \Ns\MyClass)->creaTe3("exception");
 
@@ -484,7 +490,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -521,7 +527,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -552,7 +558,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -585,7 +591,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -614,7 +620,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -649,7 +655,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -681,13 +687,55 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
             '<?php
                 /** @psalm-suppress MixedArgument */
                 echo CODE_DIR;',
+        );
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testStubbedConstantVarCommentType(): void
+    {
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__),
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+
+                    <stubs>
+                        <file name="tests/fixtures/stubs/constant_var_comment.phpstub" />
+                    </stubs>
+                </psalm>',
+            ),
+        );
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                /**
+                 * @param non-empty-string $arg
+                 * @return void
+                 */
+                function hello($arg) {
+                    echo $arg;
+                }
+
+                hello(FOO_BAR);',
         );
 
         $this->analyzeFile($file_path, new Context());
@@ -713,7 +761,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -774,7 +822,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -806,7 +854,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -821,7 +869,7 @@ class StubTest extends TestCase
 
     public function testNoStubFunction(): void
     {
-        $this->expectExceptionMessage('UndefinedFunction - /src/somefile.php:2:22 - Function barBar does not exist');
+        $this->expectExceptionMessage('UndefinedFunction');
         $this->expectException(CodeException::class);
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
@@ -837,7 +885,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -868,7 +916,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -899,7 +947,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -930,7 +978,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -977,7 +1025,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1027,7 +1075,7 @@ class StubTest extends TestCase
         );
         $this->project_analyzer->setPhpVersion($php_version, 'tests');
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile($file_path, $code);
 
@@ -1054,7 +1102,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1102,7 +1150,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1137,7 +1185,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1147,94 +1195,6 @@ class StubTest extends TestCase
                 class Bar extends PartiallyStubbedClass  {}
 
                 new Bar();',
-        );
-
-        $this->analyzeFile($file_path, new Context());
-    }
-
-    public function testStubFileWithPartialClassDefinitionWithCoercion(): void
-    {
-        $this->expectExceptionMessage('TypeCoercion');
-        $this->expectException(CodeException::class);
-        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
-            TestConfig::loadFromXML(
-                dirname(__DIR__),
-                '<?xml version="1.0"?>
-                <psalm
-                    errorLevel="1"
-                >
-                    <projectFiles>
-                        <directory name="src" />
-                    </projectFiles>
-
-                    <stubs>
-                        <file name="tests/fixtures/stubs/partial_class.phpstub" />
-                    </stubs>
-                </psalm>',
-            ),
-        );
-
-        $file_path = getcwd() . '/src/somefile.php';
-
-        $this->addFile(
-            $file_path,
-            '<?php
-                namespace Foo;
-
-                class PartiallyStubbedClass  {
-                    /**
-                     * @param string $a
-                     * @return object
-                     */
-                    public function foo(string $a) {
-                        return new self;
-                    }
-                }
-
-                (new PartiallyStubbedClass())->foo("dasda");',
-        );
-
-        $this->analyzeFile($file_path, new Context());
-    }
-
-    public function testStubFileWithPartialClassDefinitionGeneralReturnType(): void
-    {
-        $this->expectExceptionMessage('InvalidReturnStatement');
-        $this->expectException(CodeException::class);
-        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
-            TestConfig::loadFromXML(
-                dirname(__DIR__),
-                '<?xml version="1.0"?>
-                <psalm
-                    errorLevel="1"
-                >
-                    <projectFiles>
-                        <directory name="src" />
-                    </projectFiles>
-
-                    <stubs>
-                        <file name="tests/fixtures/stubs/partial_class.phpstub" />
-                    </stubs>
-                </psalm>',
-            ),
-        );
-
-        $file_path = getcwd() . '/src/somefile.php';
-
-        $this->addFile(
-            $file_path,
-            '<?php
-                namespace Foo;
-
-                class PartiallyStubbedClass  {
-                    /**
-                     * @param string $a
-                     * @return object
-                     */
-                    public function foo(string $a) {
-                        return new \stdClass;
-                    }
-                }',
         );
 
         $this->analyzeFile($file_path, new Context());
@@ -1260,7 +1220,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1311,7 +1271,7 @@ class StubTest extends TestCase
 
         $this->project_analyzer->getCodebase()->reportUnusedCode();
 
-        $vendor_file_path = getcwd() . '/vendor/vendor_class.php';
+        $vendor_file_path = (string) getcwd() . '/vendor/vendor_class.php';
 
         $this->addFile(
             $vendor_file_path,
@@ -1327,7 +1287,7 @@ class StubTest extends TestCase
                 }',
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1361,7 +1321,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1392,7 +1352,7 @@ class StubTest extends TestCase
             ),
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1424,7 +1384,7 @@ class StubTest extends TestCase
         );
 
         $this->addFile(
-            getcwd() . '/vendor/doctrine/import.php',
+            (string) getcwd() . '/vendor/doctrine/import.php',
             '<?php
                 namespace Doctrine\ORM;
 
@@ -1453,7 +1413,7 @@ class StubTest extends TestCase
                 }',
         );
 
-        $file_path = getcwd() . '/src/somefile.php';
+        $file_path = (string) getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1470,6 +1430,50 @@ class StubTest extends TestCase
         $this->expectException(CodeException::class);
         $this->expectExceptionMessage('A|null');
 
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    /**
+     * This covers the following case encountered by mmcev106:
+     * - A function was defined without a docblock
+     * - The autoloader defined a global containing the path to that file
+     * - The code being scanned required the path specified by the autoloader defined global
+     * - A docblock was added via a stub that marked the function as a taint source
+     * - The stub docblock was incorrectly ignored, causing the the taint source to be ignored
+     */
+    public function testAutoloadDefinedRequirePath(): void
+    {
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__),
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                    autoloader="tests/fixtures/stubs/define_custom_require_path.php"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+
+                    <stubs>
+                        <file name="tests/fixtures/stubs/custom_taint_source.phpstub" />
+                    </stubs>
+                </psalm>',
+            ),
+        );
+
+        $this->project_analyzer->trackTaintedInputs();
+
+        $file_path = (string) getcwd() . DIRECTORY_SEPARATOR . 'src/somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                require_once CUSTOM_REQUIRE_PATH;
+                echo custom_taint_source();',
+        );
+
+        $this->expectExceptionMessage('TaintedHtml - src/somefile.php');
         $this->analyzeFile($file_path, new Context());
     }
 }

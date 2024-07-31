@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression\Assignment;
 
 use InvalidArgumentException;
@@ -22,10 +24,8 @@ use Psalm\IssueBuffer;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassStringMap;
-use Psalm\Type\Atomic\TDependentListKey;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
-use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
@@ -49,20 +49,20 @@ use function implode;
 use function in_array;
 use function is_string;
 use function preg_match;
+use function str_contains;
 use function strlen;
-use function strpos;
 
 /**
  * @internal
  */
-class ArrayAssignmentAnalyzer
+final class ArrayAssignmentAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\ArrayDimFetch $stmt,
         Context $context,
         ?PhpParser\Node\Expr $assign_value,
-        Union $assignment_value_type
+        Union $assignment_value_type,
     ): void {
         $nesting = 0;
         $var_id = ExpressionIdentifier::getVarId(
@@ -94,7 +94,7 @@ class ArrayAssignmentAnalyzer
         PhpParser\Node\Expr\ArrayDimFetch $stmt,
         ?PhpParser\Node\Expr $assign_value,
         Union $assignment_type,
-        Context $context
+        Context $context,
     ): ?bool {
         $root_array_expr = $stmt;
 
@@ -170,8 +170,11 @@ class ArrayAssignmentAnalyzer
         $key_values = [];
 
         if ($current_dim instanceof PhpParser\Node\Scalar\String_) {
-            $key_values[] = new TLiteralString($current_dim->value);
-        } elseif ($current_dim instanceof PhpParser\Node\Scalar\LNumber && !$root_is_string) {
+            $value_type = Type::getAtomicStringFromLiteral($current_dim->value);
+            if ($value_type instanceof TLiteralString) {
+                $key_values[] = $value_type;
+            }
+        } elseif ($current_dim instanceof PhpParser\Node\Scalar\Int_ && !$root_is_string) {
             $key_values[] = new TLiteralInt($current_dim->value);
         } elseif ($current_dim
             && ($key_type = $statements_analyzer->node_data->getType($current_dim))
@@ -286,7 +289,7 @@ class ArrayAssignmentAnalyzer
         Codebase $codebase,
         Union $child_stmt_type,
         Union $current_type,
-        array $key_values
+        array $key_values,
     ): Union {
         $has_matching_objectlike_property = false;
         $has_matching_string = false;
@@ -294,9 +297,6 @@ class ArrayAssignmentAnalyzer
         $changed = false;
         $types = [];
         foreach ($child_stmt_type->getAtomicTypes() as $type) {
-            if ($type instanceof TList) {
-                $type = $type->getKeyedArray();
-            }
             $old_type = $type;
             if ($type instanceof TTemplateParam) {
                 $type = $type->replaceAs(self::updateTypeWithKeyValues(
@@ -330,7 +330,7 @@ class ArrayAssignmentAnalyzer
                                 $v = $type->value;
                                 $v[0] = $new_char;
                                 $changed = true;
-                                $type = new TLiteralString($v);
+                                $type = Type::getAtomicStringFromLiteral($v);
                                 break;
                             }
                         }
@@ -346,29 +346,25 @@ class ArrayAssignmentAnalyzer
         }
 
         if (!$has_matching_objectlike_property && !$has_matching_string) {
-            if (count($key_values) === 1) {
-                $key_value = $key_values[0];
-
-                $object_like = new TKeyedArray(
-                    [$key_value->value => $current_type],
-                    $key_value instanceof TLiteralClassString
-                        ? [$key_value->value => true]
-                        : null,
-                );
-
-                $array_assignment_type = new Union([
-                    $object_like,
-                ]);
-            } else {
-                $array_assignment_literals = $key_values;
-
-                $array_assignment_type = new Union([
-                    new TNonEmptyArray([
-                        new Union($array_assignment_literals),
-                        $current_type,
-                    ]),
-                ]);
+            $properties = [];
+            $classStrings = [];
+            $current_type = $current_type->setPossiblyUndefined(
+                $current_type->possibly_undefined || count($key_values) > 1,
+            );
+            foreach ($key_values as $key_value) {
+                $properties[$key_value->value] = $current_type;
+                if ($key_value instanceof TLiteralClassString) {
+                    $classStrings[$key_value->value] = true;
+                }
             }
+            $object_like = new TKeyedArray(
+                $properties,
+                $classStrings ?: null,
+            );
+
+            $array_assignment_type = new Union([
+                $object_like,
+            ]);
 
             return Type::combineUnionTypes(
                 $child_stmt_type,
@@ -391,7 +387,7 @@ class ArrayAssignmentAnalyzer
         Union &$stmt_type,
         Union $child_stmt_type,
         ?string $var_var_id,
-        array $key_values
+        array $key_values,
     ): void {
         if ($statements_analyzer->data_flow_graph
             && ($statements_analyzer->data_flow_graph instanceof VariableUseGraph
@@ -456,7 +452,7 @@ class ArrayAssignmentAnalyzer
         Union $value_type,
         Union $root_type,
         bool $offset_already_existed,
-        ?string $parent_var_id
+        ?string $parent_var_id,
     ): Union {
         $templated_assignment = false;
 
@@ -476,8 +472,6 @@ class ArrayAssignmentAnalyzer
 
                     if (($key_type_type instanceof TIntRange
                         && $key_type_type->dependent_list_key === $parent_var_id
-                    ) || ($key_type_type instanceof TDependentListKey
-                        && $key_type_type->var_id === $parent_var_id
                     )) {
                         $offset_already_existed = true;
                     }
@@ -511,11 +505,8 @@ class ArrayAssignmentAnalyzer
                 $array_atomic_key_type = Type::getArrayKey();
             }
 
-            if ($offset_already_existed
-                && $parent_var_id
-                && ($parent_type = $context->vars_in_scope[$parent_var_id] ?? null)
-            ) {
-                if ($parent_type->hasList() && strpos($parent_var_id, '[') === false) {
+            if ($parent_var_id && ($parent_type = $context->vars_in_scope[$parent_var_id] ?? null)) {
+                if ($offset_already_existed && $parent_type->hasList() && !str_contains($parent_var_id, '[')) {
                     $array_atomic_type_list = $value_type;
                 } elseif ($parent_type->hasClassStringMap()
                     && $key_type
@@ -584,9 +575,7 @@ class ArrayAssignmentAnalyzer
 
             if (isset($atomic_root_types['array'])) {
                 $atomic_root_type_array = $atomic_root_types['array'];
-                if ($atomic_root_type_array instanceof TList) {
-                    $atomic_root_type_array = $atomic_root_type_array->getKeyedArray();
-                }
+
 
                 if ($array_atomic_type_class_string) {
                     $array_atomic_type = new TNonEmptyArray([
@@ -708,9 +697,7 @@ class ArrayAssignmentAnalyzer
 
             if (isset($atomic_root_types['array'])) {
                 $atomic_root_type_array = $atomic_root_types['array'];
-                if ($atomic_root_type_array instanceof TList) {
-                    $atomic_root_type_array = $atomic_root_type_array->getKeyedArray();
-                }
+
 
                 if ($atomic_root_type_array instanceof TNonEmptyArray
                     && $atomic_root_type_array->count !== null
@@ -761,7 +748,7 @@ class ArrayAssignmentAnalyzer
         Union &$root_type,
         Union &$current_type,
         ?PhpParser\Node\Expr &$current_dim,
-        bool &$offset_already_existed
+        bool &$offset_already_existed,
     ): void {
         $var_id_additions = [];
 
@@ -1031,13 +1018,16 @@ class ArrayAssignmentAnalyzer
      */
     private static function getDimKeyValues(
         StatementsAnalyzer $statements_analyzer,
-        PhpParser\Node\Expr $dim
+        PhpParser\Node\Expr $dim,
     ): array {
         $key_values = [];
 
         if ($dim instanceof PhpParser\Node\Scalar\String_) {
-            $key_values[] = new TLiteralString($dim->value);
-        } elseif ($dim instanceof PhpParser\Node\Scalar\LNumber) {
+            $value_type = Type::getAtomicStringFromLiteral($dim->value);
+            if ($value_type instanceof TLiteralString) {
+                $key_values[] = $value_type;
+            }
+        } elseif ($dim instanceof PhpParser\Node\Scalar\Int_) {
             $key_values[] = new TLiteralInt($dim->value);
         } else {
             $key_type = $statements_analyzer->node_data->getType($dim);
@@ -1069,7 +1059,7 @@ class ArrayAssignmentAnalyzer
     private static function getArrayAssignmentOffsetType(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\ArrayDimFetch $child_stmt,
-        Union $child_stmt_dim_type
+        Union $child_stmt_dim_type,
     ): array {
         if ($child_stmt->dim instanceof PhpParser\Node\Scalar\String_
             || (($child_stmt->dim instanceof PhpParser\Node\Expr\ConstFetch
@@ -1077,7 +1067,10 @@ class ArrayAssignmentAnalyzer
                 && $child_stmt_dim_type->isSingleStringLiteral())
         ) {
             if ($child_stmt->dim instanceof PhpParser\Node\Scalar\String_) {
-                $offset_type = new TLiteralString($child_stmt->dim->value);
+                $offset_type = Type::getAtomicStringFromLiteral($child_stmt->dim->value);
+                if (!$offset_type instanceof TLiteralString) {
+                    return [null, '[string]', false];
+                }
             } else {
                 $offset_type = $child_stmt_dim_type->getSingleStringLiteral();
             }
@@ -1091,12 +1084,12 @@ class ArrayAssignmentAnalyzer
             return [$offset_type, $var_id_addition, true];
         }
 
-        if ($child_stmt->dim instanceof PhpParser\Node\Scalar\LNumber
+        if ($child_stmt->dim instanceof PhpParser\Node\Scalar\Int_
             || (($child_stmt->dim instanceof PhpParser\Node\Expr\ConstFetch
                     || $child_stmt->dim instanceof PhpParser\Node\Expr\ClassConstFetch)
                 && $child_stmt_dim_type->isSingleIntLiteral())
         ) {
-            if ($child_stmt->dim instanceof PhpParser\Node\Scalar\LNumber) {
+            if ($child_stmt->dim instanceof PhpParser\Node\Scalar\Int_) {
                 $offset_type = new TLiteralInt($child_stmt->dim->value);
             } else {
                 $offset_type = $child_stmt_dim_type->getSingleIntLiteral();

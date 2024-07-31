@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer\Server;
 
-use Amp\Promise;
-use Amp\Success;
+use LanguageServerProtocol\CodeAction;
+use LanguageServerProtocol\CodeActionContext;
+use LanguageServerProtocol\CodeActionKind;
 use LanguageServerProtocol\CompletionList;
 use LanguageServerProtocol\Hover;
 use LanguageServerProtocol\Location;
-use LanguageServerProtocol\MarkupContent;
-use LanguageServerProtocol\MarkupKind;
 use LanguageServerProtocol\Position;
 use LanguageServerProtocol\Range;
 use LanguageServerProtocol\SignatureHelp;
@@ -21,6 +20,7 @@ use LanguageServerProtocol\TextEdit;
 use LanguageServerProtocol\VersionedTextDocumentIdentifier;
 use LanguageServerProtocol\WorkspaceEdit;
 use Psalm\Codebase;
+use Psalm\Exception\TypeParseTreeException;
 use Psalm\Exception\UnanalyzedFileException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\LanguageServer\LanguageServer;
@@ -28,7 +28,6 @@ use UnexpectedValueException;
 
 use function array_values;
 use function count;
-use function error_log;
 use function preg_match;
 use function substr_count;
 
@@ -37,22 +36,13 @@ use function substr_count;
  *
  * @internal
  */
-class TextDocument
+final class TextDocument
 {
-    protected LanguageServer $server;
-
-    protected Codebase $codebase;
-
-    protected ProjectAnalyzer $project_analyzer;
-
     public function __construct(
-        LanguageServer $server,
-        Codebase $codebase,
-        ProjectAnalyzer $project_analyzer
+        protected LanguageServer $server,
+        protected Codebase $codebase,
+        protected ProjectAnalyzer $project_analyzer,
     ) {
-        $this->server = $server;
-        $this->codebase = $codebase;
-        $this->project_analyzer = $project_analyzer;
     }
 
     /**
@@ -68,36 +58,41 @@ class TextDocument
      */
     public function didOpen(TextDocumentItem $textDocument): void
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
+        $this->server->logDebug(
+            'textDocument/didOpen',
+            ['version' => $textDocument->version, 'uri' => $textDocument->uri],
+        );
 
-        if (!$this->codebase->config->isInProjectDirs($file_path)) {
-            return;
-        }
+        $file_path = $this->server->uriToPath($textDocument->uri);
 
+        $this->codebase->removeTemporaryFileChanges($file_path);
         $this->codebase->file_provider->openFile($file_path);
+        $this->codebase->file_provider->setOpenContents($file_path, $textDocument->text);
 
-        $this->server->queueFileAnalysis($file_path, $textDocument->uri);
+        $this->server->queueOpenFileAnalysis($file_path, $textDocument->uri, $textDocument->version);
     }
 
     /**
      * The document save notification is sent from the client to the server when the document was saved in the client
      *
-     * @param TextDocumentItem $textDocument the document that was opened
-     * @param ?string $text the content when saved
+     * @param TextDocumentIdentifier $textDocument the document that was opened
+     * @param string|null $text Optional the content when saved. Depends on the includeText value
+     *                          when the save notification was requested.
      */
-    public function didSave(TextDocumentItem $textDocument, ?string $text): void
+    public function didSave(TextDocumentIdentifier $textDocument, ?string $text = null): void
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
+        $this->server->logDebug(
+            'textDocument/didSave',
+            ['uri' => (array) $textDocument],
+        );
 
-        if (!$this->codebase->config->isInProjectDirs($file_path)) {
-            return;
-        }
+        $file_path = $this->server->uriToPath($textDocument->uri);
 
         // reopen file
         $this->codebase->removeTemporaryFileChanges($file_path);
-        $this->codebase->file_provider->setOpenContents($file_path, (string) $text);
+        $this->codebase->file_provider->setOpenContents($file_path, $text);
 
-        $this->server->queueFileAnalysis($file_path, $textDocument->uri);
+        $this->server->queueSaveFileAnalysis($file_path, $textDocument->uri);
     }
 
     /**
@@ -108,13 +103,14 @@ class TextDocument
      */
     public function didChange(VersionedTextDocumentIdentifier $textDocument, array $contentChanges): void
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
+        $this->server->logDebug(
+            'textDocument/didChange',
+            ['version' => $textDocument->version, 'uri' => $textDocument->uri],
+        );
 
-        if (!$this->codebase->config->isInProjectDirs($file_path)) {
-            return;
-        }
+        $file_path = $this->server->uriToPath($textDocument->uri);
 
-        if (count($contentChanges) === 1 && $contentChanges[0]->range === null) {
+        if (count($contentChanges) === 1 && isset($contentChanges[0]) && $contentChanges[0]->range === null) {
             $new_content = $contentChanges[0]->text;
         } else {
             throw new UnexpectedValueException('Not expecting partial diff');
@@ -126,8 +122,8 @@ class TextDocument
             }
         }
 
-        $this->codebase->addTemporaryFileChanges($file_path, $new_content);
-        $this->server->queueTemporaryFileAnalysis($file_path, $textDocument->uri);
+        $this->codebase->addTemporaryFileChanges($file_path, $new_content, $textDocument->version);
+        $this->server->queueChangeFileAnalysis($file_path, $textDocument->uri, $textDocument->version);
     }
 
     /**
@@ -142,7 +138,12 @@ class TextDocument
      */
     public function didClose(TextDocumentIdentifier $textDocument): void
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
+        $this->server->logDebug(
+            'textDocument/didClose',
+            ['uri' => $textDocument->uri],
+        );
+
+        $file_path = $this->server->uriToPath($textDocument->uri);
 
         $this->codebase->file_provider->closeFile($file_path);
         $this->server->client->textDocument->publishDiagnostics($textDocument->uri, []);
@@ -154,40 +155,47 @@ class TextDocument
      *
      * @param TextDocumentIdentifier $textDocument The text document
      * @param Position $position The position inside the text document
-     * @psalm-return Promise<Location>|Promise<null>
      */
-    public function definition(TextDocumentIdentifier $textDocument, Position $position): Promise
+    public function definition(TextDocumentIdentifier $textDocument, Position $position): ?Location
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
+        if (!$this->server->client->clientConfiguration->provideDefinition) {
+            return null;
+        }
+
+        $this->server->logDebug(
+            'textDocument/definition',
+        );
+
+        $file_path = $this->server->uriToPath($textDocument->uri);
+
+        //This currently doesnt work right with out of project files
+        if (!$this->codebase->config->isInProjectDirs($file_path)) {
+            return null;
+        }
 
         try {
-            $reference_location = $this->codebase->getReferenceAtPosition($file_path, $position);
+            $reference = $this->codebase->getReferenceAtPositionAsReference($file_path, $position);
         } catch (UnanalyzedFileException $e) {
-            $this->codebase->file_provider->openFile($file_path);
-            $this->server->queueFileAnalysis($file_path, $textDocument->uri);
-
-            return new Success(null);
+            $this->server->logThrowable($e);
+            return null;
         }
 
-        if ($reference_location === null) {
-            return new Success(null);
+        if ($reference === null) {
+            return null;
         }
 
-        [$reference] = $reference_location;
 
-        $code_location = $this->codebase->getSymbolLocation($file_path, $reference);
+        $code_location = $this->codebase->getSymbolLocationByReference($reference);
 
         if (!$code_location) {
-            return new Success(null);
+            return null;
         }
 
-        return new Success(
-            new Location(
-                LanguageServer::pathToUri($code_location->file_path),
-                new Range(
-                    new Position($code_location->getLineNumber() - 1, $code_location->getColumn() - 1),
-                    new Position($code_location->getEndLineNumber() - 1, $code_location->getEndColumn() - 1),
-                ),
+        return new Location(
+            $this->server->pathToUri($code_location->file_path),
+            new Range(
+                new Position($code_location->getLineNumber() - 1, $code_location->getColumn() - 1),
+                new Position($code_location->getEndLineNumber() - 1, $code_location->getEndColumn() - 1),
             ),
         );
     }
@@ -198,43 +206,47 @@ class TextDocument
      *
      * @param TextDocumentIdentifier $textDocument The text document
      * @param Position $position The position inside the text document
-     * @psalm-return Promise<Hover>|Promise<null>
      */
-    public function hover(TextDocumentIdentifier $textDocument, Position $position): Promise
+    public function hover(TextDocumentIdentifier $textDocument, Position $position): ?Hover
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
-
-        try {
-            $reference_location = $this->codebase->getReferenceAtPosition($file_path, $position);
-        } catch (UnanalyzedFileException $e) {
-            $this->codebase->file_provider->openFile($file_path);
-            $this->server->queueFileAnalysis($file_path, $textDocument->uri);
-
-            return new Success(null);
+        if (!$this->server->client->clientConfiguration->provideHover) {
+            return null;
         }
 
-        if ($reference_location === null) {
-            return new Success(null);
-        }
-
-        [$reference, $range] = $reference_location;
-
-        $symbol_information = $this->codebase->getSymbolInformation($file_path, $reference);
-
-        if ($symbol_information === null) {
-            return new Success(null);
-        }
-
-        $content = "```php\n" . $symbol_information['type'] . "\n```";
-        if (isset($symbol_information['description'])) {
-            $content .= "\n---\n" . $symbol_information['description'];
-        }
-        $contents = new MarkupContent(
-            MarkupKind::MARKDOWN,
-            $content,
+        $this->server->logDebug(
+            'textDocument/hover',
         );
 
-        return new Success(new Hover($contents, $range));
+        $file_path = $this->server->uriToPath($textDocument->uri);
+
+        //This currently doesnt work right with out of project files
+        if (!$this->codebase->config->isInProjectDirs($file_path)) {
+            return null;
+        }
+
+        try {
+            $reference = $this->codebase->getReferenceAtPositionAsReference($file_path, $position);
+        } catch (UnanalyzedFileException $e) {
+            $this->server->logThrowable($e);
+            return null;
+        }
+
+        if ($reference === null) {
+            return null;
+        }
+
+        try {
+            $markup = $this->codebase->getMarkupContentForSymbolByReference($reference);
+        } catch (UnexpectedValueException $e) {
+            $this->server->logThrowable($e);
+            return null;
+        }
+
+        if ($markup === null) {
+            return null;
+        }
+
+        return new Hover($markup, $reference->range);
     }
 
     /**
@@ -249,88 +261,113 @@ class TextDocument
      *
      * @param TextDocumentIdentifier $textDocument The text document
      * @param Position $position The position
-     * @psalm-return Promise<array<never, never>>|Promise<CompletionList>
      */
-    public function completion(TextDocumentIdentifier $textDocument, Position $position): Promise
+    public function completion(TextDocumentIdentifier $textDocument, Position $position): ?CompletionList
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
+        if (!$this->server->client->clientConfiguration->provideCompletion) {
+            return null;
+        }
+
+        $this->server->logDebug(
+            'textDocument/completion',
+        );
+
+        $file_path = $this->server->uriToPath($textDocument->uri);
+
+        //This currently doesnt work right with out of project files
         if (!$this->codebase->config->isInProjectDirs($file_path)) {
-            return new Success([]);
+            return null;
         }
 
         try {
             $completion_data = $this->codebase->getCompletionDataAtPosition($file_path, $position);
-        } catch (UnanalyzedFileException $e) {
-            $this->codebase->file_provider->openFile($file_path);
-            $this->server->queueFileAnalysis($file_path, $textDocument->uri);
+            if ($completion_data) {
+                [$recent_type, $gap, $offset] = $completion_data;
 
-            return new Success([]);
+                if ($gap === '->' || $gap === '::') {
+                    $snippetSupport = $this->server->clientCapabilities
+                        ->textDocument->completion->completionItem->snippetSupport ?? false;
+                    $completion_items =
+                        $this->codebase->getCompletionItemsForClassishThing($recent_type, $gap, $snippetSupport);
+                } elseif ($gap === '[') {
+                    $completion_items = $this->codebase->getCompletionItemsForArrayKeys($recent_type);
+                } else {
+                    $completion_items = $this->codebase->getCompletionItemsForPartialSymbol(
+                        $recent_type,
+                        $offset,
+                        $file_path,
+                    );
+                }
+                return new CompletionList($completion_items, false);
+            }
+        } catch (UnanalyzedFileException|TypeParseTreeException $e) {
+            $this->server->logThrowable($e);
+            return null;
         }
 
         try {
             $type_context = $this->codebase->getTypeContextAtPosition($file_path, $position);
-        } catch (UnexpectedValueException $e) {
-            error_log('completion errored at ' . $position->line . ':' . $position->character.
-                ', Reason: '.$e->getMessage());
-            return new Success([]);
-        }
-
-        if (!$completion_data && !$type_context) {
-            error_log('completion not found at ' . $position->line . ':' . $position->character);
-            return new Success([]);
-        }
-
-        if ($completion_data) {
-            [$recent_type, $gap, $offset] = $completion_data;
-
-            if ($gap === '->' || $gap === '::') {
-                $completion_items = $this->codebase->getCompletionItemsForClassishThing($recent_type, $gap);
-            } elseif ($gap === '[') {
-                $completion_items = $this->codebase->getCompletionItemsForArrayKeys($recent_type);
-            } else {
-                $completion_items = $this->codebase->getCompletionItemsForPartialSymbol(
-                    $recent_type,
-                    $offset,
-                    $file_path,
-                );
+            if ($type_context) {
+                $completion_items = $this->codebase->getCompletionItemsForType($type_context);
+                return new CompletionList($completion_items, false);
             }
-        } else {
-            $completion_items = $this->codebase->getCompletionItemsForType($type_context);
+        } catch (UnexpectedValueException|TypeParseTreeException $e) {
+            $this->server->logThrowable($e);
+            return null;
         }
 
-        return new Success(new CompletionList($completion_items, false));
+        $this->server->logError('completion not found at ' . $position->line . ':' . $position->character);
+        return null;
     }
 
     /**
      * The signature help request is sent from the client to the server to request signature
      * information at a given cursor position.
      */
-    public function signatureHelp(TextDocumentIdentifier $textDocument, Position $position): Promise
+    public function signatureHelp(TextDocumentIdentifier $textDocument, Position $position): ?SignatureHelp
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
+        if (!$this->server->client->clientConfiguration->provideSignatureHelp) {
+            return null;
+        }
+
+        $this->server->logDebug(
+            'textDocument/signatureHelp',
+        );
+
+        $file_path = $this->server->uriToPath($textDocument->uri);
+
+        //This currently doesnt work right with out of project files
+        if (!$this->codebase->config->isInProjectDirs($file_path)) {
+            return null;
+        }
 
         try {
             $argument_location = $this->codebase->getFunctionArgumentAtPosition($file_path, $position);
         } catch (UnanalyzedFileException $e) {
-            $this->codebase->file_provider->openFile($file_path);
-            $this->server->queueFileAnalysis($file_path, $textDocument->uri);
-
-            return new Success(new SignatureHelp());
+            $this->server->logThrowable($e);
+            return null;
         }
 
         if ($argument_location === null) {
-            return new Success(new SignatureHelp());
+            return null;
         }
 
-        $signature_information = $this->codebase->getSignatureInformation($argument_location[0], $file_path);
+        try {
+            $signature_information = $this->codebase->getSignatureInformation($argument_location[0], $file_path);
+        } catch (UnexpectedValueException $e) {
+            $this->server->logThrowable($e);
+            return null;
+        }
 
         if (!$signature_information) {
-            return new Success(new SignatureHelp());
+            return null;
         }
 
-        return new Success(new SignatureHelp([
-            $signature_information,
-        ], 0, $argument_location[1]));
+        return new SignatureHelp(
+            [$signature_information],
+            0,
+            $argument_location[1],
+        );
     }
 
     /**
@@ -338,73 +375,68 @@ class TextDocument
      * for a given text document and range. These commands are typically code fixes to
      * either fix problems or to beautify/refactor code.
      */
-    public function codeAction(TextDocumentIdentifier $textDocument, Range $range): Promise
+    public function codeAction(TextDocumentIdentifier $textDocument, CodeActionContext $context): ?array
     {
-        $file_path = LanguageServer::uriToPath($textDocument->uri);
-        if (!$this->codebase->file_provider->isOpen($file_path)) {
-            return new Success(null);
+        if (!$this->server->client->clientConfiguration->provideCodeActions) {
+            return null;
         }
 
-        $issues = $this->server->getCurrentIssues();
+        $this->server->logDebug(
+            'textDocument/codeAction',
+        );
 
-        if (empty($issues[$file_path])) {
-            return new Success(null);
+        $file_path = $this->server->uriToPath($textDocument->uri);
+
+        //Don't report code actions for files we arent watching
+        if (!$this->codebase->config->isInProjectDirs($file_path)) {
+            return null;
         }
-
-        $file_contents = $this->codebase->getFileContents($file_path);
-
-        $offsetStart = $range->start->toOffset($file_contents);
-        $offsetEnd = $range->end->toOffset($file_contents);
 
         $fixers = [];
-        foreach ($issues[$file_path] as $issue) {
-            if ($offsetStart === $issue->from && $offsetEnd === $issue->to) {
-                $snippetRange = new Range(
-                    new Position($issue->line_from-1),
-                    new Position($issue->line_to),
-                );
+        foreach ($context->diagnostics as $diagnostic) {
+            if ($diagnostic->source !== 'psalm') {
+                continue;
+            }
 
-                $indentation = '';
-                if (preg_match('/^(\s*)/', $issue->snippet, $matches)) {
-                    $indentation = $matches[1] ?? '';
-                }
+            /** @var array{type: string, snippet: string, line_from: int, line_to: int} */
+            $data = (array)$diagnostic->data;
 
-                /**
-                 * Suppress Psalm because ther are bugs in how
-                 * LanguageServer's signature of WorkspaceEdit is declared:
-                 *
-                 * See:
-                 * https://github.com/felixfbecker/php-language-server-protocol
-                 * See:
-                 * https://microsoft.github.io/language-server-protocol/specifications/specification-3-17/#workspaceEdit
-                 */
-                $edit = new WorkspaceEdit([
+            //$file_path = $this->server->uriToPath($textDocument->uri);
+            //$contents = $this->codebase->file_provider->getContents($file_path);
+
+            $snippetRange = new Range(
+                new Position($data['line_from'] - 1, 0),
+                new Position($data['line_to'], 0),
+            );
+
+            $indentation = '';
+            if (preg_match('/^(\s*)/', $data['snippet'], $matches)) {
+                $indentation = $matches[1] ?? '';
+            }
+
+            //Suppress Ability
+            $fixers["suppress.{$data['type']}"] = new CodeAction(
+                "Suppress {$data['type']} for this line",
+                CodeActionKind::QUICK_FIX,
+                null,
+                null,
+                null,
+                new WorkspaceEdit([
                     $textDocument->uri => [
                         new TextEdit(
                             $snippetRange,
-                            "{$indentation}/**\n".
-                            "{$indentation} * @psalm-suppress {$issue->type}\n".
-                            "{$indentation} */\n".
-                            "{$issue->snippet}\n",
+                            "{$indentation}/** @psalm-suppress {$data['type']} */\n".
+                            "{$data['snippet']}\n",
                         ),
                     ],
-                ]);
-
-                //Suppress Ability
-                $fixers["suppress.{$issue->type}"] = [
-                    'title' => "Suppress {$issue->type} for this line",
-                    'kind' => 'quickfix',
-                    'edit' => $edit,
-                ];
-            }
+                ]),
+            );
         }
 
         if (empty($fixers)) {
-            return new Success(null);
+            return null;
         }
 
-        return new Success(
-            array_values($fixers),
-        );
+        return array_values($fixers);
     }
 }

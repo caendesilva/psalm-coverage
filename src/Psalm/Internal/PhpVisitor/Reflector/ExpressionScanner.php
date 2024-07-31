@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
 use PhpParser;
 use Psalm\Aliases;
 use Psalm\Codebase;
 use Psalm\Config;
+use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\FileIncludeException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\IncludeAnalyzer;
@@ -18,15 +22,14 @@ use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Storage\FileStorage;
 use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Type;
+use Symfony\Component\Filesystem\Path;
 
 use function assert;
 use function defined;
 use function dirname;
 use function explode;
-use function implode;
 use function in_array;
-use function preg_match;
-use function strpos;
+use function str_contains;
 use function strtolower;
 use function substr;
 
@@ -35,7 +38,7 @@ use const DIRECTORY_SEPARATOR;
 /**
  * @internal
  */
-class ExpressionScanner
+final class ExpressionScanner
 {
     public static function scan(
         Codebase $codebase,
@@ -44,7 +47,7 @@ class ExpressionScanner
         Aliases $aliases,
         PhpParser\Node\Expr $node,
         ?FunctionLikeStorage $functionlike_storage,
-        ?int $skip_if_descendants
+        ?int $skip_if_descendants,
     ): void {
         if ($node instanceof PhpParser\Node\Expr\Include_ && !$skip_if_descendants) {
             self::visitInclude(
@@ -80,7 +83,7 @@ class ExpressionScanner
                 $file_storage->referenced_classlikes[strtolower($fq_classlike_name)] = $fq_classlike_name;
             }
         } elseif ($node instanceof PhpParser\Node\Expr\FuncCall && $node->name instanceof PhpParser\Node\Name) {
-            $function_id = implode('\\', $node->name->parts);
+            $function_id = $node->name->toString();
 
             if (InternalCallMapHandler::inCallMap($function_id)) {
                 self::registerClassMapFunctionCall(
@@ -105,7 +108,7 @@ class ExpressionScanner
         string $function_id,
         PhpParser\Node\Expr\FuncCall $node,
         ?FunctionLikeStorage $functionlike_storage,
-        ?int $skip_if_descendants
+        ?int $skip_if_descendants,
     ): void {
         $callables = InternalCallMapHandler::getCallablesFromCallMap($function_id);
 
@@ -152,7 +155,29 @@ class ExpressionScanner
                         $type_provider,
                         $second_arg_value,
                         $aliases,
-                    ) ?? Type::getMixed();
+                    );
+
+                    // allow docblocks to override the declared value to make constants in stubs configurable
+                    $doc_comment = $second_arg_value->getDocComment();
+                    if ($doc_comment) {
+                        try {
+                            $var_comments = CommentAnalyzer::getTypeFromComment($doc_comment, $file_scanner, $aliases);
+                            foreach ($var_comments as $var_comment) {
+                                if ($var_comment->type) {
+                                    $const_type = $var_comment->type;
+                                }
+
+                                // only check the first @var comment
+                                break;
+                            }
+                        } catch (DocblockParseException) {
+                            // do nothing
+                        }
+                    }
+
+                    if ($const_type === null) {
+                        $const_type = Type::getMixed();
+                    }
 
                     $config = Config::getInstance();
 
@@ -190,7 +215,7 @@ class ExpressionScanner
             }
 
             foreach ($mapping_function_ids as $potential_method_id) {
-                if (strpos($potential_method_id, '::') === false) {
+                if (!str_contains($potential_method_id, '::')) {
                     continue;
                 }
 
@@ -276,7 +301,7 @@ class ExpressionScanner
         Codebase $codebase,
         FileStorage $file_storage,
         PhpParser\Node\Expr\Include_ $stmt,
-        bool $scan_deep
+        bool $scan_deep,
     ): void {
         $config = Config::getInstance();
 
@@ -293,13 +318,7 @@ class ExpressionScanner
             $include_path = IncludeAnalyzer::resolveIncludePath($path_to_file, dirname($file_storage->file_path));
             $path_to_file = $include_path ?: $path_to_file;
 
-            if (DIRECTORY_SEPARATOR === '/') {
-                $is_path_relative = $path_to_file[0] !== DIRECTORY_SEPARATOR;
-            } else {
-                $is_path_relative = !preg_match('~^[A-Z]:\\\\~i', $path_to_file);
-            }
-
-            if ($is_path_relative) {
+            if (Path::isRelative($path_to_file)) {
                 $path_to_file = $config->base_dir . DIRECTORY_SEPARATOR . $path_to_file;
             }
         } else {

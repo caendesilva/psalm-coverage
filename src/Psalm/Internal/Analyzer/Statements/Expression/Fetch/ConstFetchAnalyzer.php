@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
 use PhpParser;
@@ -16,7 +18,6 @@ use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Issue\UndefinedConstant;
 use Psalm\IssueBuffer;
 use Psalm\Type;
-use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Union;
 use ReflectionProperty;
 
@@ -29,14 +30,14 @@ use function strtolower;
 /**
  * @internal
  */
-class ConstFetchAnalyzer
+final class ConstFetchAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\ConstFetch $stmt,
-        Context $context
+        Context $context,
     ): void {
-        $const_name = implode('\\', $stmt->name->parts);
+        $const_name = $stmt->name->toString();
 
         switch (strtolower($const_name)) {
             case 'null':
@@ -104,7 +105,7 @@ class ConstFetchAnalyzer
     public static function getGlobalConstType(
         Codebase $codebase,
         string $fq_const_name,
-        string $const_name
+        string $const_name,
     ): ?Union {
         if ($const_name === 'STDERR'
             || $const_name === 'STDOUT'
@@ -175,7 +176,7 @@ class ConstFetchAnalyzer
                 case 'PHP_INT_SIZE':
                 case 'PHP_MAXPATHLEN':
                 case 'PHP_VERSION_ID':
-                    return new Union([new TIntRange(1, null)]);
+                    return Type::getIntRange(1, null);
 
                 case 'PHP_FLOAT_EPSILON':
                 case 'PHP_FLOAT_MAX':
@@ -197,7 +198,7 @@ class ConstFetchAnalyzer
         StatementsAnalyzer $statements_analyzer,
         string $const_name,
         bool $is_fully_qualified,
-        ?Context $context
+        ?Context $context,
     ): ?Union {
         $aliased_constants = $statements_analyzer->getAliases()->constants;
 
@@ -254,7 +255,7 @@ class ConstFetchAnalyzer
         StatementsAnalyzer $statements_analyzer,
         string $const_name,
         Union $const_type,
-        Context $context
+        Context $context,
     ): void {
         $context->vars_in_scope[$const_name] = $const_type;
         $context->constants[$const_name] = $const_type;
@@ -270,7 +271,7 @@ class ConstFetchAnalyzer
         PhpParser\Node\Expr $first_arg_value,
         NodeDataProvider $type_provider,
         Codebase $codebase,
-        Aliases $aliases
+        Aliases $aliases,
     ): ?string {
         $const_name = null;
 
@@ -294,7 +295,7 @@ class ConstFetchAnalyzer
     public static function analyzeConstAssignment(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt\Const_ $stmt,
-        Context $context
+        Context $context,
     ): void {
         foreach ($stmt->consts as $const) {
             ExpressionAnalyzer::analyze($statements_analyzer, $const->value, $context);

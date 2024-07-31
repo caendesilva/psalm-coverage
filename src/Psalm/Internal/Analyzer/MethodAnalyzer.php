@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer;
 
 use LogicException;
@@ -13,11 +15,13 @@ use Psalm\Issue\InvalidEnumMethod;
 use Psalm\Issue\InvalidStaticInvocation;
 use Psalm\Issue\MethodSignatureMustOmitReturnType;
 use Psalm\Issue\NonStaticSelfCall;
+use Psalm\Issue\UndefinedMagicMethod;
 use Psalm\Issue\UndefinedMethod;
 use Psalm\IssueBuffer;
 use Psalm\StatementsSource;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\MethodStorage;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use UnexpectedValueException;
 
 use function in_array;
@@ -27,8 +31,9 @@ use function strtolower;
  * @internal
  * @extends FunctionLikeAnalyzer<PhpParser\Node\Stmt\ClassMethod>
  */
-class MethodAnalyzer extends FunctionLikeAnalyzer
+final class MethodAnalyzer extends FunctionLikeAnalyzer
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     // https://github.com/php/php-src/blob/a83923044c48982c80804ae1b45e761c271966d3/Zend/zend_enum.c#L77-L95
     private const FORBIDDEN_ENUM_METHODS = [
         '__construct',
@@ -51,7 +56,7 @@ class MethodAnalyzer extends FunctionLikeAnalyzer
     public function __construct(
         PhpParser\Node\Stmt\ClassMethod $function,
         SourceAnalyzer $source,
-        ?MethodStorage $storage = null
+        ?MethodStorage $storage = null,
     ) {
         $codebase = $source->getCodebase();
 
@@ -99,7 +104,7 @@ class MethodAnalyzer extends FunctionLikeAnalyzer
         Codebase $codebase,
         CodeLocation $code_location,
         array $suppressed_issues,
-        ?bool &$is_dynamic_this_method = false
+        ?bool &$is_dynamic_this_method = false,
     ): void {
         $codebase_methods = $codebase->methods;
 
@@ -110,8 +115,9 @@ class MethodAnalyzer extends FunctionLikeAnalyzer
         }
 
         $original_method_id = $method_id;
+        $with_pseudo = true;
 
-        $method_id = $codebase_methods->getDeclaringMethodId($method_id);
+        $method_id = $codebase_methods->getDeclaringMethodId($method_id, $with_pseudo);
 
         if (!$method_id) {
             if (InternalCallMapHandler::inCallMap((string) $original_method_id)) {
@@ -121,7 +127,7 @@ class MethodAnalyzer extends FunctionLikeAnalyzer
             throw new LogicException('Declaring method for ' . $original_method_id . ' should not be null');
         }
 
-        $storage = $codebase_methods->getStorage($method_id);
+        $storage = $codebase_methods->getStorage($method_id, $with_pseudo);
 
         if (!$storage->is_static) {
             if ($self_call) {
@@ -165,7 +171,8 @@ class MethodAnalyzer extends FunctionLikeAnalyzer
         MethodIdentifier $method_id,
         CodeLocation $code_location,
         array $suppressed_issues,
-        ?string $calling_method_id = null
+        ?string $calling_method_id = null,
+        bool $with_pseudo = false,
     ): ?bool {
         if ($codebase->methods->methodExists(
             $method_id,
@@ -176,15 +183,31 @@ class MethodAnalyzer extends FunctionLikeAnalyzer
                 : null,
             null,
             $code_location->file_path,
+            true,
+            false,
+            $with_pseudo,
         )) {
             return true;
         }
 
-        if (IssueBuffer::accepts(
-            new UndefinedMethod('Method ' . $method_id . ' does not exist', $code_location, (string) $method_id),
-            $suppressed_issues,
-        )) {
-            return false;
+        if ($with_pseudo) {
+            if (IssueBuffer::accepts(
+                new UndefinedMagicMethod(
+                    'Magic method ' . $method_id . ' does not exist',
+                    $code_location,
+                    (string) $method_id,
+                ),
+                $suppressed_issues,
+            )) {
+                return false;
+            }
+        } else {
+            if (IssueBuffer::accepts(
+                new UndefinedMethod('Method ' . $method_id . ' does not exist', $code_location, (string) $method_id),
+                $suppressed_issues,
+            )) {
+                return false;
+            }
         }
 
         return null;
@@ -193,7 +216,7 @@ class MethodAnalyzer extends FunctionLikeAnalyzer
     public static function isMethodVisible(
         MethodIdentifier $method_id,
         Context $context,
-        StatementsSource $source
+        StatementsSource $source,
     ): bool {
         $codebase = $source->getCodebase();
 
@@ -278,7 +301,7 @@ class MethodAnalyzer extends FunctionLikeAnalyzer
      */
     public static function checkMethodSignatureMustOmitReturnType(
         MethodStorage $method_storage,
-        CodeLocation $code_location
+        CodeLocation $code_location,
     ): void {
         if ($method_storage->signature_return_type === null) {
             return;

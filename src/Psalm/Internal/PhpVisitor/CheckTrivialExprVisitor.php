@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\PhpVisitor;
 
 use PhpParser;
@@ -7,18 +9,14 @@ use PhpParser;
 /**
  * @internal
  */
-class CheckTrivialExprVisitor extends PhpParser\NodeVisitorAbstract
+final class CheckTrivialExprVisitor extends PhpParser\NodeVisitorAbstract
 {
-    /**
-     * @var array<int, PhpParser\Node\Expr>
-     */
-    protected array $non_trivial_expr = [];
+    private bool $has_non_trivial_expr = false;
 
     private function checkNonTrivialExpr(PhpParser\Node\Expr $node): bool
     {
         if ($node instanceof PhpParser\Node\Expr\ArrayDimFetch
             || $node instanceof PhpParser\Node\Expr\Closure
-            || $node instanceof PhpParser\Node\Expr\ClosureUse
             || $node instanceof PhpParser\Node\Expr\Eval_
             || $node instanceof PhpParser\Node\Expr\Exit_
             || $node instanceof PhpParser\Node\Expr\Include_
@@ -55,8 +53,8 @@ class CheckTrivialExprVisitor extends PhpParser\NodeVisitorAbstract
         if ($node instanceof PhpParser\Node\Expr) {
             // Check for Non-Trivial Expression first
             if ($this->checkNonTrivialExpr($node)) {
-                $this->non_trivial_expr[] = $node;
-                return PhpParser\NodeTraverser::STOP_TRAVERSAL;
+                $this->has_non_trivial_expr = true;
+                return self::STOP_TRAVERSAL;
             }
 
             if ($node instanceof PhpParser\Node\Expr\ClassConstFetch
@@ -64,17 +62,17 @@ class CheckTrivialExprVisitor extends PhpParser\NodeVisitorAbstract
                 || $node instanceof PhpParser\Node\Expr\Error
                 || $node instanceof PhpParser\Node\Expr\PropertyFetch
                 || $node instanceof PhpParser\Node\Expr\StaticPropertyFetch) {
-                return PhpParser\NodeTraverser::STOP_TRAVERSAL;
+                return self::STOP_TRAVERSAL;
             }
+        } elseif ($node instanceof PhpParser\Node\ClosureUse) {
+            $this->has_non_trivial_expr = true;
+            return self::STOP_TRAVERSAL;
         }
         return null;
     }
 
-    /**
-     * @return array<int, PhpParser\Node\Expr>
-     */
-    public function getNonTrivialExpr(): array
+    public function hasNonTrivialExpr(): bool
     {
-        return $this->non_trivial_expr;
+        return $this->has_non_trivial_expr;
     }
 }

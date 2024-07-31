@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests\Config;
 
 use Psalm\Config\Creator;
@@ -39,6 +41,7 @@ class CreatorTest extends TestCase
     xmlns="https://getpsalm.org/schema/config"
     xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
     findUnusedBaselineEntry="true"
+    findUnusedCode="true"
 >
     <projectFiles>
         <directory name="lib" />

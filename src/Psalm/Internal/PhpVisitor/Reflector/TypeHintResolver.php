@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
 use PhpParser;
@@ -21,13 +23,12 @@ use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
-use function implode;
 use function strtolower;
 
 /**
  * @internal
  */
-class TypeHintResolver
+final class TypeHintResolver
 {
     /**
      * @param Identifier|IntersectionType|Name|NullableType|UnionType $hint
@@ -39,7 +40,7 @@ class TypeHintResolver
         FileStorage $file_storage,
         ?ClassLikeStorage $classlike_storage,
         Aliases $aliases,
-        int $analysis_php_version_id
+        int $analysis_php_version_id,
     ): Union {
         if ($hint instanceof PhpParser\Node\UnionType) {
             $type = null;
@@ -137,7 +138,7 @@ class TypeHintResolver
             $codebase->scanner->queueClassLikeForScanning($fq_type_string);
             $file_storage->referenced_classlikes[strtolower($fq_type_string)] = $fq_type_string;
         } else {
-            $lower_hint = strtolower($hint->parts[0]);
+            $lower_hint = strtolower($hint->getFirst());
 
             if ($classlike_storage
                 && ($lower_hint === 'self' || $lower_hint === 'static')
@@ -149,7 +150,7 @@ class TypeHintResolver
                     $fq_type_string .= '&static';
                 }
             } else {
-                $type_string = implode('\\', $hint->parts);
+                $type_string = $hint->toString();
                 $fq_type_string = ClassLikeAnalyzer::getFQCLNFromNameObject($hint, $aliases);
 
                 $codebase->scanner->queueClassLikeForScanning($fq_type_string);

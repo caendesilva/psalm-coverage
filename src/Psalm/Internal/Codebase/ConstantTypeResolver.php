@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Codebase;
 
 use InvalidArgumentException;
@@ -11,6 +13,9 @@ use Psalm\Internal\Scanner\UnresolvedConstant\ArraySpread;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayValue;
 use Psalm\Internal\Scanner\UnresolvedConstant\ClassConstant;
 use Psalm\Internal\Scanner\UnresolvedConstant\Constant;
+use Psalm\Internal\Scanner\UnresolvedConstant\EnumNameFetch;
+use Psalm\Internal\Scanner\UnresolvedConstant\EnumPropertyFetch;
+use Psalm\Internal\Scanner\UnresolvedConstant\EnumValueFetch;
 use Psalm\Internal\Scanner\UnresolvedConstant\ScalarValue;
 use Psalm\Internal\Scanner\UnresolvedConstant\UnresolvedAdditionOp;
 use Psalm\Internal\Scanner\UnresolvedConstant\UnresolvedBinaryOp;
@@ -50,13 +55,13 @@ use function spl_object_id;
 /**
  * @internal
  */
-class ConstantTypeResolver
+final class ConstantTypeResolver
 {
     public static function resolve(
         ClassLikes $classlikes,
         UnresolvedConstantComponent $c,
         StatementsAnalyzer $statements_analyzer = null,
-        array $visited_constant_ids = []
+        array $visited_constant_ids = [],
     ): Atomic {
         $c_id = spl_object_id($c);
 
@@ -94,7 +99,7 @@ class ConstantTypeResolver
                         || $right instanceof TLiteralFloat
                         || $right instanceof TLiteralInt)
                 ) {
-                    return new TLiteralString($left->value . $right->value);
+                    return Type::getAtomicStringFromLiteral($left->value . $right->value);
                 }
 
                 return new TString();
@@ -213,8 +218,8 @@ class ConstantTypeResolver
                         return new TArray([Type::getArrayKey(), Type::getMixed()]);
                     }
 
-                    foreach ($spread_array->properties as $spread_array_type) {
-                        $properties[$auto_key++] = $spread_array_type;
+                    foreach ($spread_array->properties as $k => $spread_array_type) {
+                        $properties[is_string($k) ? $k : $auto_key++] = $spread_array_type;
                     }
                     continue;
                 }
@@ -331,15 +336,39 @@ class ConstantTypeResolver
             }
         }
 
+        if ($c instanceof EnumPropertyFetch) {
+            if ($classlikes->enumExists($c->fqcln)) {
+                $enum_storage = $classlikes->getStorageFor($c->fqcln);
+                if (isset($enum_storage->enum_cases[$c->case])) {
+                    if ($c instanceof EnumValueFetch) {
+                        $value = $enum_storage->enum_cases[$c->case]->value;
+
+                        if ($value !== null) {
+                            if ($value instanceof UnresolvedConstantComponent) {
+                                return self::resolve(
+                                    $classlikes,
+                                    $value,
+                                    $statements_analyzer,
+                                    $visited_constant_ids + [$c_id => true],
+                                );
+                            } else {
+                                return $value;
+                            }
+                        }
+                    } elseif ($c instanceof EnumNameFetch) {
+                        return Type::getString($c->case)->getSingleAtomic();
+                    }
+                }
+            }
+        }
+
         return new TMixed;
     }
 
     /**
      * Note: This takes an array, but any array should only contain other arrays and scalars.
-     *
-     * @param  array|string|int|float|bool|null $value
      */
-    public static function getLiteralTypeFromScalarValue($value): Atomic
+    public static function getLiteralTypeFromScalarValue(array|string|int|float|bool|null $value): Atomic
     {
         if (is_array($value)) {
             if (empty($value)) {
@@ -355,7 +384,7 @@ class ConstantTypeResolver
         }
 
         if (is_string($value)) {
-            return new TLiteralString($value);
+            return Type::getAtomicStringFromLiteral($value);
         }
 
         if (is_int($value)) {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -547,7 +549,7 @@ class SwitchTypeTest extends TestCase
                                     return "float";
                             }
 
-                            if ($fq_const_name && isset($predefined_constants[$fq_const_name])) {
+                            if ($fq_const_name !== null && isset($predefined_constants[$fq_const_name])) {
                                 return "mixed";
                             }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -21,15 +23,15 @@ use function dirname;
 /**
  * @internal
  */
-class MagicConstAnalyzer
+final class MagicConstAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Scalar\MagicConst $stmt,
-        Context $context
+        Context $context,
     ): void {
         if ($stmt instanceof PhpParser\Node\Scalar\MagicConst\Line) {
-            $statements_analyzer->node_data->setType($stmt, Type::getInt());
+            $statements_analyzer->node_data->setType($stmt, Type::getIntRange(1, null));
         } elseif ($stmt instanceof PhpParser\Node\Scalar\MagicConst\Class_) {
             $codebase = $statements_analyzer->getCodebase();
 

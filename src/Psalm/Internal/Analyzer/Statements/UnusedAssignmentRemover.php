@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements;
 
 use PhpParser;
@@ -22,7 +24,7 @@ use function trim;
 /**
  * @internal
  */
-class UnusedAssignmentRemover
+final class UnusedAssignmentRemover
 {
     /**
      * @var array<string, CodeLocation>
@@ -38,7 +40,7 @@ class UnusedAssignmentRemover
         array $stmts,
         array $var_loc_map,
         string $var_id,
-        CodeLocation $original_location
+        CodeLocation $original_location,
     ): void {
         $search_result = $this->findAssignStmt($stmts, $var_id, $original_location);
         [$assign_stmt, $assign_exp] = $search_result;
@@ -65,7 +67,7 @@ class UnusedAssignmentRemover
                 $traverser->addVisitor($visitor);
                 $traverser->traverse([$rhs_exp]);
 
-                $rhs_exp_trivial = (count($visitor->getNonTrivialExpr()) === 0);
+                $rhs_exp_trivial = !$visitor->hasNonTrivialExpr();
 
                 if ($rhs_exp_trivial) {
                     $treat_as_expr = false;
@@ -122,7 +124,7 @@ class UnusedAssignmentRemover
         Codebase $codebase,
         CodeLocation $var_loc,
         int $end_bound,
-        bool $assign_ref = false
+        bool $assign_ref = false,
     ): FileManipulation {
         $var_start_loc= $var_loc->raw_file_start;
         $stmt_content = $codebase->file_provider->getContents(
@@ -328,7 +330,7 @@ class UnusedAssignmentRemover
         PhpParser\Node\Expr $current_node,
         string $var_id,
         int $var_start_loc,
-        int $search_level = 1
+        int $search_level = 1,
     ): array {
         if ($current_node instanceof PhpParser\Node\Expr\Assign
             || $current_node instanceof PhpParser\Node\Expr\AssignOp

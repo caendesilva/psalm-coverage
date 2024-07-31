@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -56,6 +58,7 @@ use Psalm\Issue\PossiblyUndefinedIntArrayOffset;
 use Psalm\Issue\ReferenceConstraintViolation;
 use Psalm\Issue\ReferenceReusedFromConfusingScope;
 use Psalm\Issue\UnnecessaryVarAnnotation;
+use Psalm\Issue\UnsupportedPropertyReferenceUsage;
 use Psalm\IssueBuffer;
 use Psalm\Node\Expr\BinaryOp\VirtualBitwiseAnd;
 use Psalm\Node\Expr\BinaryOp\VirtualBitwiseOr;
@@ -77,7 +80,6 @@ use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TKeyedArray;
-use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNonEmptyArray;
@@ -90,17 +92,18 @@ use function in_array;
 use function is_string;
 use function reset;
 use function spl_object_id;
+use function str_contains;
+use function str_starts_with;
 use function strpos;
 use function strtolower;
 
 /**
  * @internal
  */
-class AssignmentAnalyzer
+final class AssignmentAnalyzer
 {
     /**
      * @param  PhpParser\Node\Expr|null $assign_value  This has to be null to support list destructuring
-     * @return false|Union
      */
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
@@ -110,8 +113,8 @@ class AssignmentAnalyzer
         Context $context,
         ?PhpParser\Comment\Doc $doc_comment,
         array $not_ignored_docblock_var_ids = [],
-        ?PhpParser\Node\Expr $assign_expr = null
-    ) {
+        ?PhpParser\Node\Expr $assign_expr = null,
+    ): ?Union {
         $var_id = ExpressionIdentifier::getVarId(
             $assign_var,
             $statements_analyzer->getFQCLN(),
@@ -255,7 +258,7 @@ class AssignmentAnalyzer
                     $context->vars_in_scope[$var_id] = $comment_type ?? Type::getMixed();
                 }
 
-                return false;
+                return null;
             }
 
             $context->inside_general_use = $was_inside_general_use;
@@ -270,7 +273,7 @@ class AssignmentAnalyzer
                 && $extended_var_id
                 && (!$not_ignored_docblock_var_ids || isset($not_ignored_docblock_var_ids[$extended_var_id]))
                 && $temp_assign_value_type->getId() === $comment_type->getId()
-                && !$comment_type->isMixed()
+                && !$comment_type->isMixed(true)
             ) {
                 if ($codebase->alter_code
                     && isset($statements_analyzer->getProjectAnalyzer()->getIssuesToFix()['UnnecessaryVarAnnotation'])
@@ -399,7 +402,7 @@ class AssignmentAnalyzer
             if (!$assign_var instanceof PhpParser\Node\Expr\PropertyFetch
                 && !strpos($root_var_id ?? '', '->')
                 && !$comment_type
-                && strpos($var_id ?? '', '$_') !== 0
+                && !str_starts_with($var_id ?? '', '$_')
             ) {
                 $origin_locations = [];
 
@@ -477,7 +480,7 @@ class AssignmentAnalyzer
             ),
             $statements_analyzer->getSuppressedIssues(),
         )) {
-            return false;
+            return null;
         }
 
         if (isset($context->protected_var_ids[$var_id])
@@ -506,7 +509,7 @@ class AssignmentAnalyzer
             $removed_taints,
         ) === false
         ) {
-            return false;
+            return null;
         }
 
         if ($var_id && isset($context->vars_in_scope[$var_id])) {
@@ -527,21 +530,23 @@ class AssignmentAnalyzer
             }
 
             if ($context->vars_in_scope[$var_id]->isNever()) {
-                if (IssueBuffer::accepts(
+                if (!IssueBuffer::accepts(
                     new NoValue(
                         'All possible types for this assignment were invalidated - This may be dead code',
                         new CodeLocation($statements_analyzer->getSource(), $assign_var),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 )) {
-                    return false;
+                    // if the error is suppressed, do not treat it as never anymore
+                    $new_mutable = $context->vars_in_scope[$var_id]->getBuilder()->addType(new TMixed);
+                    $new_mutable->removeType('never');
+                    $context->vars_in_scope[$var_id] = $new_mutable->freeze();
+                    $context->has_returned = false;
+                } else {
+                    $context->inside_assignment = $was_in_assignment;
+
+                    return $context->vars_in_scope[$var_id];
                 }
-
-                $context->vars_in_scope[$var_id] = Type::getNever();
-
-                $context->inside_assignment = $was_in_assignment;
-
-                return $context->vars_in_scope[$var_id];
             }
 
             if ($statements_analyzer->data_flow_graph) {
@@ -618,7 +623,7 @@ class AssignmentAnalyzer
         ?Doc $doc_comment,
         ?string $extended_var_id,
         array $var_comments,
-        array $removed_taints
+        array $removed_taints,
     ): ?bool {
         if ($assign_var instanceof PhpParser\Node\Expr\Variable) {
             self::analyzeAssignmentToVariable(
@@ -670,16 +675,14 @@ class AssignmentAnalyzer
                 return false;
             }
 
-            if ($context->check_classes) {
-                if (StaticPropertyAssignmentAnalyzer::analyze(
-                    $statements_analyzer,
-                    $assign_var,
-                    $assign_value,
-                    $assign_value_type,
-                    $context,
-                ) === false) {
-                    return false;
-                }
+            if (StaticPropertyAssignmentAnalyzer::analyze(
+                $statements_analyzer,
+                $assign_var,
+                $assign_value,
+                $assign_value_type,
+                $context,
+            ) === false) {
+                return false;
             }
 
             if ($var_id) {
@@ -698,7 +701,7 @@ class AssignmentAnalyzer
         ?Union &$comment_type = null,
         ?DocblockTypeLocation &$comment_type_location = null,
         array $not_ignored_docblock_var_ids = [],
-        bool $by_ref = false
+        bool $by_ref = false,
     ): void {
         if (!$var_comment->type) {
             return;
@@ -812,7 +815,7 @@ class AssignmentAnalyzer
         string $var_id,
         CodeLocation $var_location,
         array $removed_taints,
-        array $added_taints
+        array $added_taints,
     ): void {
         $parent_nodes = $type->parent_nodes;
 
@@ -836,7 +839,7 @@ class AssignmentAnalyzer
     public static function analyzeAssignmentOperation(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\AssignOp $stmt,
-        Context $context
+        Context $context,
     ): bool {
         if ($stmt instanceof PhpParser\Node\Expr\AssignOp\BitwiseAnd) {
             $operation = new VirtualBitwiseAnd($stmt->var, $stmt->expr, $stmt->getAttributes());
@@ -895,9 +898,10 @@ class AssignmentAnalyzer
     public static function analyzeAssignmentRef(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\AssignRef $stmt,
-        Context $context
+        Context $context,
+        ?PhpParser\Node\Stmt $from_stmt,
     ): bool {
-        ExpressionAnalyzer::analyze($statements_analyzer, $stmt->expr, $context, false, null, false, null, true);
+        ExpressionAnalyzer::analyze($statements_analyzer, $stmt->expr, $context, false, null, null, null, true);
 
         $lhs_var_id = ExpressionIdentifier::getExtendedVarId(
             $stmt->var,
@@ -911,7 +915,7 @@ class AssignmentAnalyzer
             $statements_analyzer,
         );
 
-        $doc_comment = $stmt->getDocComment();
+        $doc_comment = $stmt->getDocComment() ?? $from_stmt?->getDocComment();
         if ($doc_comment) {
             try {
                 $var_comments = CommentAnalyzer::getTypeFromComment(
@@ -961,7 +965,7 @@ class AssignmentAnalyzer
             // Remove old reference parent node so previously referenced variable usage doesn't count as reference usage
             $old_type = $context->vars_in_scope[$lhs_var_id];
             foreach ($old_type->parent_nodes as $old_parent_node_id => $_) {
-                if (strpos($old_parent_node_id, "$lhs_var_id-") === 0) {
+                if (str_starts_with($old_parent_node_id, "$lhs_var_id-")) {
                     unset($old_type->parent_nodes[$old_parent_node_id]);
                 }
             }
@@ -974,15 +978,29 @@ class AssignmentAnalyzer
         $context->hasVariable($lhs_var_id);
         $context->references_in_scope[$lhs_var_id] = $rhs_var_id;
         $context->referenced_counts[$rhs_var_id] = ($context->referenced_counts[$rhs_var_id] ?? 0) + 1;
-        if (strpos($rhs_var_id, '[') !== false) {
+        if (str_contains($rhs_var_id, '[')) {
             // Reference to array item, we always consider array items to be an external scope for references
             // TODO handle differently so it's detected as unused if the array is unused?
             $context->references_to_external_scope[$lhs_var_id] = true;
         }
-        if (strpos($rhs_var_id, '->') !== false) {
+        if (str_contains($rhs_var_id, '->')) {
+            IssueBuffer::maybeAdd(
+                new UnsupportedPropertyReferenceUsage(
+                    new CodeLocation($statements_analyzer->getSource(), $stmt),
+                ),
+                $statements_analyzer->getSuppressedIssues(),
+            );
             // Reference to object property, we always consider object properties to be an external scope for references
             // TODO handle differently so it's detected as unused if the object is unused?
             $context->references_to_external_scope[$lhs_var_id] = true;
+        }
+        if (str_contains($rhs_var_id, '::')) {
+            IssueBuffer::maybeAdd(
+                new UnsupportedPropertyReferenceUsage(
+                    new CodeLocation($statements_analyzer->getSource(), $stmt),
+                ),
+                $statements_analyzer->getSuppressedIssues(),
+            );
         }
 
         $lhs_location = new CodeLocation($statements_analyzer->getSource(), $stmt->var);
@@ -1018,7 +1036,7 @@ class AssignmentAnalyzer
         Union $by_ref_out_type,
         Context $context,
         bool $constrain_type = true,
-        bool $prevent_null = false
+        bool $prevent_null = false,
     ): void {
         if ($stmt instanceof PhpParser\Node\Expr\PropertyFetch && $stmt->name instanceof PhpParser\Node\Identifier) {
             $prop_name = $stmt->name->name;
@@ -1154,7 +1172,7 @@ class AssignmentAnalyzer
         ?PhpParser\Comment\Doc $doc_comment,
         ?string $extended_var_id,
         array $var_comments,
-        array $removed_taints
+        array $removed_taints,
     ): void {
         if (!$assign_value_type->hasArray()
             && !$assign_value_type->isMixed()
@@ -1213,9 +1231,6 @@ class AssignmentAnalyzer
             $has_null = false;
 
             foreach ($assign_value_type->getAtomicTypes() as $assign_value_atomic_type) {
-                if ($assign_value_atomic_type instanceof TList) {
-                    $assign_value_atomic_type = $assign_value_atomic_type->getKeyedArray();
-                }
                 if ($assign_value_atomic_type instanceof TKeyedArray
                     && !$assign_var_item->key
                 ) {
@@ -1358,7 +1373,7 @@ class AssignmentAnalyzer
 
                     $already_in_scope = isset($context->vars_in_scope[$list_var_id]);
 
-                    if (strpos($list_var_id, '-') === false && strpos($list_var_id, '[') === false) {
+                    if (!str_contains($list_var_id, '-') && !str_contains($list_var_id, '[')) {
                         $location = new CodeLocation($statements_analyzer, $var);
 
                         if (!$statements_analyzer->hasVariable($list_var_id)) {
@@ -1398,7 +1413,7 @@ class AssignmentAnalyzer
                         $can_be_empty = !$assign_value_atomic_type instanceof TNonEmptyArray;
                     } elseif ($assign_value_atomic_type instanceof TKeyedArray) {
                         if (($assign_var_item->key instanceof PhpParser\Node\Scalar\String_
-                            || $assign_var_item->key instanceof PhpParser\Node\Scalar\LNumber)
+                            || $assign_var_item->key instanceof PhpParser\Node\Scalar\Int_)
                             && isset($assign_value_atomic_type->properties[$assign_var_item->key->value])
                         ) {
                             $new_assign_type =
@@ -1579,7 +1594,7 @@ class AssignmentAnalyzer
         Context $context,
         ?PhpParser\Node\Expr $assign_value,
         Union $assign_value_type,
-        ?string $var_id
+        ?string $var_id,
     ): void {
         if (!$assign_var->name instanceof PhpParser\Node\Identifier) {
             $was_inside_general_use = $context->inside_general_use;
@@ -1684,7 +1699,7 @@ class AssignmentAnalyzer
         ?PhpParser\Node\Expr $assign_value,
         Union $assign_value_type,
         ?string $var_id,
-        Context $context
+        Context $context,
     ): void {
         if (is_string($assign_var->name)) {
             if ($var_id) {

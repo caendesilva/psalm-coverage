@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Tests;
 
 use PHPUnit\Framework\TestCase;
@@ -75,7 +77,7 @@ class ByIssueLevelAndTypeReportTest extends TestCase
     private function issueData(int $errorLevel, string $type): IssueData
     {
         return new IssueData(
-            'error',
+            IssueData::SEVERITY_ERROR,
             1,
             1,
             $type,

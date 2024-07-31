@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use AssertionError;
@@ -20,6 +22,7 @@ use Psalm\Issue\UnresolvableInclude;
 use Psalm\IssueBuffer;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Type\TaintKind;
+use Symfony\Component\Filesystem\Path;
 
 use function constant;
 use function defined;
@@ -47,13 +50,13 @@ use const PHP_EOL;
 /**
  * @internal
  */
-class IncludeAnalyzer
+final class IncludeAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Include_ $stmt,
         Context $context,
-        ?Context $global_context = null
+        ?Context $global_context = null,
     ): bool {
         $codebase = $statements_analyzer->getCodebase();
         $config = $codebase->config;
@@ -93,13 +96,7 @@ class IncludeAnalyzer
             $include_path = self::resolveIncludePath($path_to_file, dirname($statements_analyzer->getFilePath()));
             $path_to_file = $include_path ?: $path_to_file;
 
-            if (DIRECTORY_SEPARATOR === '/') {
-                $is_path_relative = $path_to_file[0] !== DIRECTORY_SEPARATOR;
-            } else {
-                $is_path_relative = !preg_match('~^[A-Z]:\\\\~i', $path_to_file);
-            }
-
-            if ($is_path_relative) {
+            if (Path::isRelative($path_to_file)) {
                 $path_to_file = $config->base_dir . DIRECTORY_SEPARATOR . $path_to_file;
             }
         } else {
@@ -158,7 +155,8 @@ class IncludeAnalyzer
 
             $current_file_analyzer = $statements_analyzer->getFileAnalyzer();
 
-            if ($current_file_analyzer->project_analyzer->fileExists($path_to_file)) {
+            if ($current_file_analyzer->project_analyzer->fileExists($path_to_file)
+                && !$current_file_analyzer->project_analyzer->isDirectory($path_to_file)) {
                 if ($statements_analyzer->hasParentFilePath($path_to_file)
                     || !$codebase->file_storage_provider->has($path_to_file)
                     || ($statements_analyzer->hasAlreadyRequiredFilePath($path_to_file)
@@ -206,7 +204,7 @@ class IncludeAnalyzer
                         $context,
                         $global_context,
                     );
-                } catch (UnpreparedAnalysisException $e) {
+                } catch (UnpreparedAnalysisException) {
                     if ($config->skip_checks_on_unresolvable_includes) {
                         $context->check_classes = false;
                         $context->check_variables = false;
@@ -282,15 +280,9 @@ class IncludeAnalyzer
         ?NodeDataProvider $type_provider,
         ?StatementsAnalyzer $statements_analyzer,
         string $file_name,
-        Config $config
+        Config $config,
     ): ?string {
-        if (DIRECTORY_SEPARATOR === '/') {
-            $is_path_relative = $file_name[0] !== DIRECTORY_SEPARATOR;
-        } else {
-            $is_path_relative = !preg_match('~^[A-Z]:\\\\~i', $file_name);
-        }
-
-        if ($is_path_relative) {
+        if (Path::isRelative($file_name)) {
             $file_name = $config->base_dir . DIRECTORY_SEPARATOR . $file_name;
         }
 
@@ -334,13 +326,13 @@ class IncludeAnalyzer
             }
         } elseif ($stmt instanceof PhpParser\Node\Expr\FuncCall &&
             $stmt->name instanceof PhpParser\Node\Name &&
-            $stmt->name->parts === ['dirname']
+            $stmt->name->getParts() === ['dirname']
         ) {
             if ($stmt->getArgs()) {
                 $dir_level = 1;
 
                 if (isset($stmt->getArgs()[1])) {
-                    if ($stmt->getArgs()[1]->value instanceof PhpParser\Node\Scalar\LNumber) {
+                    if ($stmt->getArgs()[1]->value instanceof PhpParser\Node\Scalar\Int_) {
                         $dir_level = $stmt->getArgs()[1]->value->value;
                     } else {
                         if ($statements_analyzer) {
@@ -368,10 +360,14 @@ class IncludeAnalyzer
                     return null;
                 }
 
+                if ($dir_level < 1) {
+                    return null;
+                }
+
                 return dirname($evaled_path, $dir_level);
             }
         } elseif ($stmt instanceof PhpParser\Node\Expr\ConstFetch) {
-            $const_name = implode('', $stmt->name->parts);
+            $const_name = implode('', $stmt->name->getParts());
 
             if (defined($const_name)) {
                 $constant_value = constant($const_name);
@@ -393,6 +389,18 @@ class IncludeAnalyzer
     {
         if (!$current_directory) {
             return $file_name;
+        }
+
+        if ((substr($file_name, 0, 2) === '.' . DIRECTORY_SEPARATOR)
+            || (substr($file_name, 0, 3) === '..' . DIRECTORY_SEPARATOR)
+        ) {
+            $file = $current_directory . DIRECTORY_SEPARATOR . $file_name;
+
+            if (file_exists($file)) {
+                return $file;
+            }
+
+            return null;
         }
 
         $paths = PATH_SEPARATOR === ':'
@@ -429,12 +437,12 @@ class IncludeAnalyzer
         $path_to_file = str_replace('/./', '/', $path_to_file);
 
         // first remove unnecessary / duplicates
-        $path_to_file = preg_replace('/\/[\/]+/', '/', $path_to_file);
+        $path_to_file = (string) preg_replace('/\/[\/]+/', '/', $path_to_file);
 
         $reduce_pattern = '/\/[^\/]+\/\.\.\//';
 
         while (preg_match($reduce_pattern, $path_to_file)) {
-            $path_to_file = preg_replace($reduce_pattern, '/', $path_to_file, 1);
+            $path_to_file = (string) preg_replace($reduce_pattern, '/', $path_to_file, 1);
         }
 
         if (DIRECTORY_SEPARATOR !== '/') {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Internal\Type;
 
 use Psalm\CodeLocation;
@@ -62,13 +64,12 @@ use Psalm\Type\Union;
 use function array_intersect_key;
 use function array_merge;
 use function count;
-use function get_class;
 use function is_string;
 
 /**
  * @internal
  */
-class AssertionReconciler extends Reconciler
+final class AssertionReconciler extends Reconciler
 {
     /**
      * Reconciles types
@@ -93,7 +94,7 @@ class AssertionReconciler extends Reconciler
         ?CodeLocation $code_location = null,
         array $suppressed_issues = [],
         ?int &$failed_reconciliation = Reconciler::RECONCILIATION_OK,
-        bool $negated = false
+        bool $negated = false,
     ): Union {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -238,7 +239,7 @@ class AssertionReconciler extends Reconciler
 
     private static function getMissingType(
         Assertion $assertion,
-        bool $inside_loop
+        bool $inside_loop,
     ): Union {
         if (($assertion instanceof IsIsset || $assertion instanceof IsEqualIsset)
             || $assertion instanceof NonEmpty
@@ -282,7 +283,7 @@ class AssertionReconciler extends Reconciler
         bool $negated,
         ?CodeLocation $code_location,
         array $suppressed_issues,
-        int &$failed_reconciliation
+        int &$failed_reconciliation,
     ): Union {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -522,7 +523,7 @@ class AssertionReconciler extends Reconciler
         Codebase $codebase,
         Union &$existing_type,
         Union $new_type,
-        bool &$any_scalar_type_match_found = false
+        bool &$any_scalar_type_match_found = false,
     ): ?Union {
         $matching_atomic_types = [];
 
@@ -555,7 +556,7 @@ class AssertionReconciler extends Reconciler
         Atomic &$type_1_atomic,
         Atomic $type_2_atomic,
         Codebase $codebase,
-        bool &$any_scalar_type_match_found
+        bool &$any_scalar_type_match_found,
     ): ?Atomic {
         if ($type_1_atomic instanceof TFloat
             && $type_2_atomic instanceof TInt
@@ -619,7 +620,6 @@ class AssertionReconciler extends Reconciler
         }
 
         /*if ($type_2_atomic instanceof TKeyedArray
-            && $type_1_atomic instanceof \Psalm\Type\Atomic\TList
         ) {
             $type_2_key = $type_2_atomic->getGenericKeyType();
             $type_2_value = $type_2_atomic->getGenericValueType();
@@ -771,12 +771,25 @@ class AssertionReconciler extends Reconciler
                 }
 
                 if ($type_1_param->getId() !== $type_2_param->getId()) {
-                    $type_1_param = $type_2_param;
+                    $type_1_param = $type_2_param->setPossiblyUndefined($type_1_param->possibly_undefined);
                 }
             }
             unset($type_1_param);
 
-            $matching_atomic_type = $type_1_atomic->setProperties($type_1_properties);
+            if ($type_1_atomic->fallback_params === null) {
+                $fallback_types = null;
+            } else {
+                //any fallback type is now the value of iterable
+                $fallback_types = [$type_1_atomic->fallback_params[0], $type_2_param];
+            }
+
+            $matching_atomic_type = new TKeyedArray(
+                $type_1_properties,
+                $type_1_atomic->class_strings,
+                $fallback_types,
+                $type_1_atomic->is_list,
+                $type_1_atomic->from_docblock,
+            );
             $atomic_comparison_results->type_coerced = true;
         }
 
@@ -813,10 +826,10 @@ class AssertionReconciler extends Reconciler
         Atomic $type_1_atomic,
         Atomic $type_2_atomic,
         Codebase $codebase,
-        bool $type_coerced
+        bool $type_coerced,
     ): ?Atomic {
         if ($type_coerced
-            && get_class($type_2_atomic) === TNamedObject::class
+            && $type_2_atomic::class === TNamedObject::class
             && $type_1_atomic instanceof TGenericObject
         ) {
             // this is a hack - it's not actually rigorous, as the params may be different
@@ -858,7 +871,7 @@ class AssertionReconciler extends Reconciler
         ?string            $var_id,
         bool               $negated,
         ?CodeLocation      $code_location,
-        array              $suppressed_issues
+        array              $suppressed_issues,
     ): Union {
         $existing_var_atomic_types = [];
 
@@ -938,11 +951,20 @@ class AssertionReconciler extends Reconciler
 
             $existing_var_type = $existing_var_type->getBuilder();
             foreach ($existing_var_atomic_types as $atomic_key => $atomic_type) {
-                if (get_class($atomic_type) === TNamedObject::class
+                if ($atomic_type::class === TNamedObject::class
                     && $atomic_type->value === $fq_enum_name
                 ) {
                     $can_be_equal = true;
                     $redundant = false;
+                    $existing_var_type->removeType($atomic_key);
+                    $existing_var_type->addType(new TEnumCase($fq_enum_name, $case_name));
+                } elseif (AtomicTypeComparator::canBeIdentical(
+                    $statements_analyzer->getCodebase(),
+                    $atomic_type,
+                    $assertion_type,
+                )) {
+                    $can_be_equal = true;
+                    $redundant = $atomic_key === $assertion_type->getKey();
                     $existing_var_type->removeType($atomic_key);
                     $existing_var_type->addType(new TEnumCase($fq_enum_name, $case_name));
                 } elseif ($atomic_key !== $assertion_type->getKey()) {
@@ -988,7 +1010,7 @@ class AssertionReconciler extends Reconciler
         ?string            $var_id,
         bool               $negated,
         ?CodeLocation      $code_location,
-        array              $suppressed_issues
+        array              $suppressed_issues,
     ): Union {
         $value = $assertion_type->value;
 
@@ -1129,7 +1151,7 @@ class AssertionReconciler extends Reconciler
         ?string            $var_id,
         bool               $negated,
         ?CodeLocation      $code_location,
-        array              $suppressed_issues
+        array              $suppressed_issues,
     ): Union {
         $value = $assertion_type->value;
 
@@ -1272,7 +1294,7 @@ class AssertionReconciler extends Reconciler
         ?string            $var_id,
         bool               $negated,
         ?CodeLocation      $code_location,
-        array              $suppressed_issues
+        array              $suppressed_issues,
     ): Union {
         $value = $assertion_type->value;
 
@@ -1407,7 +1429,7 @@ class AssertionReconciler extends Reconciler
         Union $existing_var_type,
         array $existing_var_atomic_types,
         TLiteralInt $assertion_type,
-        bool $is_loose_equality
+        bool $is_loose_equality,
     ): ?Union {
         foreach ($existing_var_atomic_types as $existing_var_atomic_type) {
             if ($existing_var_atomic_type instanceof TMixed
@@ -1435,7 +1457,7 @@ class AssertionReconciler extends Reconciler
         Union $existing_var_type,
         array $existing_var_atomic_types,
         TLiteralString $assertion_type,
-        bool $is_loose_equality
+        bool $is_loose_equality,
     ): ?Union {
         foreach ($existing_var_atomic_types as $existing_var_atomic_type) {
             if ($existing_var_atomic_type instanceof TMixed
@@ -1462,7 +1484,7 @@ class AssertionReconciler extends Reconciler
         Union $existing_var_type,
         array $existing_var_atomic_types,
         TLiteralFloat $assertion_type,
-        bool $is_loose_equality
+        bool $is_loose_equality,
     ): ?Union {
         foreach ($existing_var_atomic_types as $existing_var_atomic_type) {
             if ($existing_var_atomic_type instanceof TMixed
@@ -1493,7 +1515,7 @@ class AssertionReconciler extends Reconciler
         ?CodeLocation $code_location,
         ?string $key,
         array $suppressed_issues,
-        bool &$should_return
+        bool &$should_return,
     ): array {
         $allow_string_comparison = $assertion->allow_string;
 
@@ -1524,7 +1546,7 @@ class AssertionReconciler extends Reconciler
             if ($assertion_type instanceof TTemplateParamClass) {
                 return [new TTemplateParam(
                     $assertion_type->param_name,
-                    new Union([$assertion_type->as_type ? $assertion_type->as_type : new TObject()]),
+                    new Union([$assertion_type->as_type ?: new TObject()]),
                     $assertion_type->defining_class,
                 )];
             }

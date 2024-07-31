@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Psalm\Type;
 
 use InvalidArgumentException;
@@ -11,14 +13,13 @@ use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeAlias;
 use Psalm\Internal\Type\TypeAlias\LinkableTypeAlias;
 use Psalm\Internal\TypeVisitor\ClasslikeReplacer;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TCallable;
-use Psalm\Type\Atomic\TCallableArray;
 use Psalm\Type\Atomic\TCallableKeyedArray;
-use Psalm\Type\Atomic\TCallableList;
 use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TCallableString;
 use Psalm\Type\Atomic\TClassString;
@@ -36,7 +37,6 @@ use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyedArray;
-use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -67,24 +67,30 @@ use Psalm\Type\Atomic\TTraitString;
 use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Atomic\TTypeAlias;
 use Psalm\Type\Atomic\TVoid;
+use Stringable;
 
 use function array_filter;
 use function array_keys;
 use function count;
-use function get_class;
 use function is_array;
 use function is_numeric;
+use function str_starts_with;
 use function strpos;
 use function strtolower;
 
 /**
  * @psalm-immutable
  */
-abstract class Atomic implements TypeNode
+abstract class Atomic implements TypeNode, Stringable
 {
-    public function __construct(bool $from_docblock = false)
-    {
-        $this->from_docblock = $from_docblock;
+    use UnserializeMemoryUsageSuppressionTrait;
+
+    public function __construct(
+        /**
+         * Whether or not the type comes from a docblock
+         */
+        public bool $from_docblock = false,
+    ) {
     }
     protected function __clone()
     {
@@ -92,32 +98,14 @@ abstract class Atomic implements TypeNode
 
     /**
      * Whether or not the type has been checked yet
-     *
-     * @var bool
      */
-    public $checked = false;
+    public bool $checked = false;
 
-    /**
-     * Whether or not the type comes from a docblock
-     *
-     * @var bool
-     */
-    public $from_docblock = false;
+    public ?int $offset_start = null;
 
-    /**
-     * @var ?int
-     */
-    public $offset_start;
+    public ?int $offset_end = null;
 
-    /**
-     * @var ?int
-     */
-    public $offset_end;
-
-    /**
-     * @var ?string
-     */
-    public $text;
+    public ?string $text = null;
 
     /**
      * @return static
@@ -160,7 +148,7 @@ abstract class Atomic implements TypeNode
         ?int   $offset_start = null,
         ?int   $offset_end = null,
         ?string $text = null,
-        bool    $from_docblock = false
+        bool    $from_docblock = false,
     ): Atomic {
         $result = self::createInner(
             $value,
@@ -186,7 +174,7 @@ abstract class Atomic implements TypeNode
         ?int   $analysis_php_version_id = null,
         array  $template_type_map = [],
         array  $type_aliases = [],
-        bool   $from_docblock = false
+        bool   $from_docblock = false,
     ): Atomic {
         switch ($value) {
             case 'int':
@@ -260,9 +248,19 @@ abstract class Atomic implements TypeNode
                 ]);
 
             case 'callable-array':
-                return new TCallableArray([
-                    new Union([new TArrayKey($from_docblock)]),
-                    new Union([new TMixed(false, $from_docblock)]),
+                $classString = new TClassString(
+                    'object',
+                    null,
+                    false,
+                    false,
+                    false,
+                    true,
+                );
+                $object = new TObject(true);
+                $string = new TNonEmptyString(true);
+                return new TCallableKeyedArray([
+                    new Union([$classString, $object]),
+                    new Union([$string]),
                 ]);
 
             case 'list':
@@ -323,7 +321,7 @@ abstract class Atomic implements TypeNode
                 return $analysis_php_version_id !== null ? new TNamedObject($value) : new TScalar();
 
             case 'null':
-                if ($analysis_php_version_id === null || $analysis_php_version_id >= 8_00_00) {
+                if ($analysis_php_version_id === null || $analysis_php_version_id >= 7_00_00) {
                     return new TNull();
                 }
 
@@ -389,7 +387,7 @@ abstract class Atomic implements TypeNode
                 return new TClosure('Closure');
         }
 
-        if (strpos($value, '-') && strpos($value, 'OCI-') !== 0) {
+        if (strpos($value, '-') && !str_starts_with($value, 'OCI-')) {
             throw new TypeParseTreeException('Unrecognized type ' . $value);
         }
 
@@ -450,7 +448,7 @@ abstract class Atomic implements TypeNode
                 && ($this->as->hasNamedObjectType()
                     || array_filter(
                         $this->extra_types,
-                        static fn($extra_type): bool => $extra_type->isNamedObjectType()
+                        static fn($extra_type): bool => $extra_type->isNamedObjectType(),
                     )
                 )
             );
@@ -461,8 +459,6 @@ abstract class Atomic implements TypeNode
         return $this instanceof TCallable
             || $this instanceof TCallableObject
             || $this instanceof TCallableString
-            || $this instanceof TCallableArray
-            || $this instanceof TCallableList
             || $this instanceof TCallableKeyedArray
             || $this instanceof TClosure;
     }
@@ -472,7 +468,6 @@ abstract class Atomic implements TypeNode
         return $this instanceof TIterable
             || $this->hasTraversableInterface($codebase)
             || $this instanceof TArray
-            || $this instanceof TList
             || $this instanceof TKeyedArray;
     }
 
@@ -518,8 +513,7 @@ abstract class Atomic implements TypeNode
     {
         return $this->hasCountableInterface($codebase)
             || $this instanceof TArray
-            || $this instanceof TKeyedArray
-            || $this instanceof TList;
+            || $this instanceof TKeyedArray;
     }
 
     /**
@@ -542,7 +536,7 @@ abstract class Atomic implements TypeNode
                     $this->extra_types
                     && array_filter(
                         $this->extra_types,
-                        static fn(Atomic $a): bool => $a->hasTraversableInterface($codebase)
+                        static fn(Atomic $a): bool => $a->hasTraversableInterface($codebase),
                     )
                 )
             );
@@ -565,7 +559,7 @@ abstract class Atomic implements TypeNode
                     $this->extra_types
                     && array_filter(
                         $this->extra_types,
-                        static fn(Atomic $a): bool => $a->hasCountableInterface($codebase)
+                        static fn(Atomic $a): bool => $a->hasCountableInterface($codebase),
                     )
                 )
             );
@@ -603,7 +597,7 @@ abstract class Atomic implements TypeNode
                     $this->extra_types
                     && array_filter(
                         $this->extra_types,
-                        static fn(Atomic $a): bool => $a->hasArrayAccessInterface($codebase)
+                        static fn(Atomic $a): bool => $a->hasArrayAccessInterface($codebase),
                     )
                 )
             );
@@ -723,7 +717,7 @@ abstract class Atomic implements TypeNode
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format
+        bool $use_phpdoc_format,
     ): string {
         return $this->getKey();
     }
@@ -738,7 +732,7 @@ abstract class Atomic implements TypeNode
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id
+        int $analysis_php_version_id,
     ): ?string;
 
     abstract public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool;
@@ -756,7 +750,7 @@ abstract class Atomic implements TypeNode
         ?string $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        int $depth = 0
+        int $depth = 0,
     ): self {
         // do nothing
         return $this;
@@ -767,7 +761,7 @@ abstract class Atomic implements TypeNode
      */
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
-        ?Codebase $codebase
+        ?Codebase $codebase,
     ): self {
         // do nothing
         return $this;
@@ -775,7 +769,7 @@ abstract class Atomic implements TypeNode
 
     public function equals(Atomic $other_type, bool $ensure_source_equality): bool
     {
-        return get_class($other_type) === get_class($this);
+        return $other_type::class === static::class;
     }
 
     public function isTruthy(): bool

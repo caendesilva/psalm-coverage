@@ -11,6 +11,13 @@ declare(strict_types=1);
 //
 // What we are currently missing is properly parsing of <xi:include> directives.
 
+use PhpParser\Lexer\Emulative;
+use PhpParser\Node\Stmt\Class_;
+use PhpParser\Node\Stmt\Namespace_;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\NameResolver;
+use PhpParser\ParserFactory;
+
 set_error_handler(function ($num, $str, $file, $line, $context = null): void {
     throw new ErrorException($str, 0, $num, $file, $line);
 });
@@ -22,22 +29,22 @@ foreach ([__DIR__ . '/../../../autoload.php', __DIR__ . '/../vendor/autoload.php
     }
 }
 
-$lexer = new PhpParser\Lexer\Emulative();
-$parser = (new PhpParser\ParserFactory)->create(
-    PhpParser\ParserFactory::PREFER_PHP7,
+$lexer = new Emulative();
+$parser = (new ParserFactory)->create(
+    ParserFactory::PREFER_PHP7,
     $lexer,
 );
-$traverser = new PhpParser\NodeTraverser();
-$traverser->addVisitor(new PhpParser\NodeVisitor\NameResolver);
+$traverser = new NodeTraverser();
+$traverser->addVisitor(new NameResolver);
 
 function extractClassesFromStatements(array $statements): array
 {
     $classes = [];
     foreach ($statements as $statement) {
-        if ($statement instanceof PhpParser\Node\Stmt\Class_) {
+        if ($statement instanceof Class_) {
             $classes[strtolower($statement->namespacedName->toString())] = true;
         }
-        if ($statement instanceof PhpParser\Node\Stmt\Namespace_) {
+        if ($statement instanceof Namespace_) {
             $classes += extractClassesFromStatements($statement->stmts);
         }
     }
@@ -86,9 +93,9 @@ libxml_use_internal_errors(true);
 foreach ($files as $file) {
     $contents = file_get_contents($file);
     // FIXME: find a way to ignore custom entities, for now we strip them.
-    $contents = preg_replace('#&[a-zA-Z\d.\-_]+;#', '', $contents);
-    $contents = preg_replace('#%[a-zA-Z\d.\-_]+;#', '', $contents);
-    $contents = preg_replace('#<!ENTITY[^>]+>#', '', $contents);
+    $contents = (string) preg_replace('#&[a-zA-Z\d.\-_]+;#', '', $contents);
+    $contents = (string) preg_replace('#%[a-zA-Z\d.\-_]+;#', '', $contents);
+    $contents = (string) preg_replace('#<!ENTITY[^>]+>#', '', $contents);
     try {
         $simple = new SimpleXMLElement($contents);
     } catch (Throwable $exception) {
