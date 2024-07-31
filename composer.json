@@ -1,5 +1,5 @@
 {
-    "name": "vimeo/psalm",
+    "name": "desilva/psalm-coverage",
     "type": "library",
     "description": "A static analysis tool for finding errors in PHP applications",
     "keywords": [
@@ -15,7 +15,7 @@
         }
     ],
     "require": {
-        "php": "~8.1 || ~8.2.4 || ~8.3.0",
+        "php": "~8.1.17 || ~8.2.4 || ~8.3.0",
         "ext-SimpleXML": "*",
         "ext-ctype": "*",
         "ext-dom": "*",
