@@ -1,6 +1,6 @@
 {
-    "name": "desilva/psalm-coverage",
-    "type": "library",
+    "name": "vimeo/psalm",
+    "type": "project",
     "description": "A static analysis tool for finding errors in PHP applications",
     "keywords": [
         "php",
