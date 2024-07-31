@@ -1300,7 +1300,10 @@ final class Analyzer
             $percentage = $nonmixed_count === $total ? '100' : number_format(100 * $nonmixed_count / $total, 4);
             $lines[] = 'Psalm was able to infer types for ' . $percentage . '%'
                 . ' of the codebase';
+
             
+            // parse percentage as float
+            $percentage = (float) $percentage;
             TypeCoverage::setCoverage($percentage);
         }
 
