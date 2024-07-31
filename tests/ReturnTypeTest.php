@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -31,7 +29,7 @@ class ReturnTypeTest extends TestCase
                     $result = ret();
                 ',
                 'assertions' => [
-                    '$result===' => 'list{0?: 0|a, 1?: 0|a, ...<a>}',
+                    '$result===' => 'list{0?: 0|a, 1?: 0|a, ...<int<0, max>, a>}',
                 ],
             ],
             'arrayCombineInv' => [
@@ -48,7 +46,7 @@ class ReturnTypeTest extends TestCase
                     $result = ret();
                 ',
                 'assertions' => [
-                    '$result===' => 'list{0?: 0|a, 1?: 0|a, ...<a>}',
+                    '$result===' => 'list{0?: 0|a, 1?: 0|a, ...<int<0, max>, a>}',
                 ],
             ],
             'arrayCombine2' => [
@@ -102,8 +100,6 @@ class ReturnTypeTest extends TestCase
                             return $str;
                         }
                     }',
-                'assertions' => [],
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
             ],
             'returnTypeNotEmptyCheckInElseIf' => [
                 'code' => '<?php
@@ -122,8 +118,6 @@ class ReturnTypeTest extends TestCase
                             return $str;
                         }
                     }',
-                'assertions' => [],
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
             ],
             'returnTypeNotEmptyCheckInElse' => [
                 'code' => '<?php
@@ -142,8 +136,6 @@ class ReturnTypeTest extends TestCase
                             return $str;
                         }
                     }',
-                'assertions' => [],
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
             ],
             'returnTypeAfterIf' => [
                 'code' => '<?php
@@ -1235,112 +1227,6 @@ class ReturnTypeTest extends TestCase
                 'ignored_issues' => [],
                 'php_version' => '8.2',
             ],
-            'returnListMixedVsListStringIsAMixedError' => [
-                'code' => '<?php
-
-                    /**
-                     * @psalm-suppress MixedReturnTypeCoercion
-                     * @return list<string>
-                     */
-                    function foo(){
-                        /**
-                         * @var list<mixed>
-                         * @psalm-suppress MixedReturnTypeCoercion
-                         */
-                        return [];
-                    }
-                    ',
-            ],
-            'MixedErrorInArrayShouldBeReportedAsMixedError' => [
-                'code' => '<?php
-                    /**
-                     * @param mixed $configuration
-                     * @return array{a?: string, b?: int}
-                     * @psalm-suppress MixedReturnTypeCoercion
-                     */
-                    function produceParameters(array $configuration): array
-                    {
-                        $parameters = [];
-
-                        foreach (["a", "b"] as $parameter) {
-                            /** @psalm-suppress MixedAssignment */
-                            $parameters[$parameter] = $configuration;
-                        }
-
-                        /** @psalm-suppress MixedReturnTypeCoercion */
-                        return $parameters;
-                    }
-                    ',
-            ],
-            'NewFromTemplateObject' => [
-                'code' => '<?php
-                    /** @psalm-consistent-constructor */
-                    class AggregateResult {}
-
-                    /**
-                     * @template T as AggregateResult
-                     * @param T $type
-                     * @return T
-                     */
-                    function aggregate($type) {
-                        $t = new $type;
-                        return $t;
-                    }',
-            ],
-            'returnByReferenceVariableInStaticMethod' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        private static string $foo = "foo";
-
-                        public static function &foo(): string {
-                            return self::$foo;
-                        }
-                    }
-                    PHP,
-            ],
-            'returnByReferenceVariableInInstanceMethod' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        private float $foo = 3.3;
-
-                        public function &foo(): float {
-                            return $this->foo;
-                        }
-                    }
-                    PHP,
-            ],
-            'returnByReferenceVariableInFunction' => [
-                'code' => <<<'PHP'
-                    <?php
-                    function &foo(): array {
-                        /** @var array $x */
-                        static $x = [1, 2, 3];
-                        return $x;
-                    }
-                    PHP,
-            ],
-            'neverReturnType' => [
-                'code' => '<?php
-                    function exitProgram(bool $die): never
-                    {
-                        if ($die) {
-                            die;
-                        }
-
-                        exit;
-                    }
-
-                    function throwError(): never
-                    {
-                        throw new Exception();
-                    }
-                ',
-                'assertions' => [],
-                'ignored_issues' => [],
-                'php_version' => '8.1',
-            ],
         ];
     }
 
@@ -1386,12 +1272,28 @@ class ReturnTypeTest extends TestCase
                     }',
                 'error_message' => 'MissingReturnType',
             ],
+            'mixedInferredReturnType' => [
+                'code' => '<?php
+                    function fooFoo(array $arr): string {
+                        /** @psalm-suppress MixedReturnStatement */
+                        return array_pop($arr);
+                    }',
+                'error_message' => 'MixedInferredReturnType',
+            ],
             'mixedInferredReturnStatement' => [
                 'code' => '<?php
                     function fooFoo(array $arr): string {
                         return array_pop($arr);
                     }',
                 'error_message' => 'MixedReturnStatement',
+            ],
+            'invalidReturnTypeClass' => [
+                'code' => '<?php
+                    function fooFoo(): A {
+                        return new A;
+                    }',
+                'error_message' => 'UndefinedClass',
+                'ignored_issues' => ['MixedInferredReturnType'],
             ],
             'invalidClassOnCall' => [
                 'code' => '<?php
@@ -1404,7 +1306,7 @@ class ReturnTypeTest extends TestCase
 
                     fooFoo()->bar();',
                 'error_message' => 'UndefinedClass',
-                'ignored_issues' => ['MixedReturnStatement'],
+                'ignored_issues' => ['MixedInferredReturnType', 'MixedReturnStatement'],
             ],
             'returnArrayOfNullableInvalid' => [
                 'code' => '<?php
@@ -1818,112 +1720,6 @@ class ReturnTypeTest extends TestCase
                         }
                     }',
                 'error_message' => 'InvalidClass',
-            ],
-            'listItems' => [
-                'code' => <<<'PHP'
-                    <?php
-
-                    /** @return list<int> */
-                    function f(): array
-                    {
-                        return[ 1, new stdClass, "zzz"];
-                    }
-                    PHP,
-                'error_message' => 'InvalidReturnStatement',
-            ],
-            'invalidReturnStatementDetectedInOverriddenMethod' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /** @template T */
-                    interface I
-                    {
-                        /** @return T */
-                        public function process(): mixed;
-                    }
-                    /** @implements I<int> */
-                    final class B implements I
-                    {
-                        public function process(): mixed
-                        {
-                            return '';
-                        }
-                    }
-                    PHP,
-                'error_message' => 'InvalidReturnStatement',
-                'ignored_issues' => [],
-                'php_version' => '8.0',
-            ],
-            'returnByReferenceNonVariableInStaticMethod' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        public static function &foo(string $x): string {
-                            return $x . "bar";
-                        }
-                    }
-                    PHP,
-                'error_message' => 'NonVariableReferenceReturn',
-            ],
-            'returnByReferenceNonVariableInInstanceMethod' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        public function &foo(): iterable {
-                            return [] + [1, 2];
-                        }
-                    }
-                    PHP,
-                'error_message' => 'NonVariableReferenceReturn',
-            ],
-            'returnByReferenceNonVariableInFunction' => [
-                'code' => <<<'PHP'
-                    <?php
-                    function &foo(): array {
-                        return [1, 2, 3];
-                    }
-                    PHP,
-                'error_message' => 'NonVariableReferenceReturn',
-            ],
-            'implicitReturnFromFunctionWithNeverReturnType' => [
-                'code' => <<<'PHP'
-                    <?php
-                    function foo(): never
-                    {
-                        if (rand(0, 1)) {
-                            exit();
-                        }
-                    }
-                    PHP,
-                'error_message' => 'InvalidReturnType',
-                'ignored_issues' => [],
-                'php_version' => '8.1',
-            ],
-            'implicitReturnFromFunctionWithNeverReturnType2' => [
-                'code' => <<<'PHP'
-                    <?php
-                    function foo(bool $x): never
-                    {
-                        while (true) {
-                            if ($x) {
-                                break;
-                            }
-                        }
-                    }
-                    PHP,
-                'error_message' => 'InvalidReturnType',
-                'ignored_issues' => [],
-                'php_version' => '8.1',
-            ],
-            'constructorsShouldReturnVoid' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class A {
-                        public function __construct() {
-                            return 5;
-                        }
-                    }
-                    PHP,
-                'error_message' => 'InvalidReturnStatement',
             ],
         ];
     }

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\Loop;
 
 use Psalm\Tests\TestCase;
@@ -143,7 +141,7 @@ class ForTest extends TestCase
                      * @param list<int> $arr
                      */
                     function cartesianProduct(array $arr) : void {
-                        for ($i = 20; $i > 0 && $arr[$i] === 5 ; $i--) {}
+                        for ($i = 20; $arr[$i] === 5 && $i > 0; $i--) {}
                     }',
             ],
             'noCrashOnLongThing' => [

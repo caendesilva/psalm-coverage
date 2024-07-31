@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\SourceControl\Git;
 
 /**
@@ -13,13 +11,17 @@ final class RemoteInfo
 {
     /**
      * Remote name.
+     *
+     * @var null|string
      */
-    private ?string $name = null;
+    protected $name;
 
     /**
      * Remote URL.
+     *
+     * @var null|string
      */
-    private ?string $url = null;
+    protected $url;
 
     public function toArray(): array
     {

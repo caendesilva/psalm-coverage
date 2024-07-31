@@ -29,7 +29,6 @@ Lastly, working to improve static analysis tools will also make you a better PHP
 ### Guides
 
 * [Editing callmaps](editing_callmaps.md)
-* [Adding a new issue type](adding_issues.md)
 
 ## Pull Requests
 

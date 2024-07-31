@@ -17,7 +17,6 @@
 return [
   'added' => [
     'ReflectionProperty::getType' => ['?ReflectionType'],
-    'ReflectionProperty::isInitialized' => ['bool', 'object'=>'object'],
     'mb_str_split' => ['list<string>|false', 'string'=>'string', 'length='=>'positive-int', 'encoding='=>'string'],
     'openssl_x509_verify' => ['int', 'certificate'=>'string|resource', 'public_key'=>'string|array|resource'],
   ],
@@ -26,21 +25,13 @@ return [
       'old' => ['?string', 'languageTag'=>'array', 'locale'=>'string', 'canonicalize='=>'bool', 'defaultLocale='=>'string'],
       'new' => ['?string', 'languageTag'=>'array', 'locale'=>'string', 'canonicalize='=>'bool', 'defaultLocale='=>'?string'],
     ],
-    'SplFileObject::fwrite' => [
-      'old' => ['int', 'data'=>'string', 'length='=>'int'],
-      'new' => ['int|false', 'data'=>'string', 'length='=>'int'],
-    ],
-    'SplTempFileObject::fwrite' => [
-      'old' => ['int', 'data'=>'string', 'length='=>'int'],
-      'new' => ['int|false', 'data'=>'string', 'length='=>'int'],
-    ],
     'array_merge' => [
-      'old' => ['array', '...arrays'=>'array'],
-      'new' => ['array', '...arrays='=>'array'],
+        'old' => ['array', '...arrays'=>'array'],
+        'new' => ['array', '...arrays='=>'array'],
     ],
     'array_merge_recursive' => [
-      'old' => ['array', '...arrays'=>'array'],
-      'new' => ['array', '...arrays='=>'array'],
+        'old' => ['array', '...arrays'=>'array'],
+        'new' => ['array', '...arrays='=>'array'],
     ],
     'gzread' => [
       'old' => ['string|0', 'stream'=>'resource', 'length'=>'int'],

@@ -1,11 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Report;
 
 use Psalm\Config;
-use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Report;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -34,7 +31,7 @@ final class CompactReport extends Report
 
         $output = [];
         foreach ($this->issues_data as $i => $issue_data) {
-            if (!$this->show_info && $issue_data->severity === IssueData::SEVERITY_INFO) {
+            if (!$this->show_info && $issue_data->severity === Config::REPORT_INFO) {
                 continue;
             }
 

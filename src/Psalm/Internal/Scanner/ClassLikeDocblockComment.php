@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Scanner;
 
 use PhpParser\Node\Stmt\ClassMethod;
@@ -9,7 +7,7 @@ use PhpParser\Node\Stmt\ClassMethod;
 /**
  * @internal
  */
-final class ClassLikeDocblockComment
+class ClassLikeDocblockComment
 {
     /**
      * Whether or not the class is deprecated
@@ -65,9 +63,9 @@ final class ClassLikeDocblockComment
      */
     public array $methods = [];
 
-    public ?bool $sealed_properties = null;
+    public bool $sealed_properties = false;
 
-    public ?bool $sealed_methods = null;
+    public bool $sealed_methods = false;
 
     public bool $override_property_visibility = false;
 
@@ -88,8 +86,6 @@ final class ClassLikeDocblockComment
      * @var list<array{line_number:int,start_offset:int,end_offset:int,parts:list<string>}>
      */
     public array $imported_types = [];
-
-    public ?string $inheritors = null;
 
     public bool $consistent_constructor = false;
 

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use DOMDocument;
@@ -23,7 +21,8 @@ class ErrorBaselineTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
 
-    private MockInterface $fileProvider;
+    /** @var FileProvider&MockInterface */
+    private $fileProvider;
 
     public function setUp(): void
     {
@@ -44,6 +43,7 @@ class ErrorBaselineTest extends TestCase
                   <code>foo</code>
                   <code>bar</code>
                 </MixedAssignment>
+                <InvalidReturnStatement occurrences="1"/>
               </file>
               <file src="sample\sample-file2.php">
                 <PossiblyUnusedMethod>
@@ -57,6 +57,7 @@ class ErrorBaselineTest extends TestCase
         $expectedParsedBaseline = [
             'sample/sample-file.php' => [
                 'MixedAssignment' => ['o' => 2, 's' => ['foo', 'bar']],
+                'InvalidReturnStatement' => ['o' => 1, 's' => []],
             ],
             'sample/sample-file2.php' => [
                 'PossiblyUnusedMethod' => ['o' => 2, 's' => ['foo', 'bar']],
@@ -88,37 +89,6 @@ class ErrorBaselineTest extends TestCase
         $expectedParsedBaseline = [
             'sample/sample-file.php' => [
                 'MixedAssignment' => ['o' => 1, 's' => ['foo']],
-            ],
-        ];
-
-        $this->assertSame(
-            $expectedParsedBaseline,
-            ErrorBaseline::read($this->fileProvider, $baselineFilePath),
-        );
-    }
-
-    public function testShouldIgnoreCarriageReturnInMultilineSnippets(): void
-    {
-        $baselineFilePath = 'baseline.xml';
-
-        $this->fileProvider->allows()->fileExists($baselineFilePath)->andReturns(true);
-        $this->fileProvider->allows()->getContents($baselineFilePath)->andReturns(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-            <files>
-              <file src=\"sample/sample-file.php\">
-                <MixedAssignment>
-                  <code>
-foo&#13;
-bar&#13;
-                  </code>
-                </MixedAssignment>
-              </file>
-            </files>",
-        );
-
-        $expectedParsedBaseline = [
-            'sample/sample-file.php' => [
-                'MixedAssignment' => ['o' => 1, 's' => ["foo\nbar"]],
             ],
         ];
 
@@ -186,7 +156,7 @@ bar&#13;
             [
                 'sample/sample-file.php' => [
                     new IssueData(
-                        IssueData::SEVERITY_ERROR,
+                        'error',
                         0,
                         0,
                         'MixedAssignment',
@@ -203,7 +173,7 @@ bar&#13;
                         0,
                     ),
                     new IssueData(
-                        IssueData::SEVERITY_ERROR,
+                        'error',
                         0,
                         0,
                         'MixedAssignment',
@@ -220,7 +190,7 @@ bar&#13;
                         0,
                     ),
                     new IssueData(
-                        IssueData::SEVERITY_ERROR,
+                        'error',
                         0,
                         0,
                         'MixedAssignment',
@@ -237,7 +207,7 @@ bar&#13;
                         0,
                     ),
                     new IssueData(
-                        IssueData::SEVERITY_ERROR,
+                        'error',
                         0,
                         0,
                         'MixedOperand',
@@ -273,7 +243,7 @@ bar&#13;
                 ],
                 'sample/sample-file2.php' => [
                     new IssueData(
-                        IssueData::SEVERITY_ERROR,
+                        'error',
                         0,
                         0,
                         'MixedAssignment',
@@ -290,7 +260,7 @@ bar&#13;
                         0,
                     ),
                     new IssueData(
-                        IssueData::SEVERITY_ERROR,
+                        'error',
                         0,
                         0,
                         'MixedAssignment',
@@ -307,7 +277,7 @@ bar&#13;
                         0,
                     ),
                     new IssueData(
-                        IssueData::SEVERITY_ERROR,
+                        'error',
                         0,
                         0,
                         'TypeCoercion',
@@ -392,18 +362,11 @@ bar&#13;
                     <code>bar</code>
                     <code>bat</code>
                 </MixedAssignment>
-                <MixedOperand>
-                    <code>Test</code>
-                </MixedOperand>
+                <MixedOperand occurrences="1"/>
               </file>
               <file src="sample/sample-file2.php">
-                <MixedAssignment>
-                    <code>bar</code>
-                    <code>baz</code>
-                </MixedAssignment>
-                <TypeCoercion>
-                    <code>bar</code>
-                </TypeCoercion>
+                <MixedAssignment occurrences="2"/>
+                <TypeCoercion occurrences="1"/>
               </file>
               <file src="sample/sample-file3.php">
                 <MixedAssignment occurrences="1"/>
@@ -416,7 +379,7 @@ bar&#13;
         $newIssues = [
             'sample/sample-file.php' => [
                 new IssueData(
-                    IssueData::SEVERITY_ERROR,
+                    'error',
                     0,
                     0,
                     'MixedAssignment',
@@ -433,7 +396,7 @@ bar&#13;
                     0,
                 ),
                 new IssueData(
-                    IssueData::SEVERITY_ERROR,
+                    'error',
                     0,
                     0,
                     'MixedAssignment',
@@ -450,7 +413,7 @@ bar&#13;
                     0,
                 ),
                 new IssueData(
-                    IssueData::SEVERITY_ERROR,
+                    'error',
                     0,
                     0,
                     'MixedOperand',
@@ -467,7 +430,7 @@ bar&#13;
                     0,
                 ),
                 new IssueData(
-                    IssueData::SEVERITY_ERROR,
+                    'error',
                     0,
                     0,
                     'MixedOperand',
@@ -486,7 +449,7 @@ bar&#13;
             ],
             'sample/sample-file2.php' => [
                 new IssueData(
-                    IssueData::SEVERITY_ERROR,
+                    'error',
                     0,
                     0,
                     'TypeCoercion',
@@ -537,6 +500,7 @@ bar&#13;
                   <code>foo</code>
                   <code>bar</code>
                 </MixedAssignment>
+                <InvalidReturnStatement occurrences="1"/>
               </file>
               <!-- And another one ! //-->
               <file src="sample\sample-file2.php">
@@ -551,6 +515,7 @@ bar&#13;
         $expectedParsedBaseline = [
             'sample/sample-file.php' => [
                 'MixedAssignment' => ['o' => 2, 's' => ['foo', 'bar']],
+                'InvalidReturnStatement' => ['o' => 1, 's' => []],
             ],
             'sample/sample-file2.php' => [
                 'PossiblyUnusedMethod' => ['o' => 2, 's' => ['foo', 'bar']],

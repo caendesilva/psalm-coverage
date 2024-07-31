@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
 use PhpParser;
@@ -23,7 +21,6 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Scope\LoopScope;
-use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ImpureMethodCall;
@@ -39,16 +36,15 @@ use Psalm\Issue\UnnecessaryVarAnnotation;
 use Psalm\IssueBuffer;
 use Psalm\Node\Expr\VirtualMethodCall;
 use Psalm\Node\VirtualIdentifier;
-use Psalm\Storage\Assertion;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
 use Psalm\Type\Atomic\TArray;
-use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TGenericObject;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNever;
@@ -63,6 +59,7 @@ use UnexpectedValueException;
 
 use function array_keys;
 use function array_map;
+use function array_merge;
 use function array_search;
 use function array_values;
 use function assert;
@@ -74,7 +71,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class ForeachAnalyzer
+class ForeachAnalyzer
 {
     /**
      * @return  false|null
@@ -82,7 +79,7 @@ final class ForeachAnalyzer
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt\Foreach_ $stmt,
-        Context $context,
+        Context $context
     ): ?bool {
         $var_comments = [];
 
@@ -191,7 +188,7 @@ final class ForeachAnalyzer
                     && $type_location
                     && isset($context->vars_in_scope[$var_comment->var_id])
                     && $context->vars_in_scope[$var_comment->var_id]->getId() === $comment_type->getId()
-                    && !$comment_type->isMixed(true)
+                    && !$comment_type->isMixed()
                 ) {
                     $project_analyzer = $statements_analyzer->getProjectAnalyzer();
 
@@ -267,17 +264,8 @@ final class ForeachAnalyzer
 
         $foreach_context = clone $context;
 
-        if ($var_id && $foreach_context->hasVariable($var_id)) {
-            // refine the type of the array variable we iterate over
-            // if we entered loop body, the array cannot be empty
-            $foreach_context->vars_in_scope[$var_id] = AssertionReconciler::reconcile(
-                new Assertion\NonEmpty(),
-                $foreach_context->vars_in_scope[$var_id],
-                null,
-                $statements_analyzer,
-                true, // inside loop ?
-                $statements_analyzer->getTemplateTypeMap() ?? [],
-            );
+        foreach ($foreach_context->vars_in_scope as $context_var_id => $context_type) {
+            $foreach_context->vars_in_scope[$context_var_id] = $context_type;
         }
 
         $foreach_context->inside_loop = true;
@@ -385,10 +373,10 @@ final class ForeachAnalyzer
 
         $foreach_context->loop_scope = null;
 
-        $context->vars_possibly_in_scope = [
-            ...$foreach_context->vars_possibly_in_scope,
-            ...$context->vars_possibly_in_scope,
-        ];
+        $context->vars_possibly_in_scope = array_merge(
+            $foreach_context->vars_possibly_in_scope,
+            $context->vars_possibly_in_scope,
+        );
 
         if ($context->collect_exceptions) {
             $context->mergeExceptions($foreach_context);
@@ -410,7 +398,7 @@ final class ForeachAnalyzer
         Context $context,
         ?Union &$key_type,
         ?Union &$value_type,
-        bool &$always_non_empty_array,
+        bool &$always_non_empty_array
     ): ?bool {
         if ($iterator_type->isNull()) {
             IssueBuffer::maybeAdd(
@@ -472,13 +460,18 @@ final class ForeachAnalyzer
 
             if ($iterator_atomic_type instanceof TArray
                 || $iterator_atomic_type instanceof TKeyedArray
+                || $iterator_atomic_type instanceof TList
             ) {
+                if ($iterator_atomic_type instanceof TList) {
+                    $iterator_atomic_type = $iterator_atomic_type->getKeyedArray();
+                }
                 if ($iterator_atomic_type instanceof TKeyedArray) {
                     if (!$iterator_atomic_type->isNonEmpty()) {
                         $always_non_empty_array = false;
                     }
 
                     $iterator_atomic_type = $iterator_atomic_type->getGenericArrayType(
+                        true,
                         ExpressionIdentifier::getExtendedVarId(
                             $expr,
                             $statements_analyzer->getFQCLN(),
@@ -548,10 +541,10 @@ final class ForeachAnalyzer
                 }
             } elseif ($iterator_atomic_type instanceof TIterable) {
                 if ($iterator_atomic_type->extra_types) {
-                    $iterator_atomic_types = [
-                        $iterator_atomic_type->setIntersectionTypes([]),
-                        ...$iterator_atomic_type->extra_types,
-                    ];
+                    $iterator_atomic_types = array_merge(
+                        [$iterator_atomic_type->setIntersectionTypes([])],
+                        $iterator_atomic_type->extra_types,
+                    );
                 } else {
                     $iterator_atomic_types = [$iterator_atomic_type];
                 }
@@ -652,7 +645,6 @@ final class ForeachAnalyzer
                         $key_type,
                         $value_type,
                         $has_valid_iterator,
-                        $invalid_iterator_types,
                     );
                 } else {
                     $raw_object_types[] = $iterator_atomic_type->value;
@@ -721,7 +713,6 @@ final class ForeachAnalyzer
         return null;
     }
 
-    /** @param list<string> $invalid_iterator_types */
     public static function handleIterable(
         StatementsAnalyzer $statements_analyzer,
         TNamedObject $iterator_atomic_type,
@@ -730,14 +721,13 @@ final class ForeachAnalyzer
         Context $context,
         ?Union &$key_type,
         ?Union &$value_type,
-        bool &$has_valid_iterator,
-        array &$invalid_iterator_types = [],
+        bool &$has_valid_iterator
     ): void {
         if ($iterator_atomic_type->extra_types) {
-            $iterator_atomic_types = [
-                $iterator_atomic_type->setIntersectionTypes([]),
-                ...$iterator_atomic_type->extra_types,
-            ];
+            $iterator_atomic_types = array_merge(
+                [$iterator_atomic_type->setIntersectionTypes([])],
+                $iterator_atomic_type->extra_types,
+            );
         } else {
             $iterator_atomic_types = [$iterator_atomic_type];
         }
@@ -745,9 +735,25 @@ final class ForeachAnalyzer
         foreach ($iterator_atomic_types as $iterator_atomic_type) {
             if ($iterator_atomic_type instanceof TTemplateParam
                 || $iterator_atomic_type instanceof TObjectWithProperties
-                || $iterator_atomic_type instanceof TCallableObject
             ) {
                 throw new UnexpectedValueException('Shouldn’t get a generic param here');
+            }
+
+
+            $has_valid_iterator = true;
+
+            if ($iterator_atomic_type instanceof TNamedObject
+                && strtolower($iterator_atomic_type->value) === 'simplexmlelement'
+            ) {
+                $value_type = Type::combineUnionTypes(
+                    $value_type,
+                    new Union([$iterator_atomic_type]),
+                );
+
+                $key_type = Type::combineUnionTypes(
+                    $key_type,
+                    Type::getString(),
+                );
             }
 
             if ($iterator_atomic_type instanceof TIterable
@@ -776,8 +782,6 @@ final class ForeachAnalyzer
                         )
                     )
                 ) {
-                    $has_valid_iterator = true;
-
                     $old_data_provider = $statements_analyzer->node_data;
 
                     $statements_analyzer->node_data = clone $statements_analyzer->node_data;
@@ -864,7 +868,6 @@ final class ForeachAnalyzer
                                             $key_type,
                                             $value_type,
                                             $has_valid_iterator,
-                                            $invalid_iterator_types,
                                         );
 
                                         continue;
@@ -897,51 +900,6 @@ final class ForeachAnalyzer
                             $value_type = Type::combineUnionTypes($value_type, $value_type_part);
                         }
                     }
-                } elseif ($iterator_atomic_type instanceof TGenericObject
-                    && strtolower($iterator_atomic_type->value) === 'generator'
-                ) {
-                    $type_params = $iterator_atomic_type->type_params;
-                    if (isset($type_params[2]) && !$type_params[2]->isNullable() && !$type_params[2]->isMixed()) {
-                        $invalid_iterator_types[] = $iterator_atomic_type->getKey();
-                    } else {
-                        $has_valid_iterator = true;
-                    }
-
-                    $iterator_value_type = self::getFakeMethodCallType(
-                        $statements_analyzer,
-                        $foreach_expr,
-                        $context,
-                        'current',
-                    );
-
-                    $iterator_key_type = self::getFakeMethodCallType(
-                        $statements_analyzer,
-                        $foreach_expr,
-                        $context,
-                        'key',
-                    );
-
-                    if ($iterator_value_type && !$iterator_value_type->isMixed()) {
-                        // remove null coming from current() to signify invalid iterations
-                        // we're in a foreach context, so we know we're not going iterate past the end
-                        if (isset($type_params[1]) && !$type_params[1]->isNullable()) {
-                            $iterator_value_type = $iterator_value_type->getBuilder();
-                            $iterator_value_type->removeType('null');
-                            $iterator_value_type = $iterator_value_type->freeze();
-                        }
-                        $value_type = Type::combineUnionTypes($value_type, $iterator_value_type);
-                    }
-
-                    if ($iterator_key_type && !$iterator_key_type->isMixed()) {
-                        // remove null coming from key() to signify invalid iterations
-                        // we're in a foreach context, so we know we're not going iterate past the end
-                        if (isset($type_params[0]) && !$type_params[0]->isNullable()) {
-                            $iterator_key_type = $iterator_key_type->getBuilder();
-                            $iterator_key_type->removeType('null');
-                            $iterator_key_type = $iterator_key_type->freeze();
-                        }
-                        $key_type = Type::combineUnionTypes($key_type, $iterator_key_type);
-                    }
                 } elseif ($codebase->classImplements(
                     $iterator_atomic_type->value,
                     'Iterator',
@@ -954,7 +912,6 @@ final class ForeachAnalyzer
                         )
                     )
                 ) {
-                    $has_valid_iterator = true;
                     $iterator_value_type = self::getFakeMethodCallType(
                         $statements_analyzer,
                         $foreach_expr,
@@ -1000,7 +957,7 @@ final class ForeachAnalyzer
         Atomic $iterator_atomic_type,
         Codebase $codebase,
         ?Union &$key_type,
-        ?Union &$value_type,
+        ?Union &$value_type
     ): void {
         if ($iterator_atomic_type instanceof TIterable
             || ($iterator_atomic_type instanceof TGenericObject
@@ -1077,7 +1034,7 @@ final class ForeachAnalyzer
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $foreach_expr,
         Context $context,
-        string $method_name,
+        string $method_name
     ): ?Union {
         $old_data_provider = $statements_analyzer->node_data;
 
@@ -1136,11 +1093,11 @@ final class ForeachAnalyzer
         string $calling_class,
         array $template_extended_params,
         ?array $class_template_types = null,
-        ?array $calling_type_params = null,
+        ?array $calling_type_params = null
     ): ?Union {
         if ($calling_class === $template_class) {
             if (isset($class_template_types[$template_name]) && $calling_type_params) {
-                $offset = array_search($template_name, array_keys($class_template_types), true);
+                $offset = array_search($template_name, array_keys($class_template_types));
 
                 if ($offset !== false && isset($calling_type_params[$offset])) {
                     return $calling_type_params[$offset];

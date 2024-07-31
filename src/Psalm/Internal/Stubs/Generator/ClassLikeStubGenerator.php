@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php
 
 namespace Psalm\Internal\Stubs\Generator;
 
@@ -11,9 +11,9 @@ use Psalm\Node\Stmt\VirtualClassConst;
 use Psalm\Node\Stmt\VirtualClassMethod;
 use Psalm\Node\Stmt\VirtualInterface;
 use Psalm\Node\Stmt\VirtualProperty;
+use Psalm\Node\Stmt\VirtualPropertyProperty;
 use Psalm\Node\Stmt\VirtualTrait;
 use Psalm\Node\VirtualConst;
-use Psalm\Node\VirtualPropertyItem;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Scanner\ParsedDocblock;
@@ -28,7 +28,7 @@ use function rtrim;
 /**
  * @internal
  */
-final class ClassLikeStubGenerator
+class ClassLikeStubGenerator
 {
     /**
      * @return PhpParser\Node\Stmt\Class_|PhpParser\Node\Stmt\Interface_|PhpParser\Node\Stmt\Trait_
@@ -142,10 +142,10 @@ final class ClassLikeStubGenerator
                     )
                 ],
                 $constant_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC
-                    ? PhpParser\Modifiers::PUBLIC
+                    ? PhpParser\Node\Stmt\Class_::MODIFIER_PUBLIC
                     : ($constant_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PROTECTED
-                        ? PhpParser\Modifiers::PROTECTED
-                        : PhpParser\Modifiers::PRIVATE)
+                        ? PhpParser\Node\Stmt\Class_::MODIFIER_PROTECTED
+                        : PhpParser\Node\Stmt\Class_::MODIFIER_PRIVATE)
             );
         }
 
@@ -162,11 +162,17 @@ final class ClassLikeStubGenerator
         $property_nodes = [];
 
         foreach ($storage->properties as $property_name => $property_storage) {
-            $flag = match ($property_storage->visibility) {
-                ClassLikeAnalyzer::VISIBILITY_PRIVATE => PhpParser\Modifiers::PRIVATE,
-                ClassLikeAnalyzer::VISIBILITY_PROTECTED => PhpParser\Modifiers::PROTECTED,
-                default => PhpParser\Modifiers::PUBLIC,
-            };
+            switch ($property_storage->visibility) {
+                case ClassLikeAnalyzer::VISIBILITY_PRIVATE:
+                    $flag = PhpParser\Node\Stmt\Class_::MODIFIER_PRIVATE;
+                    break;
+                case ClassLikeAnalyzer::VISIBILITY_PROTECTED:
+                    $flag = PhpParser\Node\Stmt\Class_::MODIFIER_PROTECTED;
+                    break;
+                default:
+                    $flag = PhpParser\Node\Stmt\Class_::MODIFIER_PUBLIC;
+                    break;
+            }
 
             $docblock = new ParsedDocblock('', []);
 
@@ -182,9 +188,9 @@ final class ClassLikeStubGenerator
             }
 
             $property_nodes[] = new VirtualProperty(
-                $flag | ($property_storage->is_static ? PhpParser\Modifiers::STATIC : 0),
+                $flag | ($property_storage->is_static ? PhpParser\Node\Stmt\Class_::MODIFIER_STATIC : 0),
                 [
-                    new VirtualPropertyItem(
+                    new VirtualPropertyProperty(
                         $property_name,
                         $property_storage->suggested_type
                             ? StubsGenerator::getExpressionFromType($property_storage->suggested_type)
@@ -221,11 +227,17 @@ final class ClassLikeStubGenerator
                 throw new UnexpectedValueException('very bad');
             }
 
-            $flag = match ($method_storage->visibility) {
-                ReflectionProperty::IS_PRIVATE => PhpParser\Modifiers::PRIVATE,
-                ReflectionProperty::IS_PROTECTED => PhpParser\Modifiers::PROTECTED,
-                default => PhpParser\Modifiers::PUBLIC,
-            };
+            switch ($method_storage->visibility) {
+                case ReflectionProperty::IS_PRIVATE:
+                    $flag = PhpParser\Node\Stmt\Class_::MODIFIER_PRIVATE;
+                    break;
+                case ReflectionProperty::IS_PROTECTED:
+                    $flag = PhpParser\Node\Stmt\Class_::MODIFIER_PROTECTED;
+                    break;
+                default:
+                    $flag = PhpParser\Node\Stmt\Class_::MODIFIER_PUBLIC;
+                    break;
+            }
 
             $docblock = new ParsedDocblock('', []);
 
@@ -276,8 +288,8 @@ final class ClassLikeStubGenerator
                 $method_storage->cased_name,
                 [
                     'flags' => $flag
-                        | ($method_storage->is_static ? PhpParser\Modifiers::STATIC : 0)
-                        | ($method_storage->abstract ? PhpParser\Modifiers::ABSTRACT : 0),
+                        | ($method_storage->is_static ? PhpParser\Node\Stmt\Class_::MODIFIER_STATIC : 0)
+                        | ($method_storage->abstract ? PhpParser\Node\Stmt\Class_::MODIFIER_ABSTRACT : 0),
                     'params' => StubsGenerator::getFunctionParamNodes($method_storage),
                     'returnType' => $method_storage->signature_return_type
                         ? StubsGenerator::getParserTypeFromPsalmType($method_storage->signature_return_type)

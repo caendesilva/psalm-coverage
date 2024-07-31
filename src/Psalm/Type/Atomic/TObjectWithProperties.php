@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 use Psalm\Codebase;
@@ -26,27 +24,39 @@ final class TObjectWithProperties extends TObject
 {
     use HasIntersectionTrait;
 
-    public bool $is_stringable_object_only = false;
+    /**
+     * @var array<string|int, Union>
+     */
+    public $properties;
+
+    /**
+     * @var array<lowercase-string, string>
+     */
+    public $methods;
+
+    /** @var bool */
+    public $is_stringable_object_only = false;
 
     /**
      * Constructs a new instance of a generic type
      *
      * @param array<string|int, Union> $properties
      * @param array<lowercase-string, string> $methods
-     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $extra_types
+     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties> $extra_types
      */
     public function __construct(
-        public array $properties,
-        public array $methods = [],
+        array $properties,
+        array $methods = [],
         array $extra_types = [],
-        bool $from_docblock = false,
+        bool $from_docblock = false
     ) {
+        $this->properties = $properties;
+        $this->methods = $methods;
         $this->extra_types = $extra_types;
+        $this->from_docblock = $from_docblock;
 
         $this->is_stringable_object_only =
             $this->properties === [] && $this->methods === ['__tostring' => 'string'];
-
-        parent::__construct($from_docblock);
     }
 
     /**
@@ -129,7 +139,7 @@ final class TObjectWithProperties extends TObject
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format,
+        bool $use_phpdoc_format
     ): string {
         if ($use_phpdoc_format) {
             return 'object';
@@ -167,7 +177,7 @@ final class TObjectWithProperties extends TObject
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id,
+        int $analysis_php_version_id
     ): string {
         return $this->getKey();
     }
@@ -196,7 +206,7 @@ final class TObjectWithProperties extends TObject
                 return false;
             }
 
-            if (!$property_type->equals($other_type->properties[$property_name], $ensure_source_equality, false)) {
+            if (!$property_type->equals($other_type->properties[$property_name], $ensure_source_equality)) {
                 return false;
             }
         }
@@ -217,14 +227,14 @@ final class TObjectWithProperties extends TObject
         ?string $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        int $depth = 0,
+        int $depth = 0
     ): self {
         $properties = [];
 
         foreach ($this->properties as $offset => $property) {
             $input_type_param = null;
 
-            if ($input_type instanceof TObjectWithProperties
+            if ($input_type instanceof TKeyedArray
                 && isset($input_type->properties[$offset])
             ) {
                 $input_type_param = $input_type->properties[$offset];
@@ -269,7 +279,7 @@ final class TObjectWithProperties extends TObject
      */
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
-        ?Codebase $codebase,
+        ?Codebase $codebase
     ): self {
         $properties = $this->properties;
         foreach ($properties as $offset => $property) {

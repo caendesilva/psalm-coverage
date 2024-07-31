@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Progress;
 
 use LogicException;
@@ -15,36 +13,38 @@ use const PHP_EOL;
 
 class LongProgress extends Progress
 {
-    final public const NUMBER_OF_COLUMNS = 60;
+    public const NUMBER_OF_COLUMNS = 60;
 
-    protected ?int $number_of_tasks = null;
+    /** @var int|null */
+    protected $number_of_tasks;
 
-    protected int $progress = 0;
+    /** @var int */
+    protected $progress = 0;
 
-    protected bool $fixed_size = false;
+    /** @var bool */
+    protected $print_errors = false;
 
-    public function __construct(
-        protected bool $print_errors = true,
-        protected bool $print_infos = true,
-        protected bool $in_ci = false,
-    ) {
+    /** @var bool */
+    protected $print_infos = false;
+
+    public function __construct(bool $print_errors = true, bool $print_infos = true)
+    {
+        $this->print_errors = $print_errors;
+        $this->print_infos = $print_infos;
     }
 
     public function startScanningFiles(): void
     {
-        $this->fixed_size = false;
-        $this->write("\n" . 'Scanning files...' . ($this->in_ci ? '' : "\n\n"));
+        $this->write('Scanning files...' . "\n");
     }
 
     public function startAnalyzingFiles(): void
     {
-        $this->fixed_size = true;
-        $this->write("\n\n" . 'Analyzing files...' . "\n\n");
+        $this->write('Analyzing files...' . "\n\n");
     }
 
     public function startAlteringFiles(): void
     {
-        $this->fixed_size = true;
         $this->write('Altering files...' . "\n");
     }
 
@@ -59,33 +59,8 @@ class LongProgress extends Progress
         $this->progress = 0;
     }
 
-    public function expand(int $number_of_tasks): void
-    {
-        $this->number_of_tasks += $number_of_tasks;
-    }
-
     public function taskDone(int $level): void
     {
-        if ($this->number_of_tasks === null) {
-            throw new LogicException('Progress::start() should be called before Progress::taskDone()');
-        }
-
-        ++$this->progress;
-
-        if (!$this->fixed_size) {
-            if ($this->in_ci) {
-                return;
-            }
-            if ($this->progress == 1 || $this->progress == $this->number_of_tasks || $this->progress % 10 == 0) {
-                $this->write(sprintf(
-                    "\r%s / %s...",
-                    $this->progress,
-                    $this->number_of_tasks,
-                ));
-            }
-            return;
-        }
-
         if ($level === 0 || ($level === 1 && !$this->print_infos) || !$this->print_errors) {
             $this->write(self::doesTerminalSupportUtf8() ? '░' : '_');
         } elseif ($level === 1) {
@@ -94,6 +69,7 @@ class LongProgress extends Progress
             $this->write('E');
         }
 
+        ++$this->progress;
 
         if (($this->progress % self::NUMBER_OF_COLUMNS) !== 0) {
             return;

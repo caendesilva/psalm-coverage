@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -350,26 +348,13 @@ class ArgTest extends TestCase
 
                     /**
                      * @param string $a
-                     * @param int ...$b
+                     * @param int $b
+                     * @param int $c
                      * @return void
                      */
-                    function foo($a, ...$b) {}
+                    function foo($a, $b, $c) {}
 
                     var_caller("foo");',
-            ],
-            'mixedNullable' => [
-                'code' => '<?php
-                    class A {
-                        public function __construct(public mixed $default = null) {
-                        }
-                    }
-                    $a = new A;
-                    $_v = $a->default;',
-                'assertions' => [
-                    '$_v===' => 'mixed',
-                ],
-                'ignored_issues' => [],
-                'php_version' => '8.0',
             ],
         ];
     }
@@ -820,7 +805,7 @@ class ArgTest extends TestCase
                     function foo($a) {}
 
                     caller("foo");',
-                'error_message' => 'PossiblyInvalidArgument',
+                'error_message' => 'InvalidScalarArgument',
             ],
             'callableArgsCountMismatch' => [
                 'code' => '<?php
@@ -838,7 +823,7 @@ class ArgTest extends TestCase
                     function foo($a, $b) {}
 
                     caller("foo");',
-                'error_message' => 'InvalidArgument',
+                'error_message' => 'InvalidScalarArgument',
             ],
         ];
     }

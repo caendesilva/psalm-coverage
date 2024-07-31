@@ -1,10 +1,7 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 
@@ -15,13 +12,17 @@ use Psalm\Type\Atomic;
  */
 final class TClassConstant extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
-    public function __construct(
-        public string $fq_classlike_name,
-        public string $const_name,
-        bool $from_docblock = false,
-    ) {
-        parent::__construct($from_docblock);
+    /** @var string */
+    public $fq_classlike_name;
+
+    /** @var string */
+    public $const_name;
+
+    public function __construct(string $fq_classlike_name, string $const_name, bool $from_docblock = false)
+    {
+        $this->fq_classlike_name = $fq_classlike_name;
+        $this->const_name = $const_name;
+        $this->from_docblock = $from_docblock;
     }
 
     public function getKey(bool $include_extra = true): string
@@ -46,7 +47,7 @@ final class TClassConstant extends Atomic
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id,
+        int $analysis_php_version_id
     ): ?string {
         return null;
     }
@@ -63,7 +64,7 @@ final class TClassConstant extends Atomic
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format,
+        bool $use_phpdoc_format
     ): string {
         if ($this->fq_classlike_name === 'static') {
             return 'static::' . $this->const_name;

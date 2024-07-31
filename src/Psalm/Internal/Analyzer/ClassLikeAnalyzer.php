@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use InvalidArgumentException;
@@ -40,6 +38,7 @@ use function array_search;
 use function count;
 use function explode;
 use function gettype;
+use function implode;
 use function in_array;
 use function preg_match;
 use function preg_replace;
@@ -82,22 +81,30 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         'unknown type' => true,
     ];
 
+    protected PhpParser\Node\Stmt\ClassLike $class;
+
     public FileAnalyzer $file_analyzer;
+
+    protected string $fq_class_name;
 
     /**
      * The parent class
      */
     protected ?string $parent_fq_class_name = null;
 
+    /**
+     * @var PhpParser\Node\Stmt[]
+     */
+    protected array $leftover_stmts = [];
+
     protected ClassLikeStorage $storage;
 
-    public function __construct(
-        protected PhpParser\Node\Stmt\ClassLike $class,
-        SourceAnalyzer $source,
-        protected string $fq_class_name,
-    ) {
+    public function __construct(PhpParser\Node\Stmt\ClassLike $class, SourceAnalyzer $source, string $fq_class_name)
+    {
+        $this->class = $class;
         $this->source = $source;
         $this->file_analyzer = $source->getFileAnalyzer();
+        $this->fq_class_name = $fq_class_name;
         $codebase = $source->getCodebase();
         $this->storage = $codebase->classlike_storage_provider->get($fq_class_name);
     }
@@ -110,7 +117,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
     public function getMethodMutations(
         string $method_name,
-        Context $context,
+        Context $context
     ): void {
         $project_analyzer = $this->getFileAnalyzer()->project_analyzer;
         $codebase = $project_analyzer->getCodebase();
@@ -202,8 +209,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         ?string $calling_fq_class_name,
         ?string $calling_method_id,
         array $suppressed_issues,
-        ?ClassLikeNameOptions $options = null,
-        bool $check_classes = true,
+        ?ClassLikeNameOptions $options = null
     ): ?bool {
         if ($options === null) {
             $options = new ClassLikeNameOptions();
@@ -225,7 +231,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             return null;
         }
 
-        $fq_class_name = (string) preg_replace('/^\\\/', '', $fq_class_name, 1);
+        $fq_class_name = preg_replace('/^\\\/', '', $fq_class_name, 1);
 
         if (in_array($fq_class_name, ['callable', 'iterable', 'self', 'static', 'parent'], true)) {
             return true;
@@ -276,9 +282,6 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             && !($interface_exists && $options->allow_interface)
             && !($enum_exists && $options->allow_enum)
         ) {
-            if (!$check_classes) {
-                return null;
-            }
             if (!$options->allow_trait || !$codebase->classlikes->traitExists($fq_class_name, $code_location)) {
                 if ($options->from_docblock) {
                     if (IssueBuffer::accepts(
@@ -394,7 +397,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
      */
     public static function getFQCLNFromNameObject(
         PhpParser\Node\Name $class_name,
-        Aliases $aliases,
+        Aliases $aliases
     ): string {
         /** @var string|null */
         $resolved_name = $class_name->getAttribute('resolvedName');
@@ -404,15 +407,15 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         }
 
         if ($class_name instanceof PhpParser\Node\Name\FullyQualified) {
-            return $class_name->toString();
+            return implode('\\', $class_name->parts);
         }
 
-        if (in_array($class_name->getFirst(), ['self', 'static', 'parent'], true)) {
-            return $class_name->getFirst();
+        if (in_array($class_name->parts[0], ['self', 'static', 'parent'], true)) {
+            return $class_name->parts[0];
         }
 
         return Type::getFQCLNFromString(
-            $class_name->toString(),
+            implode('\\', $class_name->parts),
             $aliases,
         );
     }
@@ -478,8 +481,10 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
     /**
      * Gets the Psalm type from a particular value
+     *
+     * @param  mixed $value
      */
-    public static function getTypeFromValue(mixed $value): Union
+    public static function getTypeFromValue($value): Union
     {
         switch (gettype($value)) {
             case 'boolean':
@@ -518,7 +523,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         SourceAnalyzer $source,
         CodeLocation $code_location,
         array $suppressed_issues,
-        bool $emit_issues = true,
+        bool $emit_issues = true
     ): ?bool {
         [$fq_class_name, $property_name] = explode('::$', $property_id);
 
@@ -631,7 +636,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         ClassLikeStorage $storage,
         ClassLikeStorage $parent_storage,
         CodeLocation $code_location,
-        int $given_param_count,
+        int $given_param_count
     ): void {
         $expected_param_count = $parent_storage->template_types === null
             ? 0
@@ -704,7 +709,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                                 && $storage->template_types
                                 && $storage->template_covariants
                                 && ($local_offset
-                                    = array_search($t->param_name, array_keys($storage->template_types), true))
+                                    = array_search($t->param_name, array_keys($storage->template_types)))
                                     !== false
                                 && !empty($storage->template_covariants[$local_offset])
                             ) {
@@ -803,7 +808,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     {
         try {
             return $codebase->file_storage_provider->get($file_path)->classlikes_in_file;
-        } catch (InvalidArgumentException) {
+        } catch (InvalidArgumentException $e) {
             return [];
         }
     }

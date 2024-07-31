@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm;
 
 use PhpParser\Comment\Doc;
@@ -12,8 +10,8 @@ use Psalm\Internal\Scanner\ParsedDocblock;
 use function explode;
 use function in_array;
 use function preg_match;
-use function str_starts_with;
 use function strlen;
+use function strpos;
 use function strspn;
 use function substr;
 use function trim;
@@ -26,7 +24,6 @@ final class DocComment
         'assert', 'assert-if-true', 'assert-if-false', 'suppress',
         'ignore-nullable-return', 'override-property-visibility',
         'override-method-visibility', 'seal-properties', 'seal-methods',
-        'no-seal-properties', 'no-seal-methods',
         'ignore-falsable-return', 'variadic', 'pure',
         'ignore-variable-method', 'ignore-variable-property', 'internal',
         'taint-sink', 'taint-source', 'assert-untainted', 'scope-this',
@@ -36,7 +33,7 @@ final class DocComment
         'taint-unescape', 'self-out', 'consistent-constructor', 'stub-override',
         'require-extends', 'require-implements', 'param-out', 'ignore-var',
         'consistent-templates', 'if-this-is', 'this-out', 'check-type', 'check-type-exact',
-        'api', 'inheritors',
+        'api',
     ];
 
     /**
@@ -50,7 +47,7 @@ final class DocComment
         );
 
         foreach ($parsed_docblock->tags as $special_key => $_) {
-            if (str_starts_with($special_key, 'psalm-')) {
+            if (strpos($special_key, 'psalm-') === 0) {
                 $special_key = substr($special_key, 6);
 
                 if (!in_array(

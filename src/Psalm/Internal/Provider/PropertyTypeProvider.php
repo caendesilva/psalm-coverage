@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider;
 
 use Closure;
@@ -18,7 +16,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class PropertyTypeProvider
+class PropertyTypeProvider
 {
     /**
      * @var array<
@@ -41,7 +39,7 @@ final class PropertyTypeProvider
     public function registerClass(string $class): void
     {
         if (is_subclass_of($class, PropertyTypeProviderInterface::class, true)) {
-            $callable = $class::getPropertyType(...);
+            $callable = Closure::fromCallable([$class, 'getPropertyType']);
 
             foreach ($class::getClassLikeNames() as $fq_classlike_name) {
                 $this->registerClosure($fq_classlike_name, $callable);
@@ -67,7 +65,7 @@ final class PropertyTypeProvider
         string $property_name,
         bool $read_mode,
         ?StatementsSource $source = null,
-        ?Context $context = null,
+        ?Context $context = null
     ): ?Union {
 
         if ($source) {

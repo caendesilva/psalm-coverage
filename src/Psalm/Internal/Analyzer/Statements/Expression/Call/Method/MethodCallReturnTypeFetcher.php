@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
 use Exception;
@@ -43,7 +41,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class MethodCallReturnTypeFetcher
+class MethodCallReturnTypeFetcher
 {
     /**
      * @param  TNamedObject|TTemplateParam|null  $static_type
@@ -62,7 +60,7 @@ final class MethodCallReturnTypeFetcher
         ?Atomic $static_type,
         array $args,
         AtomicMethodCallAnalysisResult $result,
-        TemplateResult $template_result,
+        TemplateResult $template_result
     ): Union {
         $call_map_id = $declaring_method_id ?? $method_id;
 
@@ -185,7 +183,6 @@ final class MethodCallReturnTypeFetcher
                 $self_fq_class_name,
                 $statements_analyzer,
                 $args,
-                $template_result,
             );
 
             if ($return_type_candidate) {
@@ -288,7 +285,7 @@ final class MethodCallReturnTypeFetcher
         MethodIdentifier $method_id,
         ?MethodIdentifier $declaring_method_id,
         string $cased_method_id,
-        Context $context,
+        Context $context
     ): void {
         if (!$statements_analyzer->data_flow_graph
             || !$declaring_method_id
@@ -452,7 +449,7 @@ final class MethodCallReturnTypeFetcher
                 $stmt_var_type = $context->vars_in_scope[$var_id]->setParentNodes(
                     $var_nodes,
                 );
-
+                
                 $context->vars_in_scope[$var_id] = $stmt_var_type;
             } else {
                 $method_call_node = DataFlowNode::getForMethodReturn(
@@ -562,7 +559,7 @@ final class MethodCallReturnTypeFetcher
         TemplateResult $template_result,
         MethodIdentifier $method_id,
         int $arg_count,
-        Codebase $codebase,
+        Codebase $codebase
     ): Union {
         if ($template_result->template_types) {
             $bindable_template_types = $return_type_candidate->getTemplateTypes();
@@ -577,7 +574,7 @@ final class MethodCallReturnTypeFetcher
                 ) {
                     if ($template_type->param_name === 'TFunctionArgCount') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . strtolower((string) $method_id) => [
                                 new TemplateBound(
                                     Type::getInt(false, $arg_count),
                                 ),
@@ -585,7 +582,7 @@ final class MethodCallReturnTypeFetcher
                         ];
                     } elseif ($template_type->param_name === 'TPhpMajorVersion') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . strtolower((string) $method_id) => [
                                 new TemplateBound(
                                     Type::getInt(false, $codebase->getMajorAnalysisPhpVersion()),
                                 ),
@@ -593,7 +590,7 @@ final class MethodCallReturnTypeFetcher
                         ];
                     } elseif ($template_type->param_name === 'TPhpVersionId') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . strtolower((string) $method_id) => [
                                 new TemplateBound(
                                     Type::getInt(
                                         false,

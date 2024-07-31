@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type;
 
 /**
@@ -9,8 +7,6 @@ namespace Psalm\Type;
  */
 final class TaintKindGroup
 {
-    public const GROUP_INPUT = 'input';
-
     public const ALL_INPUT = [
         TaintKind::INPUT_HTML,
         TaintKind::INPUT_HAS_QUOTES,
@@ -25,8 +21,5 @@ final class TaintKindGroup
         TaintKind::INPUT_FILE,
         TaintKind::INPUT_HEADER,
         TaintKind::INPUT_COOKIE,
-        TaintKind::INPUT_XPATH,
-        TaintKind::INPUT_SLEEP,
-        TaintKind::INPUT_EXTRACT,
     ];
 }

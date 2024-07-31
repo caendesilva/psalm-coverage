@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use Generator;
@@ -25,17 +23,17 @@ use Psalm\Storage\HasAttributesInterface;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Union;
 
-use function array_key_first;
 use function array_shift;
 use function array_values;
 use function assert;
 use function count;
+use function reset;
 use function strtolower;
 
 /**
  * @internal
  */
-final class AttributesAnalyzer
+class AttributesAnalyzer
 {
     private const TARGET_DESCRIPTIONS = [
         1 => 'class',
@@ -68,7 +66,7 @@ final class AttributesAnalyzer
         HasAttributesInterface $storage,
         array $attribute_groups,
         int $target,
-        array $suppressed_issues,
+        array $suppressed_issues
     ): void {
         $codebase = $source->getCodebase();
         $appearing_non_repeatable_attributes = [];
@@ -140,7 +138,7 @@ final class AttributesAnalyzer
         string $fq_attribute_name,
         Attribute $attribute,
         array $suppressed_issues,
-        ?ClassLikeStorage $classlike_storage = null,
+        ?ClassLikeStorage $classlike_storage = null
     ): void {
         $attribute_name_location = new CodeLocation($source, $attribute->name);
 
@@ -246,7 +244,7 @@ final class AttributesAnalyzer
         string $fq_attribute_name,
         CodeLocation $attribute_name_location,
         ?ClassLikeStorage $attribute_class_storage,
-        array $suppressed_issues,
+        array $suppressed_issues
     ): int {
         if (strtolower($fq_attribute_name) === "attribute") {
             // We override this here because we still want to analyze attributes
@@ -264,7 +262,7 @@ final class AttributesAnalyzer
                     return self::TARGET_ALL; // Defaults to TARGET_ALL
                 }
 
-                $first_arg = $attribute_attribute->args[array_key_first($attribute_attribute->args)];
+                $first_arg = reset($attribute_attribute->args);
 
                 $first_arg_type = $first_arg->type;
 
@@ -318,7 +316,7 @@ final class AttributesAnalyzer
     public static function analyzeGetAttributes(
         StatementsAnalyzer $statements_analyzer,
         string $method_id,
-        array $args,
+        array $args
     ): void {
         if (count($args) !== 1) {
             // We skip this analysis if $flags is specified on getAttributes, since the only option

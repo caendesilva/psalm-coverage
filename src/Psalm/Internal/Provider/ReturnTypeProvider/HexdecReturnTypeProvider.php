@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -13,7 +11,7 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class HexdecReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class HexdecReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>

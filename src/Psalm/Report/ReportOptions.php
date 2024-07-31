@@ -1,29 +1,46 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Report;
 
 use Psalm\Report;
 
 final class ReportOptions
 {
-    public bool $use_color = true;
+    /**
+     * @var bool
+     */
+    public $use_color = true;
 
-    public bool $show_snippet = true;
+    /**
+     * @var bool
+     */
+    public $show_snippet = true;
 
-    public bool $show_info = true;
+    /**
+     * @var bool
+     */
+    public $show_info = true;
 
     /**
      * @var Report::TYPE_*
      */
-    public string $format = Report::TYPE_CONSOLE;
+    public $format = Report::TYPE_CONSOLE;
 
-    public bool $pretty = false;
+    /**
+     * @var bool
+     */
+    public $pretty = false;
 
-    public ?string $output_path = null;
+    /**
+     * @var ?string
+     */
+    public $output_path;
 
-    public bool $show_suggestions = true;
+    /**
+     * @var bool
+     */
+    public $show_suggestions = true;
 
-    public bool $in_ci = false;
+    /** @var bool */
+    public $in_ci = false;
 }

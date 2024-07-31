@@ -1,8 +1,6 @@
 #!/usr/bin/env php
 <?php
 
-declare(strict_types=1);
-
 $docs_dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . "docs"
     . DIRECTORY_SEPARATOR . "running_psalm" . DIRECTORY_SEPARATOR;
 $issues_index = "{$docs_dir}issues.md";

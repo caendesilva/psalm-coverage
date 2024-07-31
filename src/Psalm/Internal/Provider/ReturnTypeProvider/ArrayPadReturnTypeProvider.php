@@ -17,7 +17,7 @@ use function count;
 /**
  * @internal
  */
-final class ArrayPadReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class ArrayPadReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>

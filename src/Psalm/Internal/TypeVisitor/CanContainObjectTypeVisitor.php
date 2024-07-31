@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\TypeVisitor;
 
 use Psalm\Codebase;
@@ -12,13 +10,15 @@ use Psalm\Type\TypeVisitor;
 use Psalm\Type\Union;
 
 /** @internal */
-final class CanContainObjectTypeVisitor extends TypeVisitor
+class CanContainObjectTypeVisitor extends TypeVisitor
 {
     private bool $contains_object_type = false;
 
-    public function __construct(
-        private readonly Codebase $codebase,
-    ) {
+    private Codebase $codebase;
+
+    public function __construct(Codebase $codebase)
+    {
+        $this->codebase = $codebase;
     }
 
     protected function enterNode(TypeNode $type): ?int

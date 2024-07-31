@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Scanner;
 
 use Psalm\Type\Union;
@@ -9,7 +7,7 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class VarDocblockComment
+class VarDocblockComment
 {
     public ?Union $type = null;
 

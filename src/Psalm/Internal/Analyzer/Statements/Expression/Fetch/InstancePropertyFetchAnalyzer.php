@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
 use PhpParser;
@@ -35,14 +33,14 @@ use function strtolower;
 /**
  * @internal
  */
-final class InstancePropertyFetchAnalyzer
+class InstancePropertyFetchAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\PropertyFetch $stmt,
         Context $context,
         bool $in_assignment = false,
-        bool $is_static_access = false,
+        bool $is_static_access = false
     ): bool {
         $was_inside_general_use = $context->inside_general_use;
         $context->inside_general_use = true;
@@ -313,7 +311,7 @@ final class InstancePropertyFetchAnalyzer
         PhpParser\Node\Expr\PropertyFetch $stmt,
         Codebase $codebase,
         ?string $stmt_var_id,
-        bool $in_assignment,
+        bool $in_assignment
     ): void {
         $stmt_type = $context->vars_in_scope[$var_id];
 

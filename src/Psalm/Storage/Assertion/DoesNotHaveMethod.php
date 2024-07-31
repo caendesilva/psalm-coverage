@@ -1,20 +1,19 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage\Assertion;
 
 use Psalm\Storage\Assertion;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
  */
 final class DoesNotHaveMethod extends Assertion
 {
-    use UnserializeMemoryUsageSuppressionTrait;
-    public function __construct(public readonly string $method)
+    public string $method;
+
+    public function __construct(string $method)
     {
+        $this->method = $method;
     }
 
     public function isNegation(): bool

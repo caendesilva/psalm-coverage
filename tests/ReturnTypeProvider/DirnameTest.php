@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\ReturnTypeProvider;
 
 use Psalm\Tests\TestCase;
@@ -37,38 +35,9 @@ class DirnameTest extends TestCase
             ],
         ];
 
-        yield 'dirnameOfIntLevelLiteralReturnsLiteral' => [
+        yield 'dirnameOfIntLevelReturnsString' => [
             'code' => '<?php
-                $dir = dirname("' . $input . '", 10);
-            ',
-            'assertions' => [
-                '$dir===' => "'.'",
-            ],
-        ];
-
-        yield 'dirnameOfNonEmptyStringIntLevelOneReturnsNonEmptyString' => [
-            'code' => '<?php
-                $dir = dirname(uniqid() . "abc", 2);
-            ',
-            'assertions' => [
-                '$dir===' => 'non-falsy-string',
-            ],
-        ];
-
-        yield 'dirnameOfNonEmptyShouldBeNonFalsy' => [
-            'code' => '<?php
-                $foo = rand(0, 1) ? "0" : "world";
-                $dir = dirname($foo, 20);
-            ',
-            'assertions' => [
-                '$dir===' => 'non-falsy-string',
-            ],
-        ];
-
-        yield 'dirnameOfEmptyShouldBeString' => [
-            'code' => '<?php
-                $foo = rand(0, 1) ? "" : "world";
-                $dir = dirname($foo, 20);
+                $dir = dirname("' . $input . '", 0);
             ',
             'assertions' => [
                 '$dir===' => 'string',

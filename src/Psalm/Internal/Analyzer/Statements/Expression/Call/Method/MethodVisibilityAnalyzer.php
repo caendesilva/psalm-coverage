@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
 use Psalm\CodeLocation;
@@ -22,7 +20,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class MethodVisibilityAnalyzer
+class MethodVisibilityAnalyzer
 {
     /**
      * @param  string[]         $suppressed_issues
@@ -33,7 +31,7 @@ final class MethodVisibilityAnalyzer
         Context $context,
         StatementsSource $source,
         CodeLocation $code_location,
-        array $suppressed_issues,
+        array $suppressed_issues
     ): ?bool {
         $codebase = $source->getCodebase();
         $codebase_methods = $codebase->methods;
@@ -41,8 +39,6 @@ final class MethodVisibilityAnalyzer
 
         $fq_classlike_name = $method_id->fq_class_name;
         $method_name = $method_id->method_name;
-
-        $with_pseudo = true;
 
         if ($codebase_methods->visibility_provider->has($fq_classlike_name)) {
             $method_visible = $codebase_methods->visibility_provider->isMethodVisible(
@@ -69,7 +65,7 @@ final class MethodVisibilityAnalyzer
             }
         }
 
-        $declaring_method_id = $codebase_methods->getDeclaringMethodId($method_id, $with_pseudo);
+        $declaring_method_id = $codebase_methods->getDeclaringMethodId($method_id);
 
         if (!$declaring_method_id) {
             if ($method_name === '__construct'
@@ -113,7 +109,7 @@ final class MethodVisibilityAnalyzer
             return null;
         }
 
-        $storage = $codebase->methods->getStorage($declaring_method_id, $with_pseudo);
+        $storage = $codebase->methods->getStorage($declaring_method_id);
         $visibility = $storage->visibility;
 
         if ($appearing_method_name

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\EndToEnd;
 
 use PHPUnit\Framework\TestCase;
@@ -20,6 +18,6 @@ class SuicidalAutoloaderTest extends TestCase
             $this->markTestSkipped('Test case requires PHP 7.2.');
         }
 
-        $this->runPsalm(['--no-cache'], __DIR__ . '/' . '../fixtures/SuicidalAutoloader');
+        $this->runPsalm(['--no-cache'], __DIR__ . '/' . '../fixtures/SuicidalAutoloader/');
     }
 }

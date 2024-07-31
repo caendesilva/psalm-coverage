@@ -12,7 +12,7 @@ use Psalm\Plugin\EventHandler\Event\AfterExpressionAnalysisEvent;
 /**
  * Prevents any assignment to a float value
  */
-final class PreventFloatAssignmentChecker implements AfterExpressionAnalysisInterface
+class PreventFloatAssignmentChecker implements AfterExpressionAnalysisInterface
 {
     /**
      * Called after an expression has been checked
@@ -40,6 +40,6 @@ final class PreventFloatAssignmentChecker implements AfterExpressionAnalysisInte
     }
 }
 
-final class NoFloatAssignment extends PluginIssue
+class NoFloatAssignment extends PluginIssue
 {
 }

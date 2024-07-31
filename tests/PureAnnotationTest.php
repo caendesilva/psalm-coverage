@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -43,7 +41,7 @@ class PureAnnotationTest extends TestCase
                     function highlight(string $needle, string $output) : string {
                         $needle = preg_quote($needle, \'#\');
                         $needles = str_replace([\'"\', \' \'], [\'\', \'|\'], $needle);
-                        $output = (string) preg_replace("#({$needles})#im", "<mark>$1</mark>", $output);
+                        $output = preg_replace("#({$needles})#im", "<mark>$1</mark>", $output);
 
                         return $output;
                     }',
@@ -154,10 +152,7 @@ class PureAnnotationTest extends TestCase
                 'code' => '<?php
                     final class Date
                     {
-                        /**
-                         * @param non-empty-string $tzString
-                         * @psalm-pure
-                         */
+                        /** @psalm-pure */
                         public static function timeZone(string $tzString) : DateTimeZone
                         {
                             return new \DateTimeZone($tzString);
@@ -446,81 +441,6 @@ class PureAnnotationTest extends TestCase
                     function gimmeFoo(): MyEnum
                     {
                         return MyEnum::FOO();
-                    }',
-            ],
-            'pureThroughCallStaticInTrait' => [
-                'code' => '<?php
-                    /**
-                     * @method static static foo()
-                     */
-                    trait TestTrait {
-                        /** @psalm-pure */
-                        public static function __callStatic(string $name, array $params): static
-                        {
-                            throw new BadMethodCallException("not implemented");
-                        }
-                    }
-
-                    class Test {
-                        use TestTrait;
-                    }
-
-                    /** @psalm-pure */
-                    function gimmeFoo(): Test
-                    {
-                        return Test::foo();
-                    }',
-            ],
-            'pureThroughCallStaticInNestedTrait' => [
-                'code' => '<?php
-                    /**
-                     * @method static static foo()
-                     */
-                    trait InnerTestTrait {
-                        /** @psalm-pure */
-                        public static function __callStatic(string $name, array $params): static
-                        {
-                            throw new BadMethodCallException("not implemented");
-                        }
-                    }
-
-                    trait TestTrait {
-                        use InnerTestTrait;
-                    }
-
-                    class Test {
-                        use TestTrait;
-                    }
-
-                    /** @psalm-pure */
-                    function gimmeFoo(): Test
-                    {
-                        return Test::foo();
-                    }',
-            ],
-            'pureThroughAliasedCallStaticInTrait' => [
-                'code' => '<?php
-                    /**
-                     * @method static static foo()
-                     */
-                    trait TestTrait {
-                        /** @psalm-pure */
-                        public static function toBeCallStatic(string $name, array $params): static
-                        {
-                            throw new BadMethodCallException("not implemented");
-                        }
-                    }
-
-                    class Test {
-                        use TestTrait {
-                            TestTrait::toBeCallStatic as __callStatic;
-                        }
-                    }
-
-                    /** @psalm-pure */
-                    function gimmeFoo(): Test
-                    {
-                        return Test::foo();
                     }',
             ],
             'dontCrashWhileCheckingPurityOnCallStaticInATrait' => [

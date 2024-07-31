@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\PluginManager;
 
 use InvalidArgumentException;
@@ -11,23 +9,27 @@ use function array_diff_key;
 use function array_flip;
 use function array_key_exists;
 use function array_search;
-use function str_contains;
+use function strpos;
 
 /**
  * @internal
  */
-final class PluginList
+class PluginList
 {
+    private ?ConfigFile $config_file = null;
+
+    private ComposerLock $composer_lock;
+
     /** @var ?array<string,string> [pluginClass => packageName] */
     private ?array $all_plugins = null;
 
     /** @var ?array<string,?string> [pluginClass => ?packageName] */
     private ?array $enabled_plugins = null;
 
-    public function __construct(
-        private readonly ?ConfigFile $config_file,
-        private readonly ComposerLock $composer_lock,
-    ) {
+    public function __construct(?ConfigFile $config_file, ComposerLock $composer_lock)
+    {
+        $this->config_file = $config_file;
+        $this->composer_lock = $composer_lock;
     }
 
     /**
@@ -70,7 +72,7 @@ final class PluginList
 
     public function resolvePluginClass(string $class_or_package): string
     {
-        if (!str_contains($class_or_package, '/')) {
+        if (false === strpos($class_or_package, '/')) {
             return $class_or_package; // must be a class then
         }
 

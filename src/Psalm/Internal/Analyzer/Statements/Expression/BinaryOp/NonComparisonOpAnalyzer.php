@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\BinaryOp;
 
 use PhpParser;
@@ -16,12 +14,12 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class NonComparisonOpAnalyzer
+class NonComparisonOpAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\BinaryOp $stmt,
-        Context $context,
+        Context $context
     ): void {
         $stmt_left_type = $statements_analyzer->node_data->getType($stmt->left);
         $stmt_right_type = $statements_analyzer->node_data->getType($stmt->right);

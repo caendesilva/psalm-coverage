@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Codebase;
 
 use Psalm\Internal\DataFlow\DataFlowNode;
@@ -12,8 +10,8 @@ use function array_keys;
 use function array_reverse;
 use function array_sum;
 use function count;
-use function str_starts_with;
 use function strlen;
+use function strpos;
 use function substr;
 
 /**
@@ -35,7 +33,7 @@ abstract class DataFlowGraph
         DataFlowNode $to,
         string $path_type,
         ?array $added_taints = null,
-        ?array $removed_taints = null,
+        ?array $removed_taints = null
     ): void {
         $from_id = $from->id;
         $to_id = $to->id;
@@ -65,13 +63,13 @@ abstract class DataFlowGraph
     protected static function shouldIgnoreFetch(
         string $path_type,
         string $expression_type,
-        array $previous_path_types,
+        array $previous_path_types
     ): bool {
         $el = strlen($expression_type);
 
         // arraykey-fetch requires a matching arraykey-assignment at the same level
         // otherwise the tainting is not valid
-        if (str_starts_with($path_type, $expression_type . '-fetch-')
+        if (strpos($path_type, $expression_type . '-fetch-') === 0
             || ($path_type === 'arraykey-fetch' && $expression_type === 'arrayvalue')
         ) {
             $fetch_nesting = 0;
@@ -87,11 +85,11 @@ abstract class DataFlowGraph
                     $fetch_nesting--;
                 }
 
-                if (str_starts_with($previous_path_type, $expression_type . '-fetch')) {
+                if (strpos($previous_path_type, $expression_type . '-fetch') === 0) {
                     $fetch_nesting++;
                 }
 
-                if (str_starts_with($previous_path_type, $expression_type . '-assignment-')) {
+                if (strpos($previous_path_type, $expression_type . '-assignment-') === 0) {
                     if ($fetch_nesting > 0) {
                         $fetch_nesting--;
                         continue;

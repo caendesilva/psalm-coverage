@@ -1,19 +1,17 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Diff;
 
 use PhpParser;
 
-use function assert;
 use function end;
+use function get_class;
 use function substr;
 
 /**
  * @internal
  */
-final class NamespaceStatementsDiffer extends AstDiffer
+class NamespaceStatementsDiffer extends AstDiffer
 {
     /**
      * Calculate diff (edit script) from $a to $b.
@@ -35,9 +33,9 @@ final class NamespaceStatementsDiffer extends AstDiffer
                 PhpParser\Node\Stmt $a,
                 PhpParser\Node\Stmt $b,
                 string $a_code,
-                string $b_code,
+                string $b_code
             ): bool {
-                if ($a::class !== $b::class) {
+                if (get_class($a) !== get_class($b)) {
                     return false;
                 }
 
@@ -116,8 +114,7 @@ final class NamespaceStatementsDiffer extends AstDiffer
                         if ($use->alias) {
                             $add_or_delete[] = 'use:' . (string) $use->alias;
                         } else {
-                            $name_parts = $use->name->getParts();
-                            assert(!empty($name_parts));
+                            $name_parts = $use->name->parts;
 
                             $add_or_delete[] = 'use:' . end($name_parts);
                         }
@@ -131,8 +128,7 @@ final class NamespaceStatementsDiffer extends AstDiffer
                         if ($use->alias) {
                             $add_or_delete[] = 'use:' . (string) $use->alias;
                         } else {
-                            $name_parts = $use->name->getParts();
-                            assert(!empty($name_parts));
+                            $name_parts = $use->name->parts;
 
                             $add_or_delete[] = 'use:' . end($name_parts);
                         }

@@ -13,7 +13,6 @@
     errorBaseline="psalm-baseline.xml"
     findUnusedPsalmSuppress="true"
     findUnusedBaselineEntry="true"
-    findUnusedIssueHandlerSuppression="true"
 >
     <stubs>
         <file name="stubs/phpparser.phpstub"/>
@@ -55,7 +54,6 @@
     </plugins>
 
     <issueHandlers>
-        <Trace errorLevel="error"/>
         <PossiblyNullOperand errorLevel="suppress"/>
 
         <DeprecatedMethod>
@@ -63,6 +61,24 @@
                 <directory name="tests" />
             </errorLevel>
         </DeprecatedMethod>
+
+        <DeprecatedClass>
+            <errorLevel type="suppress">
+                <referencedClass name="PackageVersions\Versions"/>
+            </errorLevel>
+        </DeprecatedClass>
+
+        <UnusedParam>
+            <errorLevel type="suppress">
+                <directory name="examples"/>
+            </errorLevel>
+        </UnusedParam>
+
+        <PossiblyUnusedParam>
+            <errorLevel type="suppress">
+                <directory name="examples"/>
+            </errorLevel>
+        </PossiblyUnusedParam>
 
         <UnusedClass>
             <errorLevel type="suppress">
@@ -76,7 +92,6 @@
         <MissingConstructor>
             <errorLevel type="suppress">
                 <directory name="tests"/>
-                <file name="vendor/nikic/php-parser/lib/PhpParser/Node/Name.php" />
             </errorLevel>
         </MissingConstructor>
 
@@ -86,6 +101,12 @@
                 <directory name="tests"/>
             </errorLevel>
         </PossiblyUndefinedIntArrayOffset>
+
+        <ImpureMethodCall>
+            <errorLevel type="suppress">
+                <directory name="src/Psalm/Storage/Assertion"/>
+            </errorLevel>
+        </ImpureMethodCall>
 
         <MissingThrowsDocblock errorLevel="info"/>
 
@@ -144,35 +165,10 @@
             </errorLevel>
         </PropertyTypeCoercion>
 
-        <InvalidArrayOffset>
-            <errorLevel type="suppress">
-                <file name="vendor/nikic/php-parser/lib/PhpParser/Node/Stmt/Class_.php" />
-                <file name="vendor/nikic/php-parser/lib/PhpParser/Node/Stmt/ClassMethod.php" />
-            </errorLevel>
-        </InvalidArrayOffset>
-
-        <InvalidPropertyAssignmentValue>
-            <errorLevel type="suppress">
-                <file name="vendor/nikic/php-parser/lib/PhpParser/Node/MatchArm.php" />
-            </errorLevel>
-        </InvalidPropertyAssignmentValue>
-
         <MixedAssignment>
             <errorLevel type="suppress">
                 <directory name="vendor/nikic/php-parser" />
             </errorLevel>
         </MixedAssignment>
-
-        <PropertyNotSetInConstructor>
-            <errorLevel type="suppress">
-                <referencedProperty name="PhpParser\Node\Const_::$namespacedName" />
-                <referencedProperty name="PhpParser\Node\Stmt\ClassLike::$namespacedName" />
-                <referencedProperty name="PhpParser\Node\Stmt\Function_::$namespacedName" />
-            </errorLevel>
-        </PropertyNotSetInConstructor>
     </issueHandlers>
-
-    <forbiddenFunctions>
-        <function name="die" />
-    </forbiddenFunctions>
 </psalm>

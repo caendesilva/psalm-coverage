@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal;
 
 use Composer\Autoload\ClassLoader;
@@ -14,10 +12,8 @@ use Psalm\Exception\ConfigNotFoundException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Report;
 use RuntimeException;
-use UnexpectedValueException;
 
 use function array_filter;
-use function array_key_exists;
 use function array_slice;
 use function assert;
 use function count;
@@ -31,21 +27,21 @@ use function file_put_contents;
 use function fwrite;
 use function implode;
 use function in_array;
-use function ini_set;
+use function ini_get;
 use function is_array;
 use function is_dir;
-use function is_scalar;
 use function is_string;
 use function json_decode;
 use function preg_last_error_msg;
+use function preg_match;
 use function preg_replace;
 use function preg_split;
 use function realpath;
-use function str_starts_with;
 use function stream_get_meta_data;
 use function stream_set_blocking;
 use function strlen;
 use function strpos;
+use function strtoupper;
 use function substr;
 use function substr_replace;
 use function trim;
@@ -66,7 +62,7 @@ final class CliUtils
     public static function requireAutoloaders(
         string $current_dir,
         bool $has_explicit_root,
-        string $vendor_dir,
+        string $vendor_dir
     ): ?ClassLoader {
         $autoload_roots = [$current_dir];
 
@@ -176,9 +172,7 @@ final class CliUtils
             return 'vendor';
         }
         try {
-            $composer_file_contents = file_get_contents($composer_json_path);
-            assert($composer_file_contents !== false);
-            $composer_json = json_decode($composer_file_contents, true, 512, JSON_THROW_ON_ERROR);
+            $composer_json = json_decode(file_get_contents($composer_json_path), true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
             fwrite(
                 STDERR,
@@ -237,7 +231,7 @@ final class CliUtils
             }
 
             if ($input_path[0] === '-' && strlen($input_path) === 2) {
-                if ($input_path[1] === 'c' || $input_path[1] === 'f' || $input_path[1] === 'r') {
+                if ($input_path[1] === 'c' || $input_path[1] === 'f') {
                     ++$i;
                 }
                 continue;
@@ -254,9 +248,10 @@ final class CliUtils
     }
 
     /**
+     * @param  string|array|null|false $f_paths
      * @return list<string>|null
      */
-    public static function getPathsToCheck(string|array|false|null $f_paths): ?array
+    public static function getPathsToCheck($f_paths): ?array
     {
         $paths_to_check = [];
 
@@ -276,7 +271,7 @@ final class CliUtils
             $input_path = $input_paths[$i];
 
             if ($input_path[0] === '-' && strlen($input_path) === 2) {
-                if ($input_path[1] === 'c' || $input_path[1] === 'f' || $input_path[1] === 'r') {
+                if ($input_path[1] === 'c' || $input_path[1] === 'f') {
                     ++$i;
                 }
                 continue;
@@ -286,16 +281,8 @@ final class CliUtils
                 continue;
             }
 
-            if (str_starts_with($input_path, '--') && strlen($input_path) > 2) {
-                // ignore --config psalm.xml
-                // ignore common phpunit args that accept a class instead of a path, as this can cause issues on Windows
-                $ignored_arguments = array(
-                    'config',
-                    'printer',
-                    'root',
-                );
-
-                if (in_array(substr($input_path, 2), $ignored_arguments, true)) {
+            if (strpos($input_path, '--') === 0 && strlen($input_path) > 2) {
+                if (substr($input_path, 2) === 'config') {
                     ++$i;
                 }
                 continue;
@@ -351,7 +338,7 @@ final class CliUtils
         string $current_dir,
         string $output_format,
         ?ClassLoader $first_autoloader,
-        bool $create_if_non_existent = false,
+        bool $create_if_non_existent = false
     ): Config {
         try {
             if ($path_to_config) {
@@ -412,10 +399,9 @@ final class CliUtils
         }
 
         $config_file_contents = file_get_contents($config_file);
-        assert($config_file_contents !== false);
 
         if ($config->error_baseline) {
-            $amended_config_file_contents = (string) preg_replace(
+            $amended_config_file_contents = preg_replace(
                 '/errorBaseline=".*?"/',
                 "errorBaseline=\"{$baseline_path}\"",
                 $config_file_contents,
@@ -460,27 +446,38 @@ final class CliUtils
     }
 
     /**
-     * @param array<string,string|false|list<mixed>> $options
-     * @throws ConfigException
+     * @psalm-pure
      */
-    public static function setMemoryLimit(array $options): void
+    public static function getMemoryLimitInBytes(): int
     {
-        if (!array_key_exists('use-ini-defaults', $options)) {
-            ini_set('display_errors', 'stderr');
-            ini_set('display_startup_errors', '1');
+        return self::convertMemoryLimitToBytes(ini_get('memory_limit'));
+    }
 
-            $memoryLimit = (8 * 1_024 * 1_024 * 1_024);
-
-            if (array_key_exists('memory-limit', $options)) {
-                $memoryLimit = $options['memory-limit'];
-
-                if (!is_scalar($memoryLimit)) {
-                    throw new ConfigException('Invalid memory limit specified.');
-                }
-            }
-
-            ini_set('memory_limit', (string) $memoryLimit);
+    /** @psalm-pure */
+    public static function convertMemoryLimitToBytes(string $limit): int
+    {
+        // for unlimited = -1
+        if ($limit < 0) {
+            return -1;
         }
+
+        if (preg_match('/^(\d+)(\D?)$/', $limit, $matches)) {
+            assert(isset($matches[1]));
+            $limit = (int)$matches[1];
+            switch (strtoupper($matches[2] ?? '')) {
+                case 'G':
+                    $limit *= 1_024 * 1_024 * 1_024;
+                    break;
+                case 'M':
+                    $limit *= 1_024 * 1_024;
+                    break;
+                case 'K':
+                    $limit *= 1_024;
+                    break;
+            }
+        }
+
+        return (int)$limit;
     }
 
     public static function initPhpVersion(array $options, Config $config, ProjectAnalyzer $project_analyzer): void
@@ -489,8 +486,7 @@ final class CliUtils
 
         if (isset($options['php-version'])) {
             if (!is_string($options['php-version'])) {
-                fwrite(STDERR, 'Expecting a version number in the format x.y' . PHP_EOL);
-                exit(1);
+                die('Expecting a version number in the format x.y' . PHP_EOL);
             }
             $version = $options['php-version'];
             $source = 'cli';
@@ -501,15 +497,7 @@ final class CliUtils
         }
 
         if ($version !== null && $source !== null) {
-            try {
-                $project_analyzer->setPhpVersion($version, $source);
-            } catch (UnexpectedValueException $e) {
-                fwrite(
-                    STDERR,
-                    $e->getMessage() . PHP_EOL,
-                );
-                exit(1);
-            }
+            $project_analyzer->setPhpVersion($version, $source);
         }
     }
 
@@ -555,7 +543,7 @@ final class CliUtils
 
         $missing_extensions = array_filter(
             $required_extensions,
-            static fn(string $ext) => !extension_loaded($ext),
+            static fn(string $ext) => !extension_loaded($ext)
         );
 
         if ($missing_extensions) {

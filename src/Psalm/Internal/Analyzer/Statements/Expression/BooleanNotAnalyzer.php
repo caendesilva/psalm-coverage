@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -17,12 +15,12 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class BooleanNotAnalyzer
+class BooleanNotAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\BooleanNot $stmt,
-        Context $context,
+        Context $context
     ): bool {
 
 
@@ -42,7 +40,6 @@ final class BooleanNotAnalyzer
             } elseif ($expr_type->isAlwaysFalsy()) {
                 $stmt_type = new TTrue($expr_type->from_docblock);
             } else {
-                ExpressionAnalyzer::checkRiskyTruthyFalsyComparison($expr_type, $statements_analyzer, $stmt);
                 $stmt_type = new TBool();
             }
 

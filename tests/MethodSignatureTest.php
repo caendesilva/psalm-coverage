@@ -1,20 +1,16 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Context;
 use Psalm\Exception\CodeException;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
-use Psalm\Tests\Traits\InvalidCodeAnalysisWithIssuesTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
 class MethodSignatureTest extends TestCase
 {
-    use InvalidCodeAnalysisWithIssuesTestTrait;
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
 
@@ -315,7 +311,7 @@ class MethodSignatureTest extends TestCase
 
                     class B extends A {
                         public function foo(?string $s): string {
-                            return $s !== null ? $s : "hello";
+                            return $s ?: "hello";
                         }
                     }
 
@@ -331,7 +327,7 @@ class MethodSignatureTest extends TestCase
 
                     class B extends A {
                         public function foo(string $s = null): string {
-                            return $s !== null ? $s : "hello";
+                            return $s ?: "hello";
                         }
                     }
 
@@ -401,15 +397,6 @@ class MethodSignatureTest extends TestCase
                 'assertions' => [
                     '$b' => 'B',
                 ],
-            ],
-            'returnIgnoresInlineComments' => [
-                'code' => '<?php
-                    class A {
-                        /** @return bool {@see true}*/
-                        public static function foo():bool {
-                            return true;
-                        }
-                    }',
             ],
             'allowSomeCovariance' => [
                 'code' => '<?php
@@ -512,22 +499,22 @@ class MethodSignatureTest extends TestCase
 
                     class Observer implements \SplObserver
                     {
-                        public function update(SplSubject $subject): void
+                        public function update(SplSubject $subject)
                         {
                         }
                     }
 
                     class Subject implements \SplSubject
                     {
-                        public function attach(SplObserver $observer): void
+                        public function attach(SplObserver $observer)
                         {
                         }
 
-                        public function detach(SplObserver $observer): void
+                        public function detach(SplObserver $observer)
                         {
                         }
 
-                        public function notify(): void
+                        public function notify()
                         {
                         }
                     }',
@@ -928,9 +915,6 @@ class MethodSignatureTest extends TestCase
                     {
                         public function a(mixed $a): void {}
                     }',
-                'assertions' => [],
-                'ignored_issues' => [],
-                'php_version' => '8.0',
             ],
             'doesNotRequireInterfaceDestructorsToHaveReturnType' => [
                 'code' => '<?php
@@ -944,52 +928,6 @@ class MethodSignatureTest extends TestCase
                         public function __destruct() {}
                     }
                 ',
-            ],
-            'allowByRefReturn' => [
-                'code' => '<?php
-                    interface Foo {
-                        public function &foo(): int;
-                    }
-
-                    class Bar implements Foo {
-                        private int $x = 0;
-                        public function &foo(): int {
-                            return $this->x;
-                        }
-                    }
-                ',
-            ],
-            'descendantAddsByRefReturn' => [
-                'code' => '<?php
-                    interface Foo {
-                        public function foo(): int;
-                    }
-
-                    class Bar implements Foo {
-                        private int $x = 0;
-                        public function &foo(): int {
-                            return $this->x;
-                        }
-                    }
-                ',
-            ],
-            'callmapInheritedMethodParamsDoNotHavePrefixes' => [
-                'code' => <<<'PHP'
-                    <?php
-
-                    class NoopFilter extends \php_user_filter
-                    {
-                        /**
-                         * @param resource $in
-                         * @param resource $out
-                         * @param int $consumed   -- this is called &rw_consumed in the callmap
-                         */
-                        public function filter($in, $out, &$consumed, bool $closing): int
-                        {
-                            return PSFS_PASS_ON;
-                        }
-                    }
-                PHP,
             ],
         ];
     }
@@ -1078,7 +1016,7 @@ class MethodSignatureTest extends TestCase
                 'code' => '<?php
                     class A {
                         public function foo(?string $s): string {
-                            return $s !== null ? $s : "hello";
+                            return $s ?: "hello";
                         }
                     }
 
@@ -1647,42 +1585,6 @@ class MethodSignatureTest extends TestCase
                 'error_message' => 'MethodSignatureMustProvideReturnType',
                 'ignored_issues' => [],
                 'php_version' => '8.1',
-            ],
-            'absentByRefReturnInDescendant' => [
-                'code' => '<?php
-                    interface Foo {
-                        public function &foo(): int;
-                    }
-
-                    class Bar implements Foo {
-                        public function foo(): int {
-                            return 1;
-                        }
-                    }
-                ',
-                'error_message' => 'MethodSignatureMismatch',
-            ],
-            'methodAnnotationReturnMismatch' => [
-                'code' => '<?php
-                /**
-                * @method array bar()
-                */
-                interface Foo
-                {
-                    public function bar(): string;
-                }',
-                'error_message' => 'MismatchingDocblockReturnType',
-            ],
-            'methodAnnotationParamMismatch' => [
-                'code' => '<?php
-                /**
-                * @method string bar(string $i)
-                */
-                interface Foo
-                {
-                    public function bar(int $i): string;
-                }',
-                'error_message' => 'MismatchingDocblockParamType',
             ],
         ];
     }

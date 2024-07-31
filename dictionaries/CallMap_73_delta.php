@@ -18,7 +18,7 @@ return [
   'added' => [
     'DateTime::createFromImmutable' => ['static', 'object'=>'DateTimeImmutable'],
     'JsonException::__clone' => ['void'],
-    'JsonException::__construct' => ['void', "message="=>"string", 'code='=>'int', 'previous='=>'?Throwable'],
+    'JsonException::__construct' => ['void'],
     'JsonException::__toString' => ['string'],
     'JsonException::__wakeup' => ['void'],
     'JsonException::getCode' => ['int'],
@@ -28,7 +28,6 @@ return [
     'JsonException::getPrevious' => ['?Throwable'],
     'JsonException::getTrace' => ['list<array{file?:string,line?:int,function:string,class?:class-string,type?:\'::\'|\'->\',args?:array<mixed>}>'],
     'JsonException::getTraceAsString' => ['string'],
-    'Normalizer::getRawDecomposition' => ['?string', 'string'=>'string', 'form='=>'int'],
     'SplPriorityQueue::isCorrupted' => ['bool'],
     'array_key_first' => ['int|string|null', 'array'=>'array'],
     'array_key_last' => ['int|string|null', 'array'=>'array'],
@@ -41,7 +40,6 @@ return [
     'hrtime' => ['array{0:int,1:int}|false', 'as_number='=>'false'],
     'hrtime\'1' => ['int|float|false', 'as_number='=>'true'],
     'is_countable' => ['bool', 'value'=>'mixed'],
-    'normalizer_get_raw_decomposition' => ['string|null', 'string'=>'string', 'form='=>'int'],
     'net_get_interfaces' => ['array<string,array<string,mixed>>|false'],
     'openssl_pkey_derive' => ['string|false', 'public_key'=>'mixed', 'private_key'=>'mixed', 'key_length='=>'?int'],
     'session_set_cookie_params\'1' => ['bool', 'options'=>'array{lifetime?:?int,path?:?string,domain?:?string,secure?:?bool,httponly?:?bool,samesite?:?string}'],
@@ -64,10 +62,6 @@ return [
       'old' => ['int', 'scale'=>'int'],
       'new' => ['int', 'scale='=>'int'],
     ],
-    'define' => [
-        'old' => ['bool', 'constant_name'=>'string', 'value'=>'array|scalar|null', 'case_insensitive='=>'bool'],
-        'new' => ['bool', 'constant_name'=>'string', 'value'=>'array|scalar|null', 'case_insensitive='=>'false'],
-    ],
     'ldap_compare' => [
       'old' => ['bool|int', 'ldap'=>'resource', 'dn'=>'string', 'attribute'=>'string', 'value'=>'string'],
       'new' => ['bool|int', 'ldap'=>'resource', 'dn'=>'string', 'attribute'=>'string', 'value'=>'string', 'controls='=>'array'],
@@ -81,8 +75,8 @@ return [
       'new' => ['bool|string', 'ldap'=>'resource', 'user='=>'string', 'old_password='=>'string', 'new_password='=>'string', '&w_controls='=>'array'],
     ],
     'ldap_list' => [
-      'old' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int'],
-      'new' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
+      'old' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int'],
+      'new' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
     ],
     'ldap_mod_add' => [
       'old' => ['bool', 'ldap'=>'resource', 'dn'=>'string', 'entry'=>'array'],
@@ -105,20 +99,16 @@ return [
       'new' => ['bool', 'ldap'=>'resource', 'dn'=>'string', 'modifications_info'=>'array', 'controls='=>'array'],
     ],
     'ldap_read' => [
-      'old' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int'],
-      'new' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
+      'old' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int'],
+      'new' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
     ],
     'ldap_rename' => [
       'old' => ['bool', 'ldap'=>'resource', 'dn'=>'string', 'new_rdn'=>'string', 'new_parent'=>'string', 'delete_old_rdn'=>'bool'],
       'new' => ['bool', 'ldap'=>'resource', 'dn'=>'string', 'new_rdn'=>'string', 'new_parent'=>'string', 'delete_old_rdn'=>'bool', 'controls='=>'array'],
     ],
     'ldap_search' => [
-      'old' => ['resource[]|resource|false', 'ldap'=>'resource|resource[]', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int'],
-      'new' => ['resource[]|resource|false', 'ldap'=>'resource|resource[]', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
-    ],
-    'mkdir' => [
-        'old' => ['bool', 'directory'=>'string', 'permissions='=>'int', 'recursive='=>'bool', 'context='=>'resource'],
-        'new' => ['bool', 'directory'=>'string', 'permissions='=>'int', 'recursive='=>'bool', 'context='=>'null|resource'],
+      'old' => ['resource|false', 'ldap'=>'resource|resource[]', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int'],
+      'new' => ['resource|false', 'ldap'=>'resource|resource[]', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
     ],
   ],
   'removed' => [

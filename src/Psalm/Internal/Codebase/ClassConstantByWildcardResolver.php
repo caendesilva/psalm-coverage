@@ -9,22 +9,25 @@ use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TMixed;
 
 use function array_merge;
+use function array_values;
+use function preg_match;
+use function sprintf;
+use function str_replace;
 
 /**
  * @internal
  */
 final class ClassConstantByWildcardResolver
 {
-    private readonly StorageByPatternResolver $resolver;
+    private Codebase $codebase;
 
-    public function __construct(
-        private readonly Codebase $codebase,
-    ) {
-        $this->resolver = new StorageByPatternResolver();
+    public function __construct(Codebase $codebase)
+    {
+        $this->codebase = $codebase;
     }
 
     /**
-     * @return non-empty-array<array-key,Atomic>|null
+     * @return list<Atomic>|null
      */
     public function resolve(string $class_name, string $constant_pattern): ?array
     {
@@ -32,27 +35,24 @@ final class ClassConstantByWildcardResolver
             return null;
         }
 
-        $classlike_storage = $this->codebase->classlike_storage_provider->get($class_name);
+        $constant_regex_pattern = sprintf('#^%s$#', str_replace('*', '.*', $constant_pattern));
 
-        $constants = $this->resolver->resolveConstants(
-            $classlike_storage,
-            $constant_pattern,
-        );
+        $class_like_storage = $this->codebase->classlike_storage_provider->get($class_name);
+        $matched_class_constant_types = [];
 
-        $types = [];
-        foreach ($constants as $class_constant_storage) {
-            if (! $class_constant_storage->type) {
-                $types[] = [new TMixed()];
+        foreach ($class_like_storage->constants as $constant => $class_constant_storage) {
+            if (preg_match($constant_regex_pattern, $constant) === 0) {
                 continue;
             }
 
-            $types[] = $class_constant_storage->type->getAtomicTypes();
+            if (! $class_constant_storage->type) {
+                $matched_class_constant_types[] = [new TMixed()];
+                continue;
+            }
+
+            $matched_class_constant_types[] = $class_constant_storage->type->getAtomicTypes();
         }
 
-        if ($types === []) {
-            return null;
-        }
-
-        return array_merge([], ...$types);
+        return array_values(array_merge([], ...$matched_class_constant_types));
     }
 }

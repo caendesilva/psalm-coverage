@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 /**
@@ -11,21 +9,28 @@ namespace Psalm\Type\Atomic;
  */
 final class TTemplateParamClass extends TClassString
 {
+    /**
+     * @var string
+     */
+    public $param_name;
+
+    /**
+     * @var string
+     */
+    public $defining_class;
+
     public function __construct(
-        public string $param_name,
+        string $param_name,
         string $as,
         ?TNamedObject $as_type,
-        public string $defining_class,
-        bool $from_docblock = false,
+        string $defining_class,
+        bool $from_docblock = false
     ) {
-        parent::__construct(
-            $as,
-            $as_type,
-            false,
-            false,
-            false,
-            $from_docblock,
-        );
+        $this->param_name = $param_name;
+        $this->as = $as;
+        $this->as_type = $as_type;
+        $this->defining_class = $defining_class;
+        $this->from_docblock = $from_docblock;
     }
 
     public function getKey(bool $include_extra = true): string
@@ -51,7 +56,7 @@ final class TTemplateParamClass extends TClassString
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format,
+        bool $use_phpdoc_format
     ): string {
         return $this->param_name . '::class';
     }

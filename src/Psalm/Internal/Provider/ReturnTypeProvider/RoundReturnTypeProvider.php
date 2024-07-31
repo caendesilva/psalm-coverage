@@ -18,7 +18,7 @@ use const PHP_ROUND_HALF_UP;
 /**
  * @internal
  */
-final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>

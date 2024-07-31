@@ -1,16 +1,14 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider;
 
 use function microtime;
-use function str_starts_with;
+use function strpos;
 
 /**
  * @internal
  */
-final class FakeFileProvider extends FileProvider
+class FakeFileProvider extends FileProvider
 {
     /**
      * @var array<string, string>
@@ -22,26 +20,16 @@ final class FakeFileProvider extends FileProvider
      */
     public array $fake_file_times = [];
 
-    /**
-     * @var array<string, true>
-     */
-    public array $fake_directories = [];
-
     public function fileExists(string $file_path): bool
     {
         return isset($this->fake_files[$file_path]) || parent::fileExists($file_path);
-    }
-
-    public function isDirectory(string $file_path): bool
-    {
-        return isset($this->fake_directories[$file_path]) || parent::isDirectory($file_path);
     }
 
     /** @psalm-external-mutation-free */
     public function getContents(string $file_path, bool $go_to_source = false): string
     {
         if (!$go_to_source && isset($this->temp_files[$file_path])) {
-            return $this->temp_files[$file_path]['content'];
+            return $this->temp_files[$file_path];
         }
 
         return $this->fake_files[$file_path] ?? parent::getContents($file_path);
@@ -52,10 +40,10 @@ final class FakeFileProvider extends FileProvider
         $this->fake_files[$file_path] = $file_contents;
     }
 
-    public function setOpenContents(string $file_path, ?string $file_contents = null): void
+    public function setOpenContents(string $file_path, string $file_contents): void
     {
         if (isset($this->fake_files[$file_path])) {
-            $this->fake_files[$file_path] = $file_contents ?? $this->getContents($file_path, true);
+            $this->fake_files[$file_path] = $file_contents;
         }
     }
 
@@ -70,12 +58,6 @@ final class FakeFileProvider extends FileProvider
         $this->fake_file_times[$file_path] = (int)microtime(true);
     }
 
-    public function deleteFile(string $file_path): void
-    {
-        unset($this->fake_files[$file_path]);
-        unset($this->fake_file_times[$file_path]);
-    }
-
     /**
      * @param array<string> $file_extensions
      * @param null|callable(string):bool $filter
@@ -86,7 +68,7 @@ final class FakeFileProvider extends FileProvider
         $file_paths = parent::getFilesInDir($dir_path, $file_extensions, $filter);
 
         foreach ($this->fake_files as $file_path => $_) {
-            if (str_starts_with($file_path, $dir_path)) {
+            if (strpos($file_path, $dir_path) === 0) {
                 $file_paths[] = $file_path;
             }
         }

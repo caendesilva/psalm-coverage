@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
@@ -84,26 +82,6 @@ class ThisOutTest extends TestCase
                     '$data1===' => 'list<1>',
                     '$data2===' => 'list<2>',
                     '$data3===' => 'list<2|3>',
-                ],
-            ],
-            'provideDefaultTypeToTypeArguments' => [
-                'code' => <<<'PHP'
-                <?php
-                    /** @template T of 'idle'|'running' */
-                    class App {
-                        /** @psalm-this-out self<'idle'> */
-                        public function __construct() {}
-
-                        /**
-                         * @psalm-if-this-is self<'idle'>
-                         * @psalm-this-out self<'running'>
-                         */
-                        public function start(): void {}
-                    }
-                    $app = new App();
-                PHP,
-                'assertions' => [
-                    '$app===' => "App<'idle'>",
                 ],
             ],
         ];

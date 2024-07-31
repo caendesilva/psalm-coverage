@@ -1,25 +1,101 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
-use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
-use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
+use Psalm\Config;
+use Psalm\Context;
+use Psalm\Exception\CodeException;
+use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Provider\FakeFileProvider;
+use Psalm\Internal\Provider\Providers;
+use Psalm\Internal\RuntimeCaches;
+use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
+
+use function preg_quote;
+use function strpos;
 
 use const DIRECTORY_SEPARATOR;
 
 class UnusedVariableTest extends TestCase
 {
-    use ValidCodeAnalysisTestTrait;
-    use InvalidCodeAnalysisTestTrait;
+    protected ProjectAnalyzer $project_analyzer;
 
     public function setUp(): void
     {
-        parent::setUp();
+        RuntimeCaches::clearAll();
+
+        $this->file_provider = new FakeFileProvider();
+
+        $this->project_analyzer = new ProjectAnalyzer(
+            new TestConfig(),
+            new Providers(
+                $this->file_provider,
+                new FakeParserCacheProvider(),
+            ),
+        );
+
         $this->project_analyzer->getCodebase()->reportUnusedVariables();
     }
 
+    /**
+     * @dataProvider providerValidCodeParse
+     * @param array<string> $ignored_issues
+     */
+    public function testValidCode(string $code, array $ignored_issues = [], string $php_version = '7.4'): void
+    {
+        $test_name = $this->getTestName();
+        if (strpos($test_name, 'SKIPPED-') !== false) {
+            $this->markTestSkipped('Skipped due to a bug.');
+        }
+
+        $this->project_analyzer->setPhpVersion($php_version, 'tests');
+
+        $file_path = self::$src_dir_path . 'somefile.php';
+
+        $this->addFile(
+            $file_path,
+            $code,
+        );
+
+        foreach ($ignored_issues as $error_level) {
+            $this->project_analyzer->getCodebase()->config->setCustomErrorLevel($error_level, Config::REPORT_SUPPRESS);
+        }
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    /**
+     * @dataProvider providerInvalidCodeParse
+     * @param array<string> $ignored_issues
+     */
+    public function testInvalidCode(string $code, string $error_message, array $ignored_issues = []): void
+    {
+        if (strpos($this->getTestName(), 'SKIPPED-') !== false) {
+            $this->markTestSkipped();
+        }
+
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessageMatches('/\b' . preg_quote($error_message, '/') . '\b/');
+
+        $this->project_analyzer->setPhpVersion('7.4', 'tests');
+
+        $file_path = self::$src_dir_path . 'somefile.php';
+
+        foreach ($ignored_issues as $error_level) {
+            $this->project_analyzer->getCodebase()->config->setCustomErrorLevel($error_level, Config::REPORT_SUPPRESS);
+        }
+
+        $this->addFile(
+            $file_path,
+            $code,
+        );
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    /**
+     * @return array<string, array{code:string,ignored_issues?:list<string>,php_version?:string}>
+     */
     public function providerValidCodeParse(): array
     {
         return [
@@ -39,13 +115,6 @@ class UnusedVariableTest extends TestCase
 
                     unset($arr[$a]);',
             ],
-            'eval' => [
-                'code' => '<?php
-                    if (rand()) {
-                        $v = "";
-                        eval($v);
-                    }',
-            ],
             'usedVariables' => [
                 'code' => '<?php
                     /** @return string */
@@ -61,7 +130,6 @@ class UnusedVariableTest extends TestCase
                         $f = new $d($e);
                         return $a . implode(",", $b) . $c[0] . get_class($f);
                     }',
-                'assertions' => [],
                 'ignored_issues' => [
                     'PossiblyUndefinedVariable',
                     'MixedArrayAccess',
@@ -104,7 +172,7 @@ class UnusedVariableTest extends TestCase
                     function foo(array $arr) : void {
                         $a = null;
                         foreach ($arr as $a) { }
-                        if ($a !== null) {}
+                        if ($a) {}
                     }',
             ],
             'definedInSecondBranchOfCondition' => [
@@ -130,10 +198,10 @@ class UnusedVariableTest extends TestCase
             'dummyByRefVar' => [
                 'code' => '<?php
                     function foo(string &$a = null, string $b = null): void {
-                        if ($a !== null) {
+                        if ($a) {
                             echo $a;
                         }
-                        if ($b !== null) {
+                        if ($b) {
                             echo $b;
                         }
                     }
@@ -329,7 +397,7 @@ class UnusedVariableTest extends TestCase
                             echo $e->getMessage();
                         }
 
-                        if ($s !== null) {}
+                        if ($s) {}
                     }',
             ],
             'throwWithMessageCallAndAssignmentInCatchAndReference' => [
@@ -464,7 +532,6 @@ class UnusedVariableTest extends TestCase
 
                         return $ret;
                     }',
-                'assertions' => [],
                 'ignored_issues' => [
                     'MixedAssignment',
                     'MixedMethodCall',
@@ -852,6 +919,7 @@ class UnusedVariableTest extends TestCase
                     /** @psalm-suppress UnusedParam */
                     function foo(callable $c) : void {}
                     $listener = function () use (&$listener) : void {
+                        /** @psalm-suppress MixedArgument */
                         foo($listener);
                     };
                     foo($listener);',
@@ -875,6 +943,7 @@ class UnusedVariableTest extends TestCase
                         $i = 1;
                     };
                     $a();
+                    /** @psalm-suppress MixedArgument */
                     echo $i;',
             ],
             'regularVariableClosureUseInAddition' => [
@@ -942,7 +1011,7 @@ class UnusedVariableTest extends TestCase
                         if ($foo) {}
                     } catch (Exception $e) {}
 
-                    if ($foo !== false && $foo !== 0) {}',
+                    if ($foo) {}',
             ],
             'useTryAssignedVariableInsideFinally' => [
                 'code' => '<?php
@@ -1014,43 +1083,7 @@ class UnusedVariableTest extends TestCase
                         A::$method();
                     }',
             ],
-            'usedAsClassConstFetch' => [
-                'code' => '<?php
-                    class A {
-                        const bool something = false;
-
-                        public function foo() : void {
-                            $var = "something";
-
-                            if (rand(0, 1)) {
-                                static::{$var};
-                            }
-                        }
-                    }',
-                'assertions' => [],
-                'ignored_issues' => [],
-                'php_version' => '8.3',
-            ],
-            'usedAsEnumFetch' => [
-                'code' => '<?php
-                    enum E {
-                        case C;
-                    }
-
-                    class A {
-                        public function foo() : void {
-                            $var = "C";
-
-                            if (rand(0, 1)) {
-                                E::{$var};
-                            }
-                        }
-                    }',
-                'assertions' => [],
-                'ignored_issues' => [],
-                'php_version' => '8.3',
-            ],
-            'usedAsStaticPropertyAssign' => [
+            'usedAsStaticPropertyName' => [
                 'code' => '<?php
                     class A {
                         private static bool $something = false;
@@ -1060,20 +1093,6 @@ class UnusedVariableTest extends TestCase
 
                             if (rand(0, 1)) {
                                 static::${$var} = true;
-                            }
-                        }
-                    }',
-            ],
-            'usedAsStaticPropertyFetch' => [
-                'code' => '<?php
-                    class A {
-                        private static bool $something = false;
-
-                        public function foo() : void {
-                            $var = "something";
-
-                            if (rand(0, 1)) {
-                                static::${$var};
                             }
                         }
                     }',
@@ -1375,8 +1394,6 @@ class UnusedVariableTest extends TestCase
                             $update = $value;
                         }
                     }',
-                'assertions' => [],
-                'ignored_issues' => ['UnsupportedPropertyReferenceUsage'],
             ],
             'createdAndUsedInCondition' => [
                 'code' => '<?php
@@ -1400,6 +1417,7 @@ class UnusedVariableTest extends TestCase
             'usedInUndefinedFunction' => [
                 'code' => '<?php
                     /**
+                     * @psalm-suppress MixedInferredReturnType
                      * @psalm-suppress MixedReturnStatement
                      */
                     function test(): string {
@@ -2004,7 +2022,7 @@ class UnusedVariableTest extends TestCase
                         $arr = str_getcsv($value);
 
                         foreach ($arr as &$element) {
-                            $element = $element !== null ?: "foo";
+                            $element = $element ?: "foo";
                         }
 
                         return $arr;
@@ -2191,19 +2209,12 @@ class UnusedVariableTest extends TestCase
                      * @param bool $b
                      */
                     function validate($b, string $source) : void {
-                        /** @var bool|string $b */
-                        if (!is_bool($b)) {
-                            $source = $b;
-                            $b = false;
-                        }
-
                         /**
-                         * test to ensure $b is only type bool and not bool|string anymore
-                         * after we set $b = false; inside the condition above
-                         * @psalm-suppress TypeDoesNotContainType
+                         * @psalm-suppress DocblockTypeContradiction
+                         * @psalm-suppress MixedAssignment
                          */
                         if (!is_bool($b)) {
-                            echo "this should not happen";
+                            $source = $b;
                         }
 
                         print_r($source);
@@ -2283,6 +2294,10 @@ class UnusedVariableTest extends TestCase
             ],
             'allowUseByRef' => [
                 'code' => '<?php
+                    /**
+                     * @psalm-suppress MixedReturnStatement
+                     * @psalm-suppress MixedInferredReturnType
+                     */
                     function foo(array $data) : array {
                         $output = [];
 
@@ -2302,6 +2317,7 @@ class UnusedVariableTest extends TestCase
 
                     $a = function() use (&$output_rows) : void {
                         $output_row = 5;
+                        /** @psalm-suppress MixedArrayAssignment */
                         $output_rows[] = $output_row;
                     };
                     $a();
@@ -2387,8 +2403,7 @@ class UnusedVariableTest extends TestCase
                             }
                         }
                     }',
-                'assertions' => [],
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'ignored_issues' => [],
                 'php_version' => '8.0',
             ],
             'concatWithUnknownProperty' => [
@@ -2589,26 +2604,12 @@ class UnusedVariableTest extends TestCase
                     }
                 ',
             ],
-            'requiredClosureArgumentMustNotGetReported' => [
-                'code' => '<?php
-
-                /** @param callable(string,int): void $callable */
-                function takesCallable(callable $callable): void
-                {
-                    $callable("foo", 0);
-                }
-
-                takesCallable(
-                    static function (string $foo, int $bar) {
-                        if ($bar === 0) {
-                            throw new RuntimeException();
-                        }
-                    }
-                );',
-            ],
         ];
     }
 
+    /**
+     * @return array<string,array{code:string,error_message:string}>
+     */
     public function providerInvalidCodeParse(): array
     {
         return [
@@ -3216,7 +3217,7 @@ class UnusedVariableTest extends TestCase
                         $user = $user_id;
                     }
 
-                    if ($user !== null && $user !== 0) {
+                    if ($user) {
                         $a = 0;
                         for ($i = 1; $i <= 10; $i++) {
                             $a += $i;
@@ -3236,7 +3237,7 @@ class UnusedVariableTest extends TestCase
                         $user = $user_id;
                     }
 
-                    if ($user !== null && $user !== 0) {
+                    if ($user) {
                         $a = 0;
                         foreach ([1, 2, 3] as $i) {
                             $a += $i;
@@ -3717,26 +3718,6 @@ class UnusedVariableTest extends TestCase
                     }
                 ',
                 'error_message' => 'UnusedVariable',
-            ],
-            'reportWillReportFloatAsItIsAfterRequiredParameterAndUnused' => [
-                'code' => '<?php
-
-                /** @param callable(string,int,bool,mixed,float): void $callable */
-                function takesCallable(callable $callable): void
-                {
-                    /** @var mixed $mixed */
-                    $mixed = null;
-                    $callable("foo", 0, true, $mixed, 0.0);
-                }
-
-                takesCallable(
-                    static function (string $foo, int $bar, $float) {
-                        if ($bar === 0) {
-                            throw new RuntimeException();
-                        }
-                    }
-                );',
-                'error_message' => 'Param float is never referenced in this method',
             ],
         ];
     }

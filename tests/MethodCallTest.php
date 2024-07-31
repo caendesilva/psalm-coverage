@@ -1,19 +1,15 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Context;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
-use Psalm\Tests\Traits\InvalidCodeAnalysisWithIssuesTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
 class MethodCallTest extends TestCase
 {
-    use InvalidCodeAnalysisWithIssuesTestTrait;
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
@@ -153,7 +149,7 @@ class MethodCallTest extends TestCase
 
                 $obj = new SomeClass();
 
-                if ($obj->getInt() !== null) {
+                if ($obj->getInt()) {
                     printInt($obj->getInt());
                 }',
         );
@@ -189,7 +185,7 @@ class MethodCallTest extends TestCase
 
                 $obj = new SomeClass();
 
-                if ($obj->getInt() !== null) {
+                if ($obj->getInt()) {
                     printInt($obj->getInt());
                 }',
         );
@@ -267,7 +263,7 @@ class MethodCallTest extends TestCase
                     $b = (new DateTimeImmutable())->modify("+3 hours");',
                 'assertions' => [
                     '$yesterday' => 'MyDate',
-                    '$b' => 'DateTimeImmutable',
+                    '$b' => 'DateTimeImmutable&static',
                 ],
             ],
             'magicCall' => [
@@ -507,48 +503,14 @@ class MethodCallTest extends TestCase
                         /** @var ?string */
                         public $a;
                     }
-                    class B extends A {}
 
                     $db = new PDO("sqlite::memory:");
                     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                    $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
                     $stmt = $db->prepare("select \"a\" as a");
                     $stmt->setFetchMode(PDO::FETCH_CLASS, A::class);
-                    $stmt2 = $db->prepare("select \"a\" as a");
-                    $stmt2->setFetchMode(PDO::FETCH_ASSOC);
-                    $stmt3 = $db->prepare("select \"a\" as a");
-                    $stmt3->setFetchMode(PDO::ATTR_DEFAULT_FETCH_MODE);
                     $stmt->execute();
-                    $stmt2->execute();
                     /** @psalm-suppress MixedAssignment */
-                    $a = $stmt->fetch();
-                    $b = $stmt->fetchAll();
-                    $c = $stmt->fetch(PDO::FETCH_CLASS);
-                    $d = $stmt->fetchAll(PDO::FETCH_CLASS);
-                    $e = $stmt->fetchAll(PDO::FETCH_CLASS, B::class);
-                    $f = $stmt->fetch(PDO::FETCH_ASSOC);
-                    $g = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    /** @psalm-suppress MixedAssignment */
-                    $h = $stmt2->fetch();
-                    $i = $stmt2->fetchAll();
-                    $j = $stmt2->fetch(PDO::FETCH_BOTH);
-                    $k = $stmt2->fetchAll(PDO::FETCH_BOTH);
-                    /** @psalm-suppress MixedAssignment */
-                    $l = $stmt3->fetch();',
-                'assertions' => [
-                    '$a' => 'mixed',
-                    '$b' => 'array<array-key, mixed>|false',
-                    '$c' => 'false|object',
-                    '$d' => 'list<object>',
-                    '$e' => 'list<B>',
-                    '$f' => 'array<string, null|scalar>|false',
-                    '$g' => 'list<array<string, null|scalar>>',
-                    '$h' => 'mixed',
-                    '$i' => 'array<array-key, mixed>|false',
-                    '$j' => 'array<array-key, null|scalar>|false',
-                    '$k' => 'list<array<array-key, null|scalar>>',
-                    '$l' => 'mixed',
-                ],
+                    $a = $stmt->fetch();',
             ],
             'datePeriodConstructor' => [
                 'code' => '<?php
@@ -558,22 +520,6 @@ class MethodCallTest extends TestCase
                             DateInterval::createFromDateString("1 month"),
                             $d2
                         );
-                    }',
-            ],
-            'methodExistsDoesntExhaustMemory' => [
-                'code' => '<?php
-                    class C {}
-
-                    function f(C $c): void {
-                        method_exists($c, \'a\') ? $c->a() : [];
-                        method_exists($c, \'b\') ? $c->b() : [];
-                        method_exists($c, \'c\') ? $c->c() : [];
-                        method_exists($c, \'d\') ? $c->d() : [];
-                        method_exists($c, \'e\') ? $c->e() : [];
-                        method_exists($c, \'f\') ? $c->f() : [];
-                        method_exists($c, \'g\') ? $c->g() : [];
-                        method_exists($c, \'h\') ? $c->h() : [];
-                        method_exists($c, \'i\') ? $c->i() : [];
                     }',
             ],
             'callMethodAfterCheckingExistence' => [
@@ -661,46 +607,6 @@ class MethodCallTest extends TestCase
                         return $foo;
                     }',
             ],
-            'pdoStatementFetchColumn' => [
-                'code' => '<?php
-                    /** @return scalar|null|false */
-                    function fetch_column() {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetch(PDO::FETCH_COLUMN);
-                    }',
-            ],
-            'pdoStatementFetchAllColumn' => [
-                'code' => '<?php
-                    /** @return list<scalar|null> */
-                    function fetch_column() {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_COLUMN);
-                    }',
-            ],
-            'pdoStatementFetchKeyPair' => [
-                'code' => '<?php
-                    /** @return array<array-key,scalar|null> */
-                    function fetch_column() {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetch(PDO::FETCH_KEY_PAIR);
-                    }',
-            ],
-            'pdoStatementFetchAllKeyPair' => [
-                'code' => '<?php
-                    /** @return array<array-key,scalar|null> */
-                    function fetch_column() {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_KEY_PAIR);
-                    }',
-            ],
             'pdoStatementFetchAssoc' => [
                 'code' => '<?php
                     /** @return array<string,null|scalar>|false */
@@ -709,16 +615,6 @@ class MethodCallTest extends TestCase
                         $sth = $p->prepare("SELECT 1");
                         $sth->execute();
                         return $sth->fetch(PDO::FETCH_ASSOC);
-                    }',
-            ],
-            'pdoStatementFetchAllAssoc' => [
-                'code' => '<?php
-                    /** @return list<array<string,null|scalar>> */
-                    function fetch_assoc() : array {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_ASSOC);
                     }',
             ],
             'pdoStatementFetchBoth' => [
@@ -731,16 +627,6 @@ class MethodCallTest extends TestCase
                         return $sth->fetch(PDO::FETCH_BOTH);
                     }',
             ],
-            'pdoStatementFetchAllBoth' => [
-                'code' => '<?php
-                    /** @return list<array<null|scalar>> */
-                    function fetch_both() : array {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_BOTH);
-                    }',
-            ],
             'pdoStatementFetchBound' => [
                 'code' => '<?php
                     /** @return bool */
@@ -751,16 +637,6 @@ class MethodCallTest extends TestCase
                         return $sth->fetch(PDO::FETCH_BOUND);
                     }',
             ],
-            'pdoStatementFetchAllBound' => [
-                'code' => '<?php
-                    /** @return list<bool> */
-                    function fetch_both() : array {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_BOUND);
-                    }',
-            ],
             'pdoStatementFetchClass' => [
                 'code' => '<?php
                     /** @return object|false */
@@ -769,28 +645,6 @@ class MethodCallTest extends TestCase
                         $sth = $p->prepare("SELECT 1");
                         $sth->execute();
                         return $sth->fetch(PDO::FETCH_CLASS);
-                    }',
-            ],
-            'pdoStatementFetchAllClass' => [
-                'code' => '<?php
-                    /** @return list<object> */
-                    function fetch_class() : array {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_CLASS);
-                    }',
-            ],
-            'pdoStatementFetchAllNamedClass' => [
-                'code' => '<?php
-                    class Foo {}
-
-                    /** @return list<Foo> */
-                    function fetch_class() : array {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_CLASS, Foo::class);
                     }',
             ],
             'pdoStatementFetchLazy' => [
@@ -805,22 +659,12 @@ class MethodCallTest extends TestCase
             ],
             'pdoStatementFetchNamed' => [
                 'code' => '<?php
-                    /** @return array<string,scalar|null|list<scalar|null>>|false */
+                    /** @return array<string,scalar|list<scalar>>|false */
                     function fetch_named() {
                         $p = new PDO("sqlite::memory:");
                         $sth = $p->prepare("SELECT 1");
                         $sth->execute();
                         return $sth->fetch(PDO::FETCH_NAMED);
-                    }',
-            ],
-            'pdoStatementFetchAllNamed' => [
-                'code' => '<?php
-                    /** @return list<array<string,scalar|null|list<scalar|null>>> */
-                    function fetch_named() : array {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_NAMED);
                     }',
             ],
             'pdoStatementFetchNum' => [
@@ -833,16 +677,6 @@ class MethodCallTest extends TestCase
                         return $sth->fetch(PDO::FETCH_NUM);
                     }',
             ],
-            'pdoStatementFetchAllNum' => [
-                'code' => '<?php
-                    /** @return list<list<null|scalar>> */
-                    function fetch_named() : array {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_NUM);
-                    }',
-            ],
             'pdoStatementFetchObj' => [
                 'code' => '<?php
                     /** @return stdClass|false */
@@ -851,16 +685,6 @@ class MethodCallTest extends TestCase
                         $sth = $p->prepare("SELECT 1");
                         $sth->execute();
                         return $sth->fetch(PDO::FETCH_OBJ);
-                    }',
-            ],
-            'pdoStatementFetchAllObj' => [
-                'code' => '<?php
-                    /** @return list<stdClass> */
-                    function fetch_named() : array {
-                        $p = new PDO("sqlite::memory:");
-                        $sth = $p->prepare("SELECT 1");
-                        $sth->execute();
-                        return $sth->fetchAll(PDO::FETCH_OBJ);
                     }',
             ],
             'dateTimeSecondArg' => [
@@ -940,7 +764,7 @@ class MethodCallTest extends TestCase
 
                     $a = new A();
 
-                    if ($a->getA() !== null) {
+                    if ($a->getA()) {
                         echo strlen($a->getA());
                     }',
             ],
@@ -1011,7 +835,7 @@ class MethodCallTest extends TestCase
 
                     $obj = new SomeClass();
 
-                    if ($obj->getInt() !== null) {
+                    if ($obj->getInt()) {
                         printInt($obj->getInt());
                     }',
             ],
@@ -1035,7 +859,7 @@ class MethodCallTest extends TestCase
 
                     $obj = new SomeClass();
 
-                    if ($obj->getInt() !== null) {
+                    if ($obj->getInt()) {
                         printInt($obj->getInt());
                     }',
             ],
@@ -1152,7 +976,7 @@ class MethodCallTest extends TestCase
                         }
                     }',
                 'assertions' => [],
-                'ignored_issues' => ['MixedReturnStatement'],
+                'ignored_issues' => ['MixedReturnStatement', 'MixedInferredReturnType'],
                 'php_version' => '8.0',
             ],
             'nullsafeShortCircuit' => [
@@ -1198,62 +1022,6 @@ class MethodCallTest extends TestCase
                 'assertions' => [
                     '$n' => 'BlahModel',
                 ],
-            ],
-            'methodLevelGenericsWillBeInherited' => [
-                'code' => '<?php
-                    interface I
-                    {
-                        /**
-                         * @template TResult
-                         * @param TResult $value
-                         * @return TResult
-                         */
-                        public function method(mixed $value): mixed;
-                    }
-                    final class A implements I
-                    {
-                        public function method(mixed $value): mixed
-                        {
-                            return $value;
-                        }
-                    }
-                    $_v = (new A)->method("a");
-                    /** @psalm-check-type-exact $_v = "a" */',
-                'assertions' => [],
-                'ignored_issues' => [],
-                'php_version' => '8.0',
-            ],
-            'phpdocObjectTypeAndReferenceInParameter' => [
-                'code' => '<?php
-                    class Foo {
-                        /**
-                         * @param object $object
-                         */
-                        public function bar(&$object): void {}
-                    }
-                    $x = new Foo();
-                    $x->bar($x);',
-            ],
-            'conditional' => [
-                'code' => '<?php
-
-                    class Old {
-                        public function x(): void {}
-                    }
-                    class Child1 extends Old {}
-                    class Child2 extends Old {}
-
-                    /**
-                     * @template IsClient of bool
-                     */
-                    class A {
-                        /**
-                         * @psalm-param (IsClient is true ? Child1 : Child2) $var
-                         */
-                        public function test(Old $var): void {
-                            $var->x();
-                        }
-                    }',
             ],
         ];
     }
@@ -1365,7 +1133,7 @@ class MethodCallTest extends TestCase
                         }
                     }',
                 'error_message' => 'LessSpecificReturnStatement',
-                'ignored_issues' => ['MixedReturnStatement', 'MixedMethodCall'],
+                'ignored_issues' => ['MixedInferredReturnType', 'MixedReturnStatement', 'MixedMethodCall'],
             ],
             'undefinedVariableStaticCall' => [
                 'code' => '<?php
@@ -1656,7 +1424,7 @@ class MethodCallTest extends TestCase
                     }
 
                     function foo(A $a) : void {
-                        if ($a->getA() !== null) {
+                        if ($a->getA()) {
                             echo strlen($a->getA());
                         }
                     }
@@ -1722,7 +1490,7 @@ class MethodCallTest extends TestCase
 
                     $obj = new SomeClass();
 
-                    if ($obj->getInt() !== null) {
+                    if ($obj->getInt()) {
                         printInt($obj->getInt());
                     }',
                 'error_message' => 'PossiblyNullArgument',
@@ -1792,37 +1560,6 @@ class MethodCallTest extends TestCase
                             return parent::foo();
                         }
                     }',
-                'error_message' => 'UndefinedMethod',
-            ],
-            'incorrectCallableParamDefault' => [
-                'code' => '<?php
-                    class A {
-                        public function foo(callable $_a = "strlen"): void {}
-                    }
-                ',
-                'error_message' => 'InvalidParamDefault',
-            ],
-            'stdClassConstructorHasNoParameters' => [
-                'code' => <<<'PHP'
-                    <?php
-                    $a = new stdClass(5);
-                PHP,
-                'error_message' => 'TooManyArguments',
-            ],
-            'firstClassCallableWithUnknownStaticMethod' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class A {}
-                    $_a = A::foo(...);
-                PHP,
-                'error_message' => 'UndefinedMethod',
-            ],
-            'firstClassCallableWithUnknownInstanceMethod' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class A {}
-                    $_a = (new A)->foo(...);
-                PHP,
                 'error_message' => 'UndefinedMethod',
             ],
         ];

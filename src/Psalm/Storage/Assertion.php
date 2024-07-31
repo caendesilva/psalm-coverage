@@ -1,19 +1,15 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage;
 
 use Psalm\Type\Atomic;
-use Stringable;
 
 /**
  * @psalm-immutable
  */
-abstract class Assertion implements Stringable
+abstract class Assertion
 {
     use ImmutableNonCloneableTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
     abstract public function getNegation(): Assertion;
 

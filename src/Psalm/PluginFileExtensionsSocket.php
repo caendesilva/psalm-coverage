@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm;
 
 use LogicException;
@@ -16,6 +14,8 @@ use function sprintf;
 
 final class PluginFileExtensionsSocket implements FileExtensionsInterface
 {
+    private Config $config;
+
     /**
      * @var array<string, class-string<FileScanner>>
      */
@@ -34,9 +34,9 @@ final class PluginFileExtensionsSocket implements FileExtensionsInterface
     /**
      * @internal
      */
-    public function __construct(
-        private readonly Config $config,
-    ) {
+    public function __construct(Config $config)
+    {
+        $this->config = $config;
     }
 
     /**
@@ -55,8 +55,8 @@ final class PluginFileExtensionsSocket implements FileExtensionsInterface
                 1_622_727_271,
             );
         }
-        if (isset($this->config->getFiletypeScanners()[$fileExtension])
-            || isset($this->additionalFileTypeScanners[$fileExtension])
+        if (!empty($this->config->getFiletypeScanners()[$fileExtension])
+            || !empty($this->additionalFileTypeScanners[$fileExtension])
         ) {
             throw new LogicException(
                 sprintf('Cannot redeclare scanner for file-type %s', $fileExtension),
@@ -91,8 +91,8 @@ final class PluginFileExtensionsSocket implements FileExtensionsInterface
                 1_622_727_281,
             );
         }
-        if (isset($this->config->getFiletypeAnalyzers()[$fileExtension])
-            || isset($this->additionalFileTypeAnalyzers[$fileExtension])
+        if (!empty($this->config->getFiletypeAnalyzers()[$fileExtension])
+            || !empty($this->additionalFileTypeAnalyzers[$fileExtension])
         ) {
             throw new LogicException(
                 sprintf('Cannot redeclare analyzer for file-type %s', $fileExtension),

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\Config;
 
 use InvalidArgumentException;
@@ -20,11 +18,14 @@ class PluginListTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
 
-    private MockInterface $config_file;
+    /** @var ConfigFile&MockInterface */
+    private $config_file;
 
-    private MockInterface $config;
+    /** @var Config&MockInterface */
+    private $config;
 
-    private MockInterface $composer_lock;
+    /** @var ComposerLock&MockInterface */
+    private $composer_lock;
 
     public function setUp(): void
     {

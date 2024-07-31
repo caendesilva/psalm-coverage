@@ -1,19 +1,15 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
-use PhpParser\Node\Expr;
-use PhpParser\Node\InterpolatedStringPart;
+use PhpParser\Node\Scalar\EncapsedStringPart;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
-use Psalm\Type;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
@@ -29,12 +25,12 @@ use function in_array;
 /**
  * @internal
  */
-final class EncapsulatedStringAnalyzer
+class EncapsulatedStringAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
-        PhpParser\Node\Scalar\InterpolatedString $stmt,
-        Context $context,
+        PhpParser\Node\Scalar\Encapsed $stmt,
+        Context $context
     ): bool {
         $parent_nodes = [];
 
@@ -45,18 +41,13 @@ final class EncapsulatedStringAnalyzer
         $literal_string = "";
 
         foreach ($stmt->parts as $part) {
-            if ($part instanceof Expr) {
-                if (ExpressionAnalyzer::analyze($statements_analyzer, $part, $context) === false) {
-                    return false;
-                }
+            if (ExpressionAnalyzer::analyze($statements_analyzer, $part, $context) === false) {
+                return false;
             }
 
-            if ($part instanceof InterpolatedStringPart) {
-                if ($literal_string !== null) {
-                    $literal_string .= $part->value;
-                }
-                $non_empty = $non_empty || $part->value !== "";
-            } elseif ($part_type = $statements_analyzer->node_data->getType($part)) {
+            $part_type = $statements_analyzer->node_data->getType($part);
+
+            if ($part_type !== null) {
                 $casted_part_type = CastAnalyzer::castStringAttempt(
                     $statements_analyzer,
                     $context,
@@ -118,6 +109,11 @@ final class EncapsulatedStringAnalyzer
                         }
                     }
                 }
+            } elseif ($part instanceof EncapsedStringPart) {
+                if ($literal_string !== null) {
+                    $literal_string .= $part->value;
+                }
+                $non_empty = $non_empty || $part->value !== "";
             } else {
                 $all_literals = false;
                 $literal_string = null;
@@ -127,7 +123,7 @@ final class EncapsulatedStringAnalyzer
         if ($non_empty) {
             if ($literal_string !== null) {
                 $stmt_type = new Union(
-                    [Type::getAtomicStringFromLiteral($literal_string)],
+                    [new TLiteralString($literal_string)],
                     ['parent_nodes' => $parent_nodes],
                 );
             } elseif ($all_literals) {

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Config;
@@ -82,7 +80,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -109,7 +107,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -130,7 +128,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -157,7 +155,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -178,7 +176,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -206,7 +204,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -233,7 +231,7 @@ class ForbiddenCodeTest extends TestCase
                     XML,
             ),
         );
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
         $this->addFile(
             $file_path,
             <<<'PHP'
@@ -268,7 +266,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -295,7 +293,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -323,7 +321,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -351,7 +349,7 @@ class ForbiddenCodeTest extends TestCase
             ),
         );
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,

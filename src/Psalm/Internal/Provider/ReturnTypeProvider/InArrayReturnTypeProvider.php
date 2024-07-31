@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -15,7 +13,7 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class InArrayReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class InArrayReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -302,7 +300,7 @@ class ImmutableAnnotationTest extends TestCase
 
                     $dto = new DTO("BOOM!");
 
-                    if ($dto->getError() !== null) {
+                    if ($dto->getError()) {
                         takesString($dto->getError());
                     }',
             ],
@@ -765,81 +763,6 @@ class ImmutableAnnotationTest extends TestCase
                         }
                     }',
                 'error_message' => 'ImpurePropertyAssignment',
-            ],
-            'readonlyByRefInClass' => [
-                'code' => '<?php
-                    namespace World;
-
-                    final class Foo
-                    {
-                        /**
-                         * @readonly
-                         */
-                        public array $values;
-
-                        public function __construct(array $values)
-                        {
-                            $this->values = $values;
-                        }
-
-                        /**
-                         * @return mixed
-                         */
-                        public function bar()
-                        {
-                            return reset($this->values);
-                        }
-                    }',
-                'error_message' => 'InaccessibleProperty',
-            ],
-            'readonlyByRef' => [
-                'code' => '<?php
-                    namespace World;
-
-                    final class Foo
-                    {
-                        /**
-                         * @readonly
-                         */
-                        public array $values;
-
-                        public function __construct(array $values)
-                        {
-                            $this->values = $values;
-                        }
-                    }
-
-                    $x = new Foo([]);
-                    reset($x->values);',
-                'error_message' => 'InaccessibleProperty',
-            ],
-            'readonlyByRefCustomFunction' => [
-                'code' => '<?php
-                    namespace World;
-
-                    final class Foo
-                    {
-                        /**
-                         * @readonly
-                         */
-                        public array $values;
-
-                        public function __construct(array $values)
-                        {
-                            $this->values = $values;
-                        }
-                    }
-
-                    /**
-                     * @param string $a
-                     * @param array $b
-                     * @return void
-                     */
-                    function bar($a, &$b) {}
-
-                    $x = new Foo([]);
-                    bar("hello", $x->values);',
-                'error_message' => 'InaccessibleProperty',
             ],
             'preventUnset' => [
                 'code' => '<?php

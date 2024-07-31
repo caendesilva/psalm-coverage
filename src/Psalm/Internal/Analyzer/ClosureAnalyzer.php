@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use PhpParser;
@@ -14,24 +12,23 @@ use Psalm\Issue\DuplicateParam;
 use Psalm\Issue\PossiblyUndefinedVariable;
 use Psalm\Issue\UndefinedVariable;
 use Psalm\IssueBuffer;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
+use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Union;
 
 use function in_array;
 use function is_string;
 use function preg_match;
-use function str_starts_with;
+use function strpos;
 use function strtolower;
 
 /**
  * @internal
  * @extends FunctionLikeAnalyzer<PhpParser\Node\Expr\Closure|PhpParser\Node\Expr\ArrowFunction>
  */
-final class ClosureAnalyzer extends FunctionLikeAnalyzer
+class ClosureAnalyzer extends FunctionLikeAnalyzer
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @param PhpParser\Node\Expr\Closure|PhpParser\Node\Expr\ArrowFunction $function
      */
@@ -73,7 +70,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
     public static function analyzeExpression(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\FunctionLike $stmt,
-        Context $context,
+        Context $context
     ): bool {
         $closure_analyzer = new ClosureAnalyzer($stmt, $statements_analyzer);
 
@@ -105,7 +102,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
         }
 
         foreach ($context->vars_in_scope as $var => $type) {
-            if (str_starts_with($var, '$this->')) {
+            if (strpos($var, '$this->') === 0) {
                 $use_context->vars_in_scope[$var] = $type;
             }
         }
@@ -123,7 +120,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
         }
 
         foreach ($context->vars_possibly_in_scope as $var => $_) {
-            if (str_starts_with($var, '$this->')) {
+            if (strpos($var, '$this->') === 0) {
                 $use_context->vars_possibly_in_scope[$var] = true;
             }
         }
@@ -135,6 +132,12 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
                 }
 
                 $use_var_id = '$' . $use->var->name;
+
+                // insert the ref into the current context if passed by ref, as whatever we're passing
+                // the closure to could execute it straight away.
+                if ($use->byRef && !$context->hasVariable($use_var_id)) {
+                    $context->vars_in_scope[$use_var_id] = new Union([new TMixed()], ['by_ref' => true]);
+                }
 
                 if ($statements_analyzer->data_flow_graph instanceof VariableUseGraph
                     && $context->hasVariable($use_var_id)
@@ -151,7 +154,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
                 }
 
                 $use_context->vars_in_scope[$use_var_id] =
-                    $context->hasVariable($use_var_id)
+                    $context->hasVariable($use_var_id) && !$use->byRef
                     ? $context->vars_in_scope[$use_var_id]
                     : Type::getMixed();
 
@@ -200,14 +203,8 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
         }
 
         $use_context->calling_method_id = $context->calling_method_id;
-        $use_context->phantom_classes = $context->phantom_classes;
 
-        $byref_vars = [];
-        $closure_analyzer->analyze($use_context, $statements_analyzer->node_data, $context, false, $byref_vars);
-
-        foreach ($byref_vars as $key => $value) {
-            $context->vars_in_scope[$key] = $value;
-        }
+        $closure_analyzer->analyze($use_context, $statements_analyzer->node_data, $context, false);
 
         if ($closure_analyzer->inferred_impure
             && $statements_analyzer->getSource() instanceof FunctionLikeAnalyzer
@@ -231,10 +228,10 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
     /**
      * @return  false|null
      */
-    private static function analyzeClosureUses(
+    public static function analyzeClosureUses(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Closure $stmt,
-        Context $context,
+        Context $context
     ): ?bool {
         $param_names = [];
 
@@ -268,6 +265,21 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
             if (!$context->hasVariable($use_var_id)) {
                 if ($use_var_id === '$argv' || $use_var_id === '$argc') {
                     continue;
+                }
+
+                if ($use->byRef) {
+                    $context->vars_in_scope[$use_var_id] = Type::getMixed();
+                    $context->vars_possibly_in_scope[$use_var_id] = true;
+
+                    if (!$statements_analyzer->hasVariable($use_var_id)) {
+                        $statements_analyzer->registerVariable(
+                            $use_var_id,
+                            new CodeLocation($statements_analyzer, $use->var),
+                            null,
+                        );
+                    }
+
+                    return null;
                 }
 
                 if (!isset($context->vars_possibly_in_scope[$use_var_id])) {
@@ -316,6 +328,14 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
 
                     continue;
                 }
+            } elseif ($use->byRef) {
+                $new_type = new Union([new TMixed()], [
+                    'parent_nodes' => $context->vars_in_scope[$use_var_id]->parent_nodes,
+                ]);
+
+                $context->remove($use_var_id);
+
+                $context->vars_in_scope[$use_var_id] = $new_type;
             }
         }
 

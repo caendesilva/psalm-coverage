@@ -18,7 +18,7 @@ use function dirname;
 /**
  * @internal
  */
-final class DirnameReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class DirnameReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>
@@ -38,41 +38,6 @@ final class DirnameReturnTypeProvider implements FunctionReturnTypeProviderInter
         $statements_source = $event->getStatementsSource();
         $node_type_provider = $statements_source->getNodeTypeProvider();
 
-        $union = $node_type_provider->getType($call_args[0]->value);
-        $generic = false;
-        if ($union !== null) {
-            foreach ($union->getAtomicTypes() as $atomic) {
-                if ($atomic instanceof Type\Atomic\TNonFalsyString) {
-                    continue;
-                }
-
-                if ($atomic instanceof Type\Atomic\TLiteralString) {
-                    if ($atomic->value === '') {
-                        $generic = true;
-                        break;
-                    }
-
-                    // 0 will be non-falsy too (.)
-                    continue;
-                }
-
-                if ($atomic instanceof Type\Atomic\TNonEmptyString
-                    || $atomic instanceof Type\Atomic\TEmptyNumeric) {
-                    continue;
-                }
-
-                // generic string is the only other possible case of empty string
-                // which would result in a generic string
-                $generic = true;
-                break;
-            }
-        }
-
-        $fallback_type = Type::getNonFalsyString();
-        if ($union === null || $generic) {
-            $fallback_type = Type::getString();
-        }
-
         $dir_level = 1;
         if (isset($call_args[1])) {
             $type = $node_type_provider->getType($call_args[1]->value);
@@ -83,7 +48,7 @@ final class DirnameReturnTypeProvider implements FunctionReturnTypeProviderInter
                     $atomic_type->value > 0) {
                     $dir_level = $atomic_type->value;
                 } else {
-                    return $fallback_type;
+                    return Type::getString();
                 }
             }
         }
@@ -97,7 +62,7 @@ final class DirnameReturnTypeProvider implements FunctionReturnTypeProviderInter
         );
 
         if ($evaled_path === null) {
-            return $fallback_type;
+            return Type::getString();
         }
 
         $path_to_file = dirname($evaled_path, $dir_level);

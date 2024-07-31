@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -10,6 +8,7 @@ use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
 use UnexpectedValueException;
@@ -20,7 +19,7 @@ use function array_shift;
 /**
  * @internal
  */
-final class ArraySliceReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class ArraySliceReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>
@@ -61,7 +60,9 @@ final class ArraySliceReturnTypeProvider implements FunctionReturnTypeProviderIn
                 continue;
             }
 
-
+            if ($atomic_type instanceof TList) {
+                $atomic_type = $atomic_type->getKeyedArray();
+            }
 
             if ($atomic_type instanceof TKeyedArray) {
                 $atomic_type = $atomic_type->getGenericArrayType();

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Internal\Type\TypeCombiner;
@@ -275,22 +273,22 @@ class IntRangeTest extends TestCase
                     '$h===' => 'int<-4, 4>',
                     '$i===' => 'int<min, 0>',
                     '$j===' => 'int<min, 0>',
-                    '$k===' => 'mixed',
+                    '$k===' => 'never',
                     '$l===' => 'int',
                     '$m===' => 'int<0, max>',
                     '$n===' => 'int<min, 0>',
-                    '$o===' => 'mixed',
+                    '$o===' => 'never',
                     '$p===' => 'int',
-                    '$q===' => 'mixed',
+                    '$q===' => 'never',
                     '$r===' => 'int<0, 2>',
                     '$s===' => 'int<-2, 0>',
-                    '$t===' => 'mixed',
+                    '$t===' => 'never',
                     '$u===' => 'int<-2, 0>',
                     '$v===' => 'int<2, 0>',
-                    '$w===' => 'mixed',
+                    '$w===' => 'never',
                     '$x===' => 'int<0, 2>',
                     '$y===' => 'int<-2, 0>',
-                    '$z===' => 'mixed',
+                    '$z===' => 'never',
                     '$aa===' => 'int<-2, 2>',
                     '$ab===' => 'int<-2, 2>',
                 ],

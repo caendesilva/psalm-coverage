@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use InvalidArgumentException;
@@ -16,6 +14,7 @@ use UnexpectedValueException;
 
 use function assert;
 use function count;
+use function implode;
 use function preg_replace;
 use function strpos;
 use function strtolower;
@@ -24,27 +23,32 @@ use function substr;
 /**
  * @internal
  */
-final class NamespaceAnalyzer extends SourceAnalyzer
+class NamespaceAnalyzer extends SourceAnalyzer
 {
     use CanAlias;
 
-    private readonly string $namespace_name;
+    /**
+     * @var FileAnalyzer
+     * @psalm-suppress NonInvariantDocblockPropertyType
+     */
+    protected SourceAnalyzer $source;
+
+    private Namespace_ $namespace;
+
+    private string $namespace_name;
 
     /**
      * A lookup table for public namespace constants
      *
      * @var array<string, array<string, Union>>
      */
-    private static array $public_namespace_constants = [];
+    protected static array $public_namespace_constants = [];
 
-    public function __construct(
-        private readonly Namespace_ $namespace,
-        /**
-         * @var FileAnalyzer
-         */
-        protected SourceAnalyzer $source,
-    ) {
-        $this->namespace_name = $this->namespace->name ? $this->namespace->name->toString() : '';
+    public function __construct(Namespace_ $namespace, FileAnalyzer $source)
+    {
+        $this->source = $source;
+        $this->namespace = $namespace;
+        $this->namespace_name = $this->namespace->name ? implode('\\', $this->namespace->name->parts) : '';
     }
 
     public function collectAnalyzableInformation(): void
@@ -207,7 +211,7 @@ final class NamespaceAnalyzer extends SourceAnalyzer
      */
     public static function getNameSpaceRoot(string $fullyQualifiedClassName): string
     {
-        $root_namespace = (string) preg_replace('/^([^\\\]+).*/', '$1', $fullyQualifiedClassName, 1);
+        $root_namespace = preg_replace('/^([^\\\]+).*/', '$1', $fullyQualifiedClassName, 1);
         if ($root_namespace === "") {
             throw new InvalidArgumentException("Invalid classname \"$fullyQualifiedClassName\"");
         }

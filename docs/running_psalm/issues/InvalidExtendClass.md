@@ -1,6 +1,6 @@
 # InvalidExtendClass
 
-Emitted when attempting to extend a final class, a class annotated with `@final` or a class using @psalm-inheritors and not in the inheritor list
+Emitted when attempting to extend a final class or a class annotated with `@final`.
 
 ```php
 <?php
@@ -15,11 +15,4 @@ class B extends A {}
 class DoctrineA {}
 
 class DoctrineB extends DoctrineA {}
-
-/**
- * @psalm-inheritors A|B
- */
-class C {}
-
-class D extends C {}
 ```

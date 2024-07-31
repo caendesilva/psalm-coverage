@@ -1,21 +1,21 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage\Assertion;
 
 use Psalm\Storage\Assertion;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
  */
 final class DoesNotHaveExactCount extends Assertion
 {
-    use UnserializeMemoryUsageSuppressionTrait;
+    /** @var positive-int */
+    public $count;
+
     /** @param positive-int $count */
-    public function __construct(public readonly int $count)
+    public function __construct(int $count)
     {
+        $this->count = $count;
     }
 
     public function isNegation(): bool

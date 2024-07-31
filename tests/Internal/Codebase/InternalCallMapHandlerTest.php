@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\Internal\Codebase;
 
 use InvalidArgumentException;
@@ -28,11 +26,9 @@ use ReflectionType;
 use function array_shift;
 use function class_exists;
 use function count;
-use function enum_exists;
 use function explode;
 use function function_exists;
 use function in_array;
-use function interface_exists;
 use function is_array;
 use function is_int;
 use function json_encode;
@@ -48,28 +44,8 @@ use const PHP_MAJOR_VERSION;
 use const PHP_MINOR_VERSION;
 use const PHP_VERSION;
 
-/** @group callmap */
 class InternalCallMapHandlerTest extends TestCase
 {
-    /**
-     * Regex patterns for callmap entries that should be skipped.
-     *
-     * These will not be checked against reflection. This prevents a
-     * large ignore list for extension functions have invalid reflection
-     * or are not maintained.
-     *
-     * @var list<non-empty-string>
-     */
-    private static array $skippedPatterns = [
-        '/\'\d$/', // skip alternate signatures
-        '/^redis/', // redis extension
-        '/^imagick/', // imagick extension
-        '/^uopz/', // uopz extension
-        '/^memcache[_:]/', // memcache extension
-        '/^memcachepool/', // memcache extension
-        '/^gnupg/', // gnupg extension
-    ];
-
     /**
      * Specify a function name as value, or a function name as key and
      * an array containing the PHP versions in which to ignore this function as values.
@@ -77,15 +53,310 @@ class InternalCallMapHandlerTest extends TestCase
      * @var array<int|string, string|list<string>>
      */
     private static array $ignoredFunctions = [
+        'apcu_entry',
         'array_multisort',
+        'arrayiterator::asort',
+        'arrayiterator::ksort',
+        'arrayiterator::offsetexists',
+        'arrayiterator::offsetget',
+        'arrayiterator::offsetset',
+        'arrayiterator::offsetunset',
+        'arrayiterator::seek',
+        'arrayiterator::setflags',
+        'arrayiterator::uasort',
+        'arrayiterator::uksort',
+        'arrayiterator::unserialize',
+        'arrayobject::__construct',
+        'arrayobject::asort',
+        'arrayobject::exchangearray',
+        'arrayobject::ksort',
+        'arrayobject::offsetexists',
+        'arrayobject::offsetget',
+        'arrayobject::offsetset',
+        'arrayobject::offsetunset',
+        'arrayobject::setiteratorclass',
+        'arrayobject::uasort',
+        'arrayobject::uksort',
+        'arrayobject::unserialize',
+        'cachingiterator::offsetexists',
+        'cachingiterator::offsetget',
+        'cachingiterator::offsetset',
+        'cachingiterator::offsetunset',
+        'callbackfilteriterator::__construct',
+        'closure::bind',
+        'closure::bindto',
+        'closure::call',
+        'closure::fromcallable',
+        'collator::asort',
+        'collator::getattribute',
+        'collator::setattribute',
+        'collator::sort',
+        'collator::sortwithsortkeys',
+        'curlfile::__construct',
+        'curlfile::setmimetype',
+        'curlfile::setpostfilename',
+        'date_isodate_set',
         'datefmt_create' => ['8.0'],
+        'dateinterval::__construct',
+        'dateinterval::createfromdatestring',
+        'datetime::createfromformat',
+        'datetime::diff',
+        'datetime::modify',
+        'datetime::setisodate',
+        'datetime::settime',
+        'datetime::settimestamp',
+        'datetimezone::gettransitions',
+        'directoryiterator::__construct',
+        'directoryiterator::getfileinfo',
+        'directoryiterator::getpathinfo',
+        'directoryiterator::openfile',
+        'directoryiterator::seek',
+        'directoryiterator::setfileclass',
+        'directoryiterator::setinfoclass',
+        'domattr::insertbefore',
+        'domattr::isdefaultnamespace',
+        'domattr::issamenode',
+        'domattr::lookupprefix',
+        'domattr::removechild',
+        'domattr::replacechild',
+        'domcdatasection::__construct',
+        'domcomment::__construct',
+        'domdocument::createattribute',
+        'domdocument::createattributens',
+        'domdocument::createelement',
+        'domdocument::createelementns',
+        'domdocument::createtextnode',
+        'domdocument::getelementbyid',
+        'domdocument::getelementsbytagname',
+        'domdocument::getelementsbytagnamens',
+        'domdocument::importnode',
+        'domdocument::registernodeclass',
+        'domelement::__construct',
+        'domelement::getattribute',
+        'domelement::getattributenode',
+        'domelement::getattributenodens',
+        'domelement::getattributens',
+        'domelement::getelementsbytagname',
+        'domelement::getelementsbytagnamens',
+        'domelement::hasattribute',
+        'domelement::hasattributens',
+        'domelement::removeattribute',
+        'domelement::removeattributenode',
+        'domelement::removeattributens',
+        'domelement::setattribute',
+        'domelement::setattributens',
+        'domelement::setidattribute',
+        'domelement::setidattributenode',
+        'domelement::setidattributens',
+        'domimplementation::createdocument',
+        'domimplementation::createdocumenttype',
+        'domnamednodemap::getnameditem',
+        'domnamednodemap::getnameditemns',
+        'domnode::appendchild',
+        'domnode::c14n',
+        'domnode::c14nfile',
+        'domnode::insertbefore',
+        'domnode::isdefaultnamespace',
+        'domnode::issamenode',
+        'domnode::lookupprefix',
+        'domnode::removechild',
+        'domnode::replacechild',
+        'domprocessinginstruction::__construct',
+        'domtext::__construct',
+        'domxpath::__construct',
+        'domxpath::evaluate',
+        'domxpath::query',
+        'domxpath::registernamespace',
+        'domxpath::registerphpfunctions',
+        'easter_date',
         'fiber::start',
+        'filesystemiterator::__construct',
+        'filesystemiterator::getfileinfo',
+        'filesystemiterator::getpathinfo',
+        'filesystemiterator::openfile',
+        'filesystemiterator::seek',
+        'filesystemiterator::setfileclass',
+        'filesystemiterator::setflags',
+        'filesystemiterator::setinfoclass',
+        'finfo::__construct',
+        'finfo::buffer',
+        'finfo::file',
+        'finfo::set_flags',
+        'generator::throw',
+        'globiterator::__construct',
+        'globiterator::getfileinfo',
+        'globiterator::getpathinfo',
+        'globiterator::openfile',
+        'globiterator::seek',
+        'globiterator::setfileclass',
+        'globiterator::setflags',
+        'globiterator::setinfoclass',
+        'gnupg::adddecryptkey',
+        'gnupg::addencryptkey',
+        'gnupg::addsignkey',
+        'gnupg::decrypt',
+        'gnupg::decryptverify',
+        'gnupg::encrypt',
+        'gnupg::encryptsign',
+        'gnupg::export',
+        'gnupg::import',
+        'gnupg::keyinfo',
+        'gnupg::seterrormode',
+        'gnupg::sign',
+        'gnupg::verify',
+        'gnupg_adddecryptkey',
+        'gnupg_addencryptkey',
+        'gnupg_addsignkey',
+        'gnupg_cleardecryptkeys',
+        'gnupg_clearencryptkeys',
+        'gnupg_clearsignkeys',
+        'gnupg_decrypt',
+        'gnupg_decryptverify',
+        'gnupg_encrypt',
+        'gnupg_encryptsign',
+        'gnupg_export',
+        'gnupg_geterror',
+        'gnupg_getprotocol',
+        'gnupg_import',
+        'gnupg_init',
+        'gnupg_keyinfo',
+        'gnupg_setarmor',
+        'gnupg_seterrormode',
+        'gnupg_setsignmode',
+        'gnupg_sign',
+        'gnupg_verify',
         'imagefilledpolygon',
         'imagegd',
         'imagegd2',
         'imageopenpolygon',
         'imagepolygon',
+        'intlbreakiterator::getlocale',
+        'intlbreakiterator::getpartsiterator',
+        'intlcal_from_date_time',
+        'intlcal_get_weekend_transition',
+        'intlcalendar::add',
+        'intlcalendar::createinstance',
+        'intlcalendar::fielddifference',
+        'intlcalendar::fromdatetime',
+        'intlcalendar::getkeywordvaluesforlocale',
+        'intlcalendar::getlocale',
+        'intlcalendar::getweekendtransition',
+        'intlcalendar::isweekend',
+        'intlcalendar::roll',
+        'intlcalendar::setlenient',
+        'intlcalendar::setminimaldaysinfirstweek',
+        'intlcalendar::setrepeatedwalltimeoption',
+        'intlcalendar::setskippedwalltimeoption',
+        'intlcalendar::settime',
+        'intlcalendar::settimezone',
+        'intlchar::charage',
+        'intlchar::chardigitvalue',
+        'intlchar::chardirection',
+        'intlchar::charfromname',
+        'intlchar::charmirror',
+        'intlchar::charname',
+        'intlchar::chartype',
+        'intlchar::chr',
+        'intlchar::digit',
+        'intlchar::enumcharnames',
+        'intlchar::enumchartypes',
+        'intlchar::foldcase',
+        'intlchar::fordigit',
+        'intlchar::getbidipairedbracket',
+        'intlchar::getblockcode',
+        'intlchar::getcombiningclass',
+        'intlchar::getfc_nfkc_closure',
+        'intlchar::getintpropertyvalue',
+        'intlchar::getnumericvalue',
+        'intlchar::getpropertyname',
+        'intlchar::getpropertyvaluename',
+        'intlchar::hasbinaryproperty',
+        'intlchar::isalnum',
+        'intlchar::isalpha',
+        'intlchar::isbase',
+        'intlchar::isblank',
+        'intlchar::iscntrl',
+        'intlchar::isdefined',
+        'intlchar::isdigit',
+        'intlchar::isgraph',
+        'intlchar::isidignorable',
+        'intlchar::isidpart',
+        'intlchar::isidstart',
+        'intlchar::isisocontrol',
+        'intlchar::isjavaidpart',
+        'intlchar::isjavaidstart',
+        'intlchar::isjavaspacechar',
+        'intlchar::islower',
+        'intlchar::ismirrored',
+        'intlchar::isprint',
+        'intlchar::ispunct',
+        'intlchar::isspace',
+        'intlchar::istitle',
+        'intlchar::isualphabetic',
+        'intlchar::isulowercase',
+        'intlchar::isupper',
+        'intlchar::isuuppercase',
+        'intlchar::isuwhitespace',
+        'intlchar::iswhitespace',
+        'intlchar::isxdigit',
+        'intlchar::ord',
+        'intlchar::tolower',
+        'intlchar::totitle',
+        'intlchar::toupper',
+        'intlcodepointbreakiterator::following',
+        'intlcodepointbreakiterator::getlocale',
+        'intlcodepointbreakiterator::getpartsiterator',
+        'intlcodepointbreakiterator::isboundary',
+        'intlcodepointbreakiterator::next',
+        'intlcodepointbreakiterator::preceding',
+        'intlexception::__construct',
+        'intlgregcal_create_instance',
+        'intlgregcal_is_leap_year',
         'intlgregoriancalendar::__construct',
+        'intlgregoriancalendar::add',
+        'intlgregoriancalendar::createinstance',
+        'intlgregoriancalendar::fielddifference',
+        'intlgregoriancalendar::fromdatetime',
+        'intlgregoriancalendar::getkeywordvaluesforlocale',
+        'intlgregoriancalendar::getlocale',
+        'intlgregoriancalendar::getweekendtransition',
+        'intlgregoriancalendar::isweekend',
+        'intlgregoriancalendar::roll',
+        'intlgregoriancalendar::setgregorianchange',
+        'intlgregoriancalendar::setlenient',
+        'intlgregoriancalendar::setminimaldaysinfirstweek',
+        'intlgregoriancalendar::setrepeatedwalltimeoption',
+        'intlgregoriancalendar::setskippedwalltimeoption',
+        'intlgregoriancalendar::settime',
+        'intlgregoriancalendar::settimezone',
+        'intlrulebasedbreakiterator::__construct',
+        'intlrulebasedbreakiterator::getlocale',
+        'intlrulebasedbreakiterator::getpartsiterator',
+        'intltimezone::countequivalentids',
+        'intltimezone::createtimezone',
+        'intltimezone::createtimezoneidenumeration',
+        'intltimezone::fromdatetimezone',
+        'intltimezone::getcanonicalid',
+        'intltimezone::getdisplayname',
+        'intltimezone::getequivalentid',
+        'intltimezone::getidforwindowsid',
+        'intltimezone::getoffset',
+        'intltimezone::getregion',
+        'intltimezone::getwindowsid',
+        'intltimezone::hassamerules',
+        'intltz_create_enumeration',
+        'intltz_get_canonical_id',
+        'intltz_get_display_name',
+        'iteratoriterator::__construct',
+        'jsonexception::__construct',
+        'limititerator::__construct',
+        'limititerator::seek',
+        'locale::filtermatches',
+        'locale::getdisplaylanguage',
+        'locale::getdisplayname',
+        'locale::getdisplayregion',
+        'locale::getdisplayscript',
+        'locale::getdisplayvariant',
         'lzf_compress',
         'lzf_decompress',
         'mailparse_msg_extract_part',
@@ -97,8 +368,87 @@ class InternalCallMapHandlerTest extends TestCase
         'mailparse_msg_get_structure',
         'mailparse_msg_parse',
         'mailparse_stream_encode',
-        'memcached::cas', // memcached 3.2.0 has incorrect reflection
-        'memcached::casbykey', // memcached 3.2.0 has incorrect reflection
+        'memcache::add',
+        'memcache::addserver',
+        'memcache::append',
+        'memcache::cas',
+        'memcache::connect',
+        'memcache::decrement',
+        'memcache::delete',
+        'memcache::findserver',
+        'memcache::flush',
+        'memcache::getserverstatus',
+        'memcache::increment',
+        'memcache::pconnect',
+        'memcache::prepend',
+        'memcache::replace',
+        'memcache::set',
+        'memcache::setfailurecallback',
+        'memcache::setserverparams',
+        'memcache_add',
+        'memcache_add_server',
+        'memcache_append',
+        'memcache_cas',
+        'memcache_close',
+        'memcache_connect',
+        'memcache_decrement',
+        'memcache_delete',
+        'memcache_flush',
+        'memcache_get_extended_stats',
+        'memcache_get_server_status',
+        'memcache_get_stats',
+        'memcache_get_version',
+        'memcache_increment',
+        'memcache_pconnect',
+        'memcache_prepend',
+        'memcache_replace',
+        'memcache_set',
+        'memcache_set_compress_threshold',
+        'memcache_set_failure_callback',
+        'memcache_set_server_params',
+        'memcachepool::add',
+        'memcachepool::addserver',
+        'memcachepool::append',
+        'memcachepool::cas',
+        'memcachepool::connect',
+        'memcachepool::decrement',
+        'memcachepool::delete',
+        'memcachepool::findserver',
+        'memcachepool::flush',
+        'memcachepool::get',
+        'memcachepool::getserverstatus',
+        'memcachepool::increment',
+        'memcachepool::prepend',
+        'memcachepool::replace',
+        'memcachepool::set',
+        'memcachepool::setcompressthreshold',
+        'memcachepool::setfailurecallback',
+        'memcachepool::setserverparams',
+        'messageformatter::format',
+        'messageformatter::formatmessage',
+        'messageformatter::parse',
+        'messageformatter::parsemessage',
+        'mongodb\bson\binary::__construct',
+        'multipleiterator::attachiterator',
+        'mysqli::poll',
+        'mysqli_poll',
+        'mysqli_real_connect',
+        'mysqli_stmt::__construct',
+        'mysqli_stmt::bind_param',
+        'mysqli_stmt_bind_param',
+        'normalizer::getrawdecomposition',
+        'normalizer::isnormalized',
+        'normalizer::normalize',
+        'normalizer_get_raw_decomposition',
+        'numberformatter::formatcurrency',
+        'numberformatter::getattribute',
+        'numberformatter::getsymbol',
+        'numberformatter::gettextattribute',
+        'numberformatter::parse',
+        'numberformatter::parsecurrency',
+        'numberformatter::setattribute',
+        'numberformatter::setsymbol',
+        'numberformatter::settextattribute',
         'oauth::fetch',
         'oauth::getaccesstoken',
         'oauth::setcapath',
@@ -144,6 +494,186 @@ class InternalCallMapHandlerTest extends TestCase
         'oci_result',
         'ocigetbufferinglob',
         'ocisetbufferinglob',
+        'odbc_procedurecolumns',
+        'odbc_procedures',
+        'odbc_result',
+        'openssl_pkcs7_read',
+        'pdo::__construct',
+        'pdo::exec',
+        'pdo::prepare',
+        'pdo::quote',
+        'pdostatement::bindcolumn',
+        'pdostatement::bindparam',
+        'pdostatement::fetchobject',
+        'pdostatement::getattribute',
+        'phar::__construct',
+        'phar::addemptydir',
+        'phar::addfile',
+        'phar::addfromstring',
+        'phar::buildfromdirectory',
+        'phar::buildfromiterator',
+        'phar::cancompress',
+        'phar::copy',
+        'phar::count',
+        'phar::createdefaultstub',
+        'phar::delete',
+        'phar::extractto',
+        'phar::mapphar',
+        'phar::mount',
+        'phar::mungserver',
+        'phar::offsetexists',
+        'phar::offsetget',
+        'phar::offsetset',
+        'phar::offsetunset',
+        'phar::running',
+        'phar::setdefaultstub',
+        'phar::setsignaturealgorithm',
+        'phar::unlinkarchive',
+        'phar::webphar',
+        'phardata::__construct',
+        'phardata::addemptydir',
+        'phardata::addfile',
+        'phardata::addfromstring',
+        'phardata::buildfromdirectory',
+        'phardata::buildfromiterator',
+        'phardata::copy',
+        'phardata::delete',
+        'phardata::extractto',
+        'phardata::offsetexists',
+        'phardata::offsetget',
+        'phardata::offsetset',
+        'phardata::offsetunset',
+        'phardata::setdefaultstub',
+        'phardata::setsignaturealgorithm',
+        'pharfileinfo::__construct',
+        'pharfileinfo::chmod',
+        'pharfileinfo::iscompressed',
+        'recursivearrayiterator::asort',
+        'recursivearrayiterator::ksort',
+        'recursivearrayiterator::offsetexists',
+        'recursivearrayiterator::offsetget',
+        'recursivearrayiterator::offsetset',
+        'recursivearrayiterator::offsetunset',
+        'recursivearrayiterator::seek',
+        'recursivearrayiterator::setflags',
+        'recursivearrayiterator::uasort',
+        'recursivearrayiterator::uksort',
+        'recursivearrayiterator::unserialize',
+        'recursivecachingiterator::__construct',
+        'recursivecachingiterator::offsetexists',
+        'recursivecachingiterator::offsetget',
+        'recursivecachingiterator::offsetset',
+        'recursivecachingiterator::offsetunset',
+        'recursivecallbackfilteriterator::__construct',
+        'recursivedirectoryiterator::__construct',
+        'recursivedirectoryiterator::getfileinfo',
+        'recursivedirectoryiterator::getpathinfo',
+        'recursivedirectoryiterator::haschildren',
+        'recursivedirectoryiterator::openfile',
+        'recursivedirectoryiterator::seek',
+        'recursivedirectoryiterator::setfileclass',
+        'recursivedirectoryiterator::setflags',
+        'recursivedirectoryiterator::setinfoclass',
+        'recursiveiteratoriterator::__construct',
+        'recursiveiteratoriterator::setmaxdepth',
+        'recursiveregexiterator::__construct',
+        'recursiveregexiterator::setflags',
+        'recursiveregexiterator::setmode',
+        'recursiveregexiterator::setpregflags',
+        'recursivetreeiterator::__construct',
+        'recursivetreeiterator::setmaxdepth',
+        'recursivetreeiterator::setpostfix',
+        'recursivetreeiterator::setprefixpart',
+        'reflectionclass::__construct',
+        'reflectionclass::implementsinterface',
+        'reflectionclassconstant::__construct',
+        'reflectionfunction::__construct',
+        'reflectiongenerator::__construct',
+        'reflectionmethod::setaccessible',
+        'reflectionobject::__construct',
+        'reflectionobject::getconstants',
+        'reflectionobject::getreflectionconstants',
+        'reflectionobject::implementsinterface',
+        'reflectionparameter::__construct',
+        'reflectionproperty::__construct',
+        'reflectionproperty::setaccessible',
+        'regexiterator::__construct',
+        'regexiterator::setflags',
+        'regexiterator::setmode',
+        'regexiterator::setpregflags',
+        'resourcebundle::__construct',
+        'resourcebundle::create',
+        'resourcebundle::getlocales',
+        'sessionhandler::gc',
+        'sessionhandler::open',
+        'simplexmlelement::__construct',
+        'simplexmlelement::addattribute',
+        'simplexmlelement::addchild',
+        'simplexmlelement::attributes',
+        'simplexmlelement::children',
+        'simplexmlelement::getdocnamespaces',
+        'simplexmlelement::registerxpathnamespace',
+        'simplexmlelement::xpath',
+        'spldoublylinkedlist::add',
+        'spldoublylinkedlist::offsetset',
+        'spldoublylinkedlist::setiteratormode',
+        'spldoublylinkedlist::unserialize',
+        'splfileinfo::__construct',
+        'splfileinfo::getfileinfo',
+        'splfileinfo::getpathinfo',
+        'splfileinfo::openfile',
+        'splfileinfo::setfileclass',
+        'splfileinfo::setinfoclass',
+        'splfileobject::__construct',
+        'splfileobject::fgetcsv',
+        'splfileobject::flock',
+        'splfileobject::fputcsv',
+        'splfileobject::fseek',
+        'splfileobject::fwrite',
+        'splfileobject::getfileinfo',
+        'splfileobject::getpathinfo',
+        'splfileobject::openfile',
+        'splfileobject::seek',
+        'splfileobject::setcsvcontrol',
+        'splfileobject::setfileclass',
+        'splfileobject::setinfoclass',
+        'splfileobject::setmaxlinelen',
+        'splfixedarray::fromarray',
+        'splfixedarray::offsetset',
+        'splmaxheap::compare',
+        'splminheap::compare',
+        'splobjectstorage::addall',
+        'splobjectstorage::attach',
+        'splobjectstorage::count',
+        'splobjectstorage::offsetset',
+        'splobjectstorage::removeall',
+        'splobjectstorage::removeallexcept',
+        'splobjectstorage::setinfo',
+        'splobjectstorage::unserialize',
+        'splpriorityqueue::compare',
+        'splqueue::offsetset',
+        'splqueue::unserialize',
+        'splstack::add',
+        'splstack::offsetset',
+        'splstack::unserialize',
+        'spltempfileobject::__construct',
+        'spltempfileobject::fgetcsv',
+        'spltempfileobject::flock',
+        'spltempfileobject::fputcsv',
+        'spltempfileobject::fseek',
+        'spltempfileobject::fwrite',
+        'spltempfileobject::getfileinfo',
+        'spltempfileobject::getpathinfo',
+        'spltempfileobject::openfile',
+        'spltempfileobject::seek',
+        'spltempfileobject::setcsvcontrol',
+        'spltempfileobject::setfileclass',
+        'spltempfileobject::setinfoclass',
+        'spltempfileobject::setmaxlinelen',
+        'sqlite3::__construct',
+        'sqlite3::open',
+        'sqlsrv_connect',
+        'sqlsrv_errors',
         'sqlsrv_fetch_array',
         'sqlsrv_fetch_object',
         'sqlsrv_get_field',
@@ -151,6 +681,20 @@ class InternalCallMapHandlerTest extends TestCase
         'sqlsrv_query',
         'sqlsrv_server_info',
         'ssh2_forward_accept',
+        'transliterator::transliterate',
+        'uconverter::convert',
+        'uconverter::fromucallback',
+        'uconverter::reasontext',
+        'uconverter::transcode',
+        'uopz_allow_exit',
+        'uopz_get_mock',
+        'uopz_get_property',
+        'uopz_get_return',
+        'uopz_get_static',
+        'uopz_set_mock',
+        'uopz_set_property',
+        'uopz_set_static',
+        'uopz_unset_mock',
         'xdiff_file_bdiff',
         'xdiff_file_bdiff_size',
         'xdiff_file_diff',
@@ -166,6 +710,18 @@ class InternalCallMapHandlerTest extends TestCase
         'xdiff_string_patch',
         'xdiff_string_patch_binary',
         'xdiff_string_rabdiff',
+        'xmlreader::getattributens',
+        'xmlreader::movetoattributens',
+        'xmlreader::next',
+        'xmlreader::open',
+        'xmlreader::xml',
+        'xsltprocessor::registerphpfunctions',
+        'xsltprocessor::transformtodoc',
+        'ziparchive::iscompressionmethodsupported',
+        'ziparchive::isencryptionmethodsupported',
+        'ziparchive::setcompressionindex',
+        'ziparchive::setcompressionname',
+        'ziparchive::setencryptionindex',
     ];
 
     /**
@@ -174,61 +730,56 @@ class InternalCallMapHandlerTest extends TestCase
      * @var array<int|string, string|list<string>>
      */
     private static array $ignoredReturnTypeOnlyFunctions = [
-        'appenditerator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'appenditerator::getiteratorindex' => ['8.1', '8.2', '8.3'],
-        'cachingiterator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'callbackfilteriterator::getinneriterator' => ['8.1', '8.2', '8.3'],
+        'appenditerator::getinneriterator' => ['8.1', '8.2'],
+        'appenditerator::getiteratorindex' => ['8.1', '8.2'],
+        'arrayobject::getiterator' => ['8.1', '8.2'],
+        'cachingiterator::getinneriterator' => ['8.1', '8.2'],
+        'callbackfilteriterator::getinneriterator' => ['8.1', '8.2'],
         'curl_multi_getcontent',
-        'datetime::add' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
-        'datetime::modify' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
-        'datetime::createfromformat' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
+        'datetime::add' => ['8.1', '8.2'],
         'datetime::createfromimmutable' => ['8.1'],
         'datetime::createfrominterface',
-        'datetime::setdate' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
-        'datetime::setisodate' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
-        'datetime::settime' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
-        'datetime::settimestamp' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
-        'datetime::settimezone' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
-        'datetime::sub' => ['8.1', '8.2', '8.3'], // DateTime does not contain static
+        'datetime::setdate' => ['8.1', '8.2'],
+        'datetime::settimezone' => ['8.1', '8.2'],
+        'datetime::sub' => ['8.1', '8.2'],
         'datetimeimmutable::createfrominterface',
         'fiber::getcurrent',
-        'filteriterator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'get_cfg_var', // Ignore array return type
-        'infiniteiterator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'iteratoriterator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'limititerator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'locale::canonicalize' => ['8.1', '8.2', '8.3'],
-        'locale::getallvariants' => ['8.1', '8.2', '8.3'],
-        'locale::getkeywords' => ['8.1', '8.2', '8.3'],
-        'locale::getprimarylanguage' => ['8.1', '8.2', '8.3'],
-        'locale::getregion' => ['8.1', '8.2', '8.3'],
-        'locale::getscript' => ['8.1', '8.2', '8.3'],
-        'locale::parselocale' => ['8.1', '8.2', '8.3'],
-        'messageformatter::create' => ['8.1', '8.2', '8.3'],
-        'multipleiterator::current' => ['8.1', '8.2', '8.3'],
-        'mysqli::get_charset' => ['8.1', '8.2', '8.3'],
-        'mysqli_stmt::get_warnings' => ['8.1', '8.2', '8.3'],
+        'filteriterator::getinneriterator' => ['8.1', '8.2'],
+        'infiniteiterator::getinneriterator' => ['8.1', '8.2'],
+        'iteratoriterator::getinneriterator' => ['8.1', '8.2'],
+        'limititerator::getinneriterator' => ['8.1', '8.2'],
+        'locale::canonicalize' => ['8.1', '8.2'],
+        'locale::getallvariants' => ['8.1', '8.2'],
+        'locale::getkeywords' => ['8.1', '8.2'],
+        'locale::getprimarylanguage' => ['8.1', '8.2'],
+        'locale::getregion' => ['8.1', '8.2'],
+        'locale::getscript' => ['8.1', '8.2'],
+        'locale::parselocale' => ['8.1', '8.2'],
+        'messageformatter::create' => ['8.1', '8.2'],
+        'multipleiterator::current' => ['8.1', '8.2'],
+        'mysqli::get_charset' => ['8.1', '8.2'],
+        'mysqli_stmt::get_warnings' => ['8.1', '8.2'],
         'mysqli_stmt_get_warnings',
         'mysqli_stmt_insert_id',
-        'norewinditerator::getinneriterator' => ['8.1', '8.2', '8.3'],
+        'norewinditerator::getinneriterator' => ['8.1', '8.2'],
         'passthru',
-        'recursivecachingiterator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'recursivecallbackfilteriterator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'recursivefilteriterator::getinneriterator' => ['8.1', '8.2', '8.3'],
-        'recursiveregexiterator::getinneriterator' => ['8.1', '8.2', '8.3'],
+        'recursivecachingiterator::getinneriterator' => ['8.1', '8.2'],
+        'recursivecallbackfilteriterator::getinneriterator' => ['8.1', '8.2'],
+        'recursivefilteriterator::getinneriterator' => ['8.1', '8.2'],
+        'recursiveregexiterator::getinneriterator' => ['8.1', '8.2'],
         'reflectionclass::getstaticproperties' => ['8.1', '8.2'],
-        'reflectionclass::newinstanceargs' => ['8.1', '8.2', '8.3'],
-        'reflectionfunction::getclosurescopeclass' => ['8.1', '8.2', '8.3'],
-        'reflectionfunction::getclosurethis' => ['8.1', '8.2', '8.3'],
-        'reflectionmethod::getclosurescopeclass' => ['8.1', '8.2', '8.3'],
-        'reflectionmethod::getclosurethis' => ['8.1', '8.2', '8.3'],
+        'reflectionclass::newinstanceargs' => ['8.1', '8.2'],
+        'reflectionfunction::getclosurescopeclass' => ['8.1', '8.2'],
+        'reflectionfunction::getclosurethis' => ['8.1', '8.2'],
+        'reflectionmethod::getclosurescopeclass' => ['8.1', '8.2'],
+        'reflectionmethod::getclosurethis' => ['8.1', '8.2'],
         'reflectionobject::getstaticproperties' => ['8.1', '8.2'],
-        'reflectionobject::newinstanceargs' => ['8.1', '8.2', '8.3'],
-        'regexiterator::getinneriterator' => ['8.1', '8.2', '8.3'],
+        'reflectionobject::newinstanceargs' => ['8.1', '8.2'],
+        'regexiterator::getinneriterator' => ['8.1', '8.2'],
         'register_shutdown_function' => ['8.0', '8.1'],
-        'splfileobject::fscanf' => ['8.1', '8.2', '8.3'],
-        'spltempfileobject::fscanf' => ['8.1', '8.2', '8.3'],
-        'xsltprocessor::transformtoxml' => ['8.1', '8.2', '8.3'],
+        'splfileobject::fscanf' => ['8.1', '8.2'],
+        'spltempfileobject::fscanf' => ['8.1', '8.2'],
+        'xsltprocessor::transformtoxml' => ['8.1', '8.2'],
     ];
 
     /**
@@ -241,8 +792,21 @@ class InternalCallMapHandlerTest extends TestCase
      */
     private static array $ignoredUnreflectableFunctions = [
         'closure::__invoke',
+        'curlfile::__wakeup',
         'domimplementation::__construct',
+        'generator::__wakeup',
+        'gmp::__construct',
+        'gmp::__tostring',
         'intliterator::__construct',
+        'mysqli::disable_reads_from_master',
+        'mysqli::rpl_query_type',
+        'mysqli::send_query',
+        'mysqli::set_local_infile_default',
+        'mysqli::set_local_infile_handler',
+        'mysqli_driver::embedded_server_end',
+        'mysqli_driver::embedded_server_start',
+        'pdo::__sleep',
+        'pdo::__wakeup',
         'pdo::cubrid_schema',
         'pdo::pgsqlcopyfromarray',
         'pdo::pgsqlcopyfromfile',
@@ -256,17 +820,39 @@ class InternalCallMapHandlerTest extends TestCase
         'pdo::sqlitecreateaggregate',
         'pdo::sqlitecreatecollation',
         'pdo::sqlitecreatefunction',
+        'pdostatement::__sleep',
+        'pdostatement::__wakeup',
+        'phar::compressallfilesbzip2',
+        'phar::compressallfilesgz',
+        'phar::uncompressallfiles',
+        'pharfileinfo::iscompressedbzip2',
+        'pharfileinfo::iscompressedgz',
+        'pharfileinfo::setcompressedbzip2',
+        'pharfileinfo::setcompressedgz',
+        'pharfileinfo::setuncompressed',
         'simplexmlelement::__get',
         'simplexmlelement::offsetexists',
         'simplexmlelement::offsetget',
         'simplexmlelement::offsetset',
         'simplexmlelement::offsetunset',
         'spldoublylinkedlist::__construct',
+        'splfileinfo::__wakeup',
+        'splfixedarray::current',
+        'splfixedarray::key',
+        'splfixedarray::next',
+        'splfixedarray::rewind',
+        'splfixedarray::valid',
         'splheap::__construct',
         'splmaxheap::__construct',
         'splobjectstorage::__construct',
         'splpriorityqueue::__construct',
         'splstack::__construct',
+        'weakmap::__construct',
+        'weakmap::current',
+        'weakmap::key',
+        'weakmap::next',
+        'weakmap::rewind',
+        'weakmap::valid',
     ];
 
     private static Codebase $codebase;
@@ -314,28 +900,8 @@ class InternalCallMapHandlerTest extends TestCase
         }
     }
 
-    public function testGetCallablesFromCallmapRemovesRwPrefixFromParameterNames(): void
-    {
-        $entries = InternalCallMapHandler::getCallablesFromCallMap('collator_sort'); // has &rw_array parameter as second parameter
-        $this->assertNotNull($entries);
-        $collator_sort_entry = $entries[0];
-        $this->assertIsArray($collator_sort_entry->params);
-        $this->assertArrayHasKey(1, $collator_sort_entry->params);
-        $this->assertEquals('array', $collator_sort_entry->params[1]->name);
-    }
-
-    public function testGetCallablesFromCallmapRemovesWPrefixFromParameterNames(): void
-    {
-        $entries = InternalCallMapHandler::getCallablesFromCallMap('curl_multi_exec'); // has &w_still_running parameter as second parameter
-        $this->assertNotNull($entries);
-        $curl_multi_exec_entry = $entries[0];
-        $this->assertIsArray($curl_multi_exec_entry->params);
-        $this->assertArrayHasKey(1, $curl_multi_exec_entry->params);
-        $this->assertEquals('still_running', $curl_multi_exec_entry->params[1]->name);
-    }
-
     /**
-     * @return iterable<string, array{string, array<int|string, string>}>
+     * @return iterable<string, array{0: callable-string, 1: array<int|string, string>}>
      */
     public function callMapEntryProvider(): iterable
     {
@@ -351,17 +917,6 @@ class InternalCallMapHandlerTest extends TestCase
         );
         $callMap = InternalCallMapHandler::getCallMap();
         foreach ($callMap as $function => $entry) {
-            foreach (static::$skippedPatterns as $skipPattern) {
-                if (preg_match($skipPattern, $function)) {
-                    continue 2;
-                }
-            }
-
-            // Skip functions with alternate signatures
-            if (isset($callMap["$function'1"])) {
-                continue;
-            }
-
             $classNameEnd = strpos($function, '::');
             if ($classNameEnd !== false) {
                 $className = substr($function, 0, $classNameEnd);
@@ -372,7 +927,12 @@ class InternalCallMapHandlerTest extends TestCase
                 continue;
             }
 
-            yield "$function: " . (string) json_encode($entry) => [$function, $entry];
+            // Skip functions with alternate signatures
+            if (isset($callMap["$function'1"]) || preg_match("/\'\d$/", $function)) {
+                continue;
+            }
+            // if ($function != 'fprintf') continue;
+            yield "$function: " . json_encode($entry) => [$function, $entry];
         }
     }
 
@@ -426,7 +986,7 @@ class InternalCallMapHandlerTest extends TestCase
      * @depends testGetcallmapReturnsAValidCallmap
      * @dataProvider callMapEntryProvider
      * @coversNothing
-     * @psalm-param string $functionName
+     * @psalm-param callable-string $functionName
      * @param array<int|string, string> $callMapEntry
      */
     public function testIgnoredFunctionsStillFail(string $functionName, array $callMapEntry): void
@@ -484,7 +1044,7 @@ class InternalCallMapHandlerTest extends TestCase
      * @depends testGetcallmapReturnsAValidCallmap
      * @depends testIgnoresAreSortedAndUnique
      * @dataProvider callMapEntryProvider
-     * @psalm-param string $functionName
+     * @psalm-param callable-string $functionName
      * @param array<int|string, string> $callMapEntry
      */
     public function testCallMapCompliesWithReflection(string $functionName, array $callMapEntry): void
@@ -628,6 +1188,7 @@ class InternalCallMapHandlerTest extends TestCase
     public function assertEntryReturnType(ReflectionFunctionAbstract $function, string $entryReturnType): void
     {
         if (version_compare(PHP_VERSION, '8.1.0', '>=')) {
+            /** @var ReflectionType|null $expectedType */
             $expectedType = $function->hasTentativeReturnType() ? $function->getTentativeReturnType() : $function->getReturnType();
         } else {
             $expectedType = $function->getReturnType();
@@ -648,12 +1209,10 @@ class InternalCallMapHandlerTest extends TestCase
         $callMapType = Type::parseString($specified);
 
         try {
-            $this->assertTrue(UnionTypeComparator::isContainedBy(self::$codebase, $callMapType, $expectedType, false, false, null, false, false), "{$msgPrefix} type '{$specified}' is not contained by reflected type '{$reflected}'");
+            $this->assertTrue(UnionTypeComparator::isContainedBy(self::$codebase, $callMapType, $expectedType), "{$msgPrefix} type '{$specified}' should be contained by reflected type '{$reflected}'");
         } catch (InvalidArgumentException $e) {
             if (preg_match('/^Could not get class storage for (.*)$/', $e->getMessage(), $matches)
                 && !class_exists($matches[1])
-                && !interface_exists($matches[1])
-                && !enum_exists($matches[1])
             ) {
                 $this->fail("Class used in CallMap does not exist: {$matches[1]}");
             }
@@ -661,11 +1220,7 @@ class InternalCallMapHandlerTest extends TestCase
 
         // Reflection::getPsalmTypeFromReflectionType adds |null to mixed types so skip comparison
         if (!$expectedType->hasMixed()) {
-            $this->assertSame($expectedType->isNullable(), $callMapType->isNullable(), "{$msgPrefix} type '{$specified}' missing null from reflected type '{$reflected}'");
-            //$this->assertSame($expectedType->hasBool(), $callMapType->hasBool(), "{$msgPrefix} type '{$specified}' missing bool from reflected type '{$reflected}'");
-            $this->assertSame($expectedType->hasArray(), $callMapType->hasArray(), "{$msgPrefix} type '{$specified}' missing array from reflected type '{$reflected}'");
-            $this->assertSame($expectedType->hasInt(), $callMapType->hasInt(), "{$msgPrefix} type '{$specified}' missing int from reflected type '{$reflected}'");
-            $this->assertSame($expectedType->hasFloat(), $callMapType->hasFloat(), "{$msgPrefix} type '{$specified}' missing float from reflected type '{$reflected}'");
+            $this->assertSame($expectedType->isNullable(), $callMapType->isNullable(), "{$msgPrefix} type '{$specified}' should be nullable");
         }
     }
 }

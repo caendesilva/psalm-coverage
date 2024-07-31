@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Issue;
 
 final class MixedReturnTypeCoercion extends CodeIssue implements MixedIssue

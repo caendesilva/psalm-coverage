@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider;
 
 use Closure;
@@ -16,7 +14,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class PropertyVisibilityProvider
+class PropertyVisibilityProvider
 {
     /**
      * @var array<
@@ -36,7 +34,7 @@ final class PropertyVisibilityProvider
      */
     public function registerClass(string $class): void
     {
-        $callable = $class::isPropertyVisible(...);
+        $callable = Closure::fromCallable([$class, 'isPropertyVisible']);
 
         foreach ($class::getClassLikeNames() as $fq_classlike_name) {
             $this->registerClosure($fq_classlike_name, $callable);
@@ -62,7 +60,7 @@ final class PropertyVisibilityProvider
         string $property_name,
         bool $read_mode,
         Context $context,
-        CodeLocation $code_location,
+        CodeLocation $code_location
     ): ?bool {
         foreach (self::$handlers[strtolower($fq_classlike_name)] ?? [] as $property_handler) {
             $event = new PropertyVisibilityProviderEvent(

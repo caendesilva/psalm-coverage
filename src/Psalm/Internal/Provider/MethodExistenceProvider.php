@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider;
 
 use Closure;
@@ -15,7 +13,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class MethodExistenceProvider
+class MethodExistenceProvider
 {
     /**
      * @var array<
@@ -35,7 +33,7 @@ final class MethodExistenceProvider
      */
     public function registerClass(string $class): void
     {
-        $callable = $class::doesMethodExist(...);
+        $callable = Closure::fromCallable([$class, 'doesMethodExist']);
 
         foreach ($class::getClassLikeNames() as $fq_classlike_name) {
             $this->registerClosure($fq_classlike_name, $callable);
@@ -59,7 +57,7 @@ final class MethodExistenceProvider
         string $fq_classlike_name,
         string $method_name_lowercase,
         ?StatementsSource $source = null,
-        ?CodeLocation $code_location = null,
+        ?CodeLocation $code_location = null
     ): ?bool {
         foreach (self::$handlers[strtolower($fq_classlike_name)] ?? [] as $method_handler) {
             $event = new MethodExistenceProviderEvent(

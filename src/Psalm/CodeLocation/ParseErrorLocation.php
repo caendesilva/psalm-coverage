@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\CodeLocation;
 
 use PhpParser;
@@ -11,17 +9,17 @@ use function substr;
 use function substr_count;
 
 /** @psalm-immutable */
-final class ParseErrorLocation extends CodeLocation
+class ParseErrorLocation extends CodeLocation
 {
     public function __construct(
         PhpParser\Error $error,
         string $file_contents,
         string $file_path,
-        string $file_name,
+        string $file_name
     ) {
-        /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
+        /** @psalm-suppress PossiblyUndefinedStringArrayOffset, ImpureMethodCall */
         $this->file_start = (int)$error->getAttributes()['startFilePos'];
-        /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
+        /** @psalm-suppress PossiblyUndefinedStringArrayOffset, ImpureMethodCall */
         $this->file_end = (int)$error->getAttributes()['endFilePos'];
         $this->raw_file_start = $this->file_start;
         $this->raw_file_end = $this->file_end;

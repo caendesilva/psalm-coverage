@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\FileManipulation;
 
 use PhpParser;
@@ -17,10 +15,9 @@ use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Scanner\ParsedDocblock;
 
 use function array_key_exists;
+use function array_merge;
 use function array_reduce;
-use function array_slice;
 use function count;
-use function implode;
 use function is_string;
 use function ltrim;
 use function preg_match;
@@ -35,7 +32,7 @@ use function substr;
 /**
  * @internal
  */
-final class FunctionDocblockManipulator
+class FunctionDocblockManipulator
 {
     /**
      * Manipulators ordered by line number
@@ -44,11 +41,14 @@ final class FunctionDocblockManipulator
      */
     private static array $manipulators = [];
 
-    private readonly int $docblock_start;
+    /** @var Closure|Function_|ClassMethod|ArrowFunction */
+    private $stmt;
 
-    private readonly int $docblock_end;
+    private int $docblock_start;
 
-    private readonly int $return_typehint_area_start;
+    private int $docblock_end;
+
+    private int $return_typehint_area_start;
 
     private ?int $return_typehint_colon_start = null;
 
@@ -94,7 +94,7 @@ final class FunctionDocblockManipulator
     public static function getForFunction(
         ProjectAnalyzer $project_analyzer,
         string $file_path,
-        FunctionLike $stmt,
+        FunctionLike $stmt
     ): FunctionDocblockManipulator {
         if (isset(self::$manipulators[$file_path][$stmt->getLine()])) {
             return self::$manipulators[$file_path][$stmt->getLine()];
@@ -107,11 +107,12 @@ final class FunctionDocblockManipulator
         return $manipulator;
     }
 
-    private function __construct(
-        string $file_path,
-        private readonly Closure|Function_|ClassMethod|ArrowFunction $stmt,
-        ProjectAnalyzer $project_analyzer,
-    ) {
+    /**
+     * @param Closure|Function_|ClassMethod|ArrowFunction $stmt
+     */
+    private function __construct(string $file_path, FunctionLike $stmt, ProjectAnalyzer $project_analyzer)
+    {
+        $this->stmt = $stmt;
         $docblock = $stmt->getDocComment();
         $this->docblock_start = $docblock ? $docblock->getStartFilePos() : (int)$stmt->getAttribute('startFilePos');
         $this->docblock_end = $function_start = (int)$stmt->getAttribute('startFilePos');
@@ -134,7 +135,7 @@ final class FunctionDocblockManipulator
                 if ($param->type) {
                     $this->param_typehint_offsets[$param->var->name] = [
                         (int) $param->type->getAttribute('startFilePos'),
-                        (int) $param->type->getAttribute('endFilePos') + 1,
+                        (int) $param->type->getAttribute('endFilePos'),
                     ];
                 }
             }
@@ -270,7 +271,7 @@ final class FunctionDocblockManipulator
         string $new_type,
         string $phpdoc_type,
         bool $is_php_compatible,
-        ?string $description,
+        ?string $description
     ): void {
         $new_type = str_replace(['<mixed, mixed>', '<array-key, mixed>'], '', $new_type);
 
@@ -288,7 +289,7 @@ final class FunctionDocblockManipulator
         string $param_name,
         ?string $php_type,
         string $new_type,
-        string $phpdoc_type,
+        string $phpdoc_type
     ): void {
         $new_type = str_replace(['<mixed, mixed>', '<array-key, mixed>', '<never, never>'], '', $new_type);
 
@@ -331,29 +332,7 @@ final class FunctionDocblockManipulator
                 foreach ($parsed_docblock->tags['param'] as &$param_block) {
                     $doc_parts = CommentAnalyzer::splitDocLine($param_block);
 
-                    // If there's no type
-                    if (($doc_parts[0] ?? null) === '$' . $param_name) {
-                        // If the parameter has a description add that back
-                        if (count($doc_parts) > 1) {
-                            $new_param_block .= " ". implode(" ", array_slice($doc_parts, 1));
-                        }
-
-                        if ($param_block !== $new_param_block) {
-                            $modified_docblock = true;
-                        }
-
-                        $param_block = $new_param_block;
-                        $found_in_params = true;
-                        break;
-                    }
-
-                    // If there is a type
                     if (($doc_parts[1] ?? null) === '$' . $param_name) {
-                        // If the parameter has a description add that back
-                        if (count($doc_parts) > 2) {
-                            $new_param_block .= " ". implode(" ", array_slice($doc_parts, 2));
-                        }
-
                         if ($param_block !== $new_param_block) {
                             $modified_docblock = true;
                         }
@@ -412,7 +391,7 @@ final class FunctionDocblockManipulator
             $modified_docblock = true;
             $inferredThrowsClause = array_reduce(
                 $this->throwsExceptions,
-                static fn(string $throwsClause, string $exception) => $throwsClause === ''
+                fn(string $throwsClause, string $exception) => $throwsClause === ''
                     ? $exception
                     : $throwsClause.'|'.$exception,
                 '',
@@ -574,7 +553,7 @@ final class FunctionDocblockManipulator
      */
     public static function addManipulators(array $manipulators): void
     {
-        self::$manipulators = [...$manipulators, ...self::$manipulators];
+        self::$manipulators = array_merge($manipulators, self::$manipulators);
     }
 
     /**

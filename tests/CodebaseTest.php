@@ -1,14 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use Psalm\Codebase;
 use Psalm\Context;
-use Psalm\Exception\CodeException;
 use Psalm\Exception\UnpopulatedClasslikeException;
 use Psalm\Issue\InvalidReturnStatement;
 use Psalm\Issue\InvalidReturnType;
@@ -24,9 +21,6 @@ use Psalm\Type;
 use function array_map;
 use function array_values;
 use function get_class;
-use function getcwd;
-
-use const DIRECTORY_SEPARATOR;
 
 class CodebaseTest extends TestCase
 {
@@ -165,7 +159,7 @@ class CodebaseTest extends TestCase
                         ? (string)$stmt->extends->getAttribute('resolvedName')
                         : '';
                     $storage->custom_metadata['implements'] = array_map(
-                        static fn(Name $aspect): string => (string)$aspect->getAttribute('resolvedName'),
+                        fn(Name $aspect): string => (string)$aspect->getAttribute('resolvedName'),
                         $stmt->implements,
                     );
                     $storage->custom_metadata['a'] = 'b';
@@ -251,52 +245,5 @@ class CodebaseTest extends TestCase
 
         $this->analyzeFile('somefile.php', new Context);
         self::assertSame(0, IssueBuffer::getErrorCount());
-    }
-    /**
-     * @test
-     */
-    public function addingCodeIssueIsMarkedAsRedundant(): void
-    {
-        $this->expectException(CodeException::class);
-        $this->expectExceptionMessage('UnusedPsalmSuppress');
-
-        $this->addFile(
-            (string) getcwd() . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'somefile.php',
-            '<?php
-                namespace Psalm\CurrentTest;
-
-                /** @psalm-suppress InvalidReturnType */
-                function invalidReturnType(int $value): string
-                {
-                    /** @psalm-suppress InvalidReturnStatement */
-                    return $value;
-                }
-                echo invalidReturnType(123);
-            ',
-        );
-        $eventHandler = new class implements BeforeAddIssueInterface
-        {
-            public static function beforeAddIssue(BeforeAddIssueEvent $event): ?bool
-            {
-                $issue = $event->getIssue();
-                if ($issue->code_location->file_path !== (string) getcwd() . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'somefile.php') {
-                    return null;
-                }
-                if ($issue instanceof InvalidReturnStatement && $event->isFixable() === false) {
-                    return false;
-                } elseif ($issue instanceof InvalidReturnType && $event->isFixable() === true) {
-                    return false;
-                }
-                return null;
-            }
-        };
-
-        (new PluginRegistrationSocket($this->codebase->config, $this->codebase))
-            ->registerHooksFromClass(get_class($eventHandler));
-
-        $this->analyzeFile(
-            (string) getcwd() . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'somefile.php',
-            new Context,
-        );
     }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Issue;
 
-final class UnusedBaselineEntry extends ClassIssue
+class UnusedBaselineEntry extends ClassIssue
 {
-    final public const ERROR_LEVEL = -1;
-    final public const SHORTCODE = 316;
+    public const ERROR_LEVEL = -1;
+    public const SHORTCODE = 316;
 }

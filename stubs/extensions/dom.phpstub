@@ -154,7 +154,7 @@ class DOMNode
      */
     public ?DOMNamedNodeMap $attributes;
     /** @readonly */
-    public DOMDocument $ownerDocument;
+    public ?DOMDocument $ownerDocument;
     /** @readonly */
     public ?string $namespaceURI;
     public string $prefix;
@@ -242,7 +242,7 @@ class DOMNameSpaceNode
     /** @readonly */
     public ?string $namespaceURI;
     /** @readonly */
-    public DOMDocument $ownerDocument;
+    public ?DOMDocument $ownerDocument;
     /** @readonly */
     public ?DOMNode $parentNode;
 }
@@ -281,8 +281,6 @@ class DOMDocument extends DOMNode implements DOMParentNode
     public DOMImplementation $implementation;
     /** @readonly */
     public ?DOMElement $documentElement;
-    /** @readonly */
-    public null $ownerDocument;
 
     /**
      * @deprecated
@@ -473,13 +471,13 @@ class DOMDocument extends DOMNode implements DOMParentNode
     public function importNode(DOMNode $node, bool $deep = false) {}
 
     /**
-     * @return bool
+     * @return DOMDocument|false
      * @psalm-ignore-falsable-return
      **/
     public function load(string $filename, int $options = 0) {}
 
     /**
-     * @return bool
+     * @return DOMDocument|false
      * @psalm-ignore-falsable-return
      */
     public function loadXML(string $source, int $options = 0) {}
@@ -494,10 +492,10 @@ class DOMDocument extends DOMNode implements DOMParentNode
      */
     public function save(string $filename, int $options = 0) {}
 
-    /** @return bool */
+    /** @return DOMDocument|bool */
     public function loadHTML(string $source, int $options = 0) {}
 
-    /** @return bool */
+    /** @return DOMDocument|bool */
     public function loadHTMLFile(string $filename, int $options = 0) {}
 
     /**
@@ -974,15 +972,10 @@ class DOMXPath
 
     public function __construct(DOMDocument $document, bool $registerNodeNS = true) {}
 
-    /**
-     * @return DOMNodeList<DOMNode>|false
-     * @psalm-taint-sink xpath $expression
-     */
     public function evaluate(string $expression, ?DOMNode $contextNode = null, bool $registerNodeNS = true): mixed {}
 
     /**
-     * @psalm-taint-sink xpath $expression
-     * @return DOMNodeList<DOMNode|DOMNameSpaceNode>|false
+     * @return DOMNodeList<DOMNode>|false
      */
     public function query(string $expression, ?DOMNode $contextNode = null, bool $registerNodeNS = true): mixed {}
 

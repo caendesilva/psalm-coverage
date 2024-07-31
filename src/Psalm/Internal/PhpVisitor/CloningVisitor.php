@@ -14,7 +14,7 @@ use PhpParser\NodeVisitorAbstract;
  *
  * @internal
  */
-final class CloningVisitor extends NodeVisitorAbstract
+class CloningVisitor extends NodeVisitorAbstract
 {
     public function enterNode(Node $node): Node
     {

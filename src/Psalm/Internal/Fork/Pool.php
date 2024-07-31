@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Fork;
 
 use Closure;
@@ -26,6 +24,7 @@ use function fclose;
 use function feof;
 use function fread;
 use function fwrite;
+use function get_class;
 use function gettype;
 use function igbinary_serialize;
 use function igbinary_unserialize;
@@ -40,17 +39,20 @@ use function posix_get_last_error;
 use function posix_kill;
 use function posix_strerror;
 use function serialize;
-use function str_contains;
 use function stream_select;
 use function stream_set_blocking;
 use function stream_socket_pair;
 use function stripos;
 use function strlen;
+use function strpos;
 use function substr;
 use function unserialize;
 use function usleep;
+use function version_compare;
 
 use const PHP_EOL;
+use const PHP_OS;
+use const PHP_VERSION;
 use const SIGALRM;
 use const SIGTERM;
 use const STREAM_IPPROTO_IP;
@@ -68,10 +70,12 @@ use const STREAM_SOCK_STREAM;
  *
  * @internal
  */
-final class Pool
+class Pool
 {
     private const EXIT_SUCCESS = 0;
     private const EXIT_FAILURE = 1;
+
+    private Config $config;
 
     /** @var int[] */
     private array $child_pid_list = [];
@@ -81,11 +85,19 @@ final class Pool
 
     private bool $did_have_error = false;
 
+    /** @var ?Closure(mixed): void */
+    private ?Closure $task_done_closure = null;
+
+    public const MAC_PCRE_MESSAGE = 'Mac users: pcre.jit is set to 1 in your PHP config.' . PHP_EOL
+        . 'The pcre jit is known to cause segfaults in PHP 7.3 on Macs, and Psalm' . PHP_EOL
+        . 'will not execute in threaded mode to avoid indecipherable errors.' . PHP_EOL
+        . 'Consider adding pcre.jit=0 to your PHP config, or upgrade to PHP 7.4.' . PHP_EOL
+        . 'Relevant info: https://bugs.php.net/bug.php?id=77260';
+
     /**
      * @param array<int, array<int, mixed>> $process_task_data_iterator
      * An array of task data items to be divided up among the
      * workers. The size of this is the number of forked processes.
-     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint
      * @param Closure $startup_closure
      * A closure to execute upon starting a child
      * @param Closure(int, mixed):mixed $task_closure
@@ -98,14 +110,16 @@ final class Pool
      * @psalm-suppress MixedAssignment
      */
     public function __construct(
-        private readonly Config $config,
+        Config $config,
         array $process_task_data_iterator,
         Closure $startup_closure,
         Closure $task_closure,
         Closure $shutdown_closure,
-        private readonly ?Closure $task_done_closure = null,
+        ?Closure $task_done_closure = null
     ) {
         $pool_size = count($process_task_data_iterator);
+        $this->task_done_closure = $task_done_closure;
+        $this->config = $config;
 
         assert(
             $pool_size > 1,
@@ -119,11 +133,21 @@ final class Pool
             exit(1);
         }
 
-        $disabled_functions = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        $disabled_functions = array_map('trim', explode(',', ini_get('disable_functions')));
         if (in_array('pcntl_fork', $disabled_functions)) {
             echo "pcntl_fork() is disabled by php configuration (disable_functions directive).\n"
                 . "Please enable it or run Psalm single-threaded with --threads=1 cli switch.\n";
             exit(1);
+        }
+
+        if (ini_get('pcre.jit') === '1'
+            && PHP_OS === 'Darwin'
+            && version_compare(PHP_VERSION, '7.3.0') >= 0
+            && version_compare(PHP_VERSION, '7.4.0') < 0
+        ) {
+            die(
+                self::MAC_PCRE_MESSAGE . PHP_EOL
+            );
         }
 
         // We'll keep track of if this is the parent process
@@ -186,14 +210,14 @@ final class Pool
 
                 $task_done_message = new ForkTaskDoneMessage($task_result);
                 if ($this->config->use_igbinary) {
-                    $encoded_message = base64_encode((string) igbinary_serialize($task_done_message));
+                    $encoded_message = base64_encode(igbinary_serialize($task_done_message));
                 } else {
                     $encoded_message = base64_encode(serialize($task_done_message));
                 }
                 $serialized_message = $task_done_buffer . $encoded_message . "\n";
 
                 if (strlen($serialized_message) > 200) {
-                    $bytes_written = (int) @fwrite($write_stream, $serialized_message);
+                    $bytes_written = @fwrite($write_stream, $serialized_message);
 
                     if (strlen($serialized_message) !== $bytes_written) {
                         $task_done_buffer = substr($serialized_message, $bytes_written);
@@ -215,7 +239,7 @@ final class Pool
             // This can happen when developing Psalm from source without running `composer update`,
             // or because of rare bugs in Psalm.
             $process_done_message = new ForkProcessErrorMessage(
-                $t::class . ' ' . $t->getMessage() . "\n" .
+                get_class($t) . ' ' . $t->getMessage() . "\n" .
                 "Emitted in " . $t->getFile() . ":" . $t->getLine() . "\n" .
                 "Stack trace in the forked worker:\n" .
                 $t->getTraceAsString(),
@@ -223,7 +247,7 @@ final class Pool
         }
 
         if ($this->config->use_igbinary) {
-            $encoded_message = base64_encode((string) igbinary_serialize($process_done_message));
+            $encoded_message = base64_encode(igbinary_serialize($process_done_message));
         } else {
             $encoded_message = base64_encode(serialize($process_done_message));
         }
@@ -234,7 +258,7 @@ final class Pool
 
         while ($bytes_written < $bytes_to_write && !feof($write_stream)) {
             // attempt to write the remaining unsent part
-            $bytes_written += (int) @fwrite($write_stream, substr($serialized_message, $bytes_written));
+            $bytes_written += @fwrite($write_stream, substr($serialized_message, $bytes_written));
 
             if ($bytes_written < $bytes_to_write) {
                 // wait a bit
@@ -341,15 +365,15 @@ final class Pool
                     $content[(int)$file] .= $buffer;
                 }
 
-                if (str_contains($buffer, "\n")) {
+                if (strpos($buffer, "\n") !== false) {
                     $serialized_messages = explode("\n", $content[(int)$file]);
                     $content[(int)$file] = array_pop($serialized_messages);
 
                     foreach ($serialized_messages as $serialized_message) {
                         if ($this->config->use_igbinary) {
-                            $message = igbinary_unserialize((string) base64_decode($serialized_message, true));
+                            $message = igbinary_unserialize(base64_decode($serialized_message, true));
                         } else {
-                            $message = unserialize((string) base64_decode($serialized_message, true));
+                            $message = unserialize(base64_decode($serialized_message, true));
                         }
 
                         if ($message instanceof ForkProcessDoneMessage) {

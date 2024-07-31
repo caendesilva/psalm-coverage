@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Codebase;
 
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
@@ -9,14 +7,14 @@ use Psalm\Internal\Provider\ClassLikeStorageProvider;
 /**
  * @internal
  */
-final class ReferenceMapGenerator
+class ReferenceMapGenerator
 {
     /**
      * @return array<string, string>
      */
     public static function getReferenceMap(
         ClassLikeStorageProvider $classlike_storage_provider,
-        array $expected_references,
+        array $expected_references
     ): array {
         $reference_dictionary = [];
 

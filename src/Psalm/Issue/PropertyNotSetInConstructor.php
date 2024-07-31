@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Issue;
 
 use Psalm\CodeLocation;
@@ -14,7 +12,7 @@ final class PropertyNotSetInConstructor extends PropertyIssue
     public function __construct(
         string $message,
         CodeLocation $code_location,
-        string $property_id,
+        string $property_id
     ) {
         parent::__construct($message, $code_location, $property_id);
         $this->dupe_key = $property_id;

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use InvalidArgumentException;
@@ -23,7 +21,6 @@ use Psalm\Internal\Analyzer\Statements\Block\TryAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Block\WhileAnalyzer;
 use Psalm\Internal\Analyzer\Statements\BreakAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ContinueAnalyzer;
-use Psalm\Internal\Analyzer\Statements\DeclareAnalyzer;
 use Psalm\Internal\Analyzer\Statements\EchoAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\AssignmentAnalyzer;
@@ -35,6 +32,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\Statements\GlobalAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ReturnAnalyzer;
 use Psalm\Internal\Analyzer\Statements\StaticAnalyzer;
+use Psalm\Internal\Analyzer\Statements\ThrowAnalyzer;
 use Psalm\Internal\Analyzer\Statements\UnsetAnalyzer;
 use Psalm\Internal\Analyzer\Statements\UnusedAssignmentRemover;
 use Psalm\Internal\Codebase\DataFlowGraph;
@@ -46,8 +44,6 @@ use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scanner\ParsedDocblock;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
-use Psalm\Internal\Type\TypeParser;
-use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Issue\CheckType;
 use Psalm\Issue\ComplexFunction;
 use Psalm\Issue\ComplexMethod;
@@ -77,13 +73,15 @@ use function assert;
 use function count;
 use function explode;
 use function fwrite;
+use function get_class;
 use function in_array;
 use function is_string;
+use function ltrim;
 use function preg_split;
 use function reset;
 use function round;
-use function str_starts_with;
 use function strlen;
+use function strpos;
 use function strrpos;
 use function strtolower;
 use function substr;
@@ -95,11 +93,13 @@ use const STDERR;
 /**
  * @internal
  */
-final class StatementsAnalyzer extends SourceAnalyzer
+class StatementsAnalyzer extends SourceAnalyzer
 {
-    private readonly FileAnalyzer $file_analyzer;
+    protected SourceAnalyzer $source;
 
-    private readonly Codebase $codebase;
+    protected FileAnalyzer $file_analyzer;
+
+    protected Codebase $codebase;
 
     /**
      * @var array<string, CodeLocation>
@@ -137,6 +137,8 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
     private ?string $fake_this_class = null;
 
+    public NodeDataProvider $node_data;
+
     public ?DataFlowGraph $data_flow_graph = null;
 
     /**
@@ -149,10 +151,12 @@ final class StatementsAnalyzer extends SourceAnalyzer
      */
     public array $foreach_var_locations = [];
 
-    public function __construct(protected SourceAnalyzer $source, public NodeDataProvider $node_data)
+    public function __construct(SourceAnalyzer $source, NodeDataProvider $node_data)
     {
+        $this->source = $source;
         $this->file_analyzer = $source->getFileAnalyzer();
         $this->codebase = $source->getCodebase();
+        $this->node_data = $node_data;
 
         if ($this->codebase->taint_flow_graph) {
             $this->data_flow_graph = new TaintFlowGraph();
@@ -171,7 +175,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         array $stmts,
         Context $context,
         ?Context $global_context = null,
-        bool $root_scope = false,
+        bool $root_scope = false
     ): ?bool {
         if (!$stmts) {
             return null;
@@ -265,7 +269,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 try {
                     $function_analyzer = new FunctionAnalyzer($stmt, $this->source);
                     $this->function_analyzers[$fq_function_name] = $function_analyzer;
-                } catch (UnexpectedValueException) {
+                } catch (UnexpectedValueException $e) {
                     // do nothing
                 }
             }
@@ -278,7 +282,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     private static function hoistConstants(
         StatementsAnalyzer $statements_analyzer,
         array $stmts,
-        Context $context,
+        Context $context
     ): void {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -301,7 +305,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
             } elseif ($stmt instanceof PhpParser\Node\Stmt\Expression
                 && $stmt->expr instanceof PhpParser\Node\Expr\FuncCall
                 && $stmt->expr->name instanceof PhpParser\Node\Name
-                && $stmt->expr->name->getParts() === ['define']
+                && $stmt->expr->name->parts === ['define']
                 && isset($stmt->expr->getArgs()[1])
             ) {
                 $const_name = ConstFetchAnalyzer::getConstName(
@@ -336,7 +340,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt $stmt,
         Context $context,
-        ?Context $global_context,
+        ?Context $global_context
     ): ?bool {
         if (self::dispatchBeforeStatementAnalysis($stmt, $context, $statements_analyzer) === false) {
             return false;
@@ -493,7 +497,6 @@ final class StatementsAnalyzer extends SourceAnalyzer
             && !($stmt instanceof PhpParser\Node\Stmt\Interface_)
             && !($stmt instanceof PhpParser\Node\Stmt\Trait_)
             && !($stmt instanceof PhpParser\Node\Stmt\HaltCompiler)
-            && !($stmt instanceof PhpParser\Node\Stmt\Declare_)
         ) {
             if ($codebase->find_unused_variables) {
                 IssueBuffer::maybeAdd(
@@ -537,6 +540,8 @@ final class StatementsAnalyzer extends SourceAnalyzer
             UnsetAnalyzer::analyze($statements_analyzer, $stmt, $context);
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Return_) {
             ReturnAnalyzer::analyze($statements_analyzer, $stmt, $context);
+        } elseif ($stmt instanceof PhpParser\Node\Stmt\Throw_) {
+            ThrowAnalyzer::analyze($statements_analyzer, $stmt, $context);
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Switch_) {
             SwitchAnalyzer::analyze($statements_analyzer, $stmt, $context);
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Break_) {
@@ -558,7 +563,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 $context,
                 false,
                 $global_context,
-                $stmt,
+                true,
             ) === false) {
                 return false;
             }
@@ -579,7 +584,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 );
 
                 $class_analyzer->analyze(null, $global_context);
-            } catch (InvalidArgumentException) {
+            } catch (InvalidArgumentException $e) {
                 // disregard this exception, we'll likely see it elsewhere in the form
                 // of an issue
             }
@@ -592,13 +597,20 @@ final class StatementsAnalyzer extends SourceAnalyzer
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Label) {
             // do nothing
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Declare_) {
-            DeclareAnalyzer::analyze($statements_analyzer, $stmt, $context);
+            foreach ($stmt->declares as $declaration) {
+                if ((string) $declaration->key === 'strict_types'
+                    && $declaration->value instanceof PhpParser\Node\Scalar\LNumber
+                    && $declaration->value->value === 1
+                ) {
+                    $context->strict_types = true;
+                }
+            }
         } elseif ($stmt instanceof PhpParser\Node\Stmt\HaltCompiler) {
             $context->has_returned = true;
         } else {
             if (IssueBuffer::accepts(
                 new UnrecognizedStatement(
-                    'Psalm does not understand ' . $stmt::class,
+                    'Psalm does not understand ' . get_class($stmt),
                     new CodeLocation($statements_analyzer->source, $stmt),
                 ),
                 $statements_analyzer->getSuppressedIssues(),
@@ -672,24 +684,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 } else {
                     try {
                         $checked_type = $context->vars_in_scope[$checked_var_id];
-
-                        $path = $statements_analyzer->getRootFilePath();
-                        $file_storage = $codebase->file_storage_provider->get($path);
-
-                        $check_tokens = TypeTokenizer::getFullyQualifiedTokens(
-                            $check_type_string,
-                            $statements_analyzer->getAliases(),
-                            $statements_analyzer->getTemplateTypeMap(),
-                            $file_storage->type_aliases,
-                        );
-                        $check_type = TypeParser::parseTokens(
-                            $check_tokens,
-                            null,
-                            $statements_analyzer->getTemplateTypeMap() ?? [],
-                            $file_storage->type_aliases,
-                            true,
-                        );
-
+                        $check_type = Type::parseString($check_type_string);
                         /** @psalm-suppress InaccessibleProperty We just created this type */
                         $check_type->possibly_undefined = $possibly_undefined;
 
@@ -726,7 +721,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     private static function dispatchAfterStatementAnalysis(
         PhpParser\Node\Stmt $stmt,
         Context $context,
-        StatementsAnalyzer $statements_analyzer,
+        StatementsAnalyzer $statements_analyzer
     ): ?bool {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -752,7 +747,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     private static function dispatchBeforeStatementAnalysis(
         PhpParser\Node\Stmt $stmt,
         Context $context,
-        StatementsAnalyzer $statements_analyzer,
+        StatementsAnalyzer $statements_analyzer
     ): ?bool {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -778,7 +773,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     private function parseStatementDocblock(
         PhpParser\Comment\Doc $docblock,
         PhpParser\Node\Stmt $stmt,
-        Context $context,
+        Context $context
     ): void {
         $codebase = $this->getCodebase();
 
@@ -798,23 +793,22 @@ final class StatementsAnalyzer extends SourceAnalyzer
         $comments = $this->parsed_docblock;
 
         if (isset($comments->tags['psalm-scope-this'])) {
-            assert(count($comments->tags['psalm-scope-this']));
             $trimmed = trim(reset($comments->tags['psalm-scope-this']));
-            $scope_fqcn = Type::getFQCLNFromString($trimmed, $this->getAliases());
+            $trimmed = ltrim($trimmed, '\\');
 
-            if (!$codebase->classExists($scope_fqcn)) {
+            if (!$codebase->classExists($trimmed)) {
                 IssueBuffer::maybeAdd(
                     new UndefinedDocblockClass(
-                        'Scope class ' . $scope_fqcn . ' does not exist',
+                        'Scope class ' . $trimmed . ' does not exist',
                         new CodeLocation($this->getSource(), $stmt, null, true),
-                        $scope_fqcn,
+                        $trimmed,
                     ),
                 );
             } else {
-                $this_type = Type::parseString($scope_fqcn);
-                $context->self = $scope_fqcn;
+                $this_type = Type::parseString($trimmed);
+                $context->self = $trimmed;
                 $context->vars_in_scope['$this'] = $this_type;
-                $this->setFQCLN($scope_fqcn);
+                $this->setFQCLN($trimmed);
             }
         }
     }
@@ -872,12 +866,12 @@ final class StatementsAnalyzer extends SourceAnalyzer
         }
 
         foreach ($this->unused_var_locations as [$var_id, $original_location]) {
-            if (str_starts_with($var_id, '$_')) {
+            if (strpos($var_id, '$_') === 0) {
                 continue;
             }
 
             if ($function_storage) {
-                $param_index = array_search(substr($var_id, 1), array_keys($function_storage->param_lookup), true);
+                $param_index = array_search(substr($var_id, 1), array_keys($function_storage->param_lookup));
                 if ($param_index !== false) {
                     $param = $function_storage->params[$param_index];
 
@@ -976,7 +970,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
     public function registerPossiblyUndefinedVariable(
         string $undefined_var_id,
-        PhpParser\Node\Expr\Variable $stmt,
+        PhpParser\Node\Expr\Variable $stmt
     ): void {
         if (!$this->data_flow_graph) {
             return;
@@ -1103,7 +1097,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                                 $is_expected = true;
                                 break;
                             }
-                        } catch (InvalidArgumentException) {
+                        } catch (InvalidArgumentException $e) {
                             $is_expected = true;
                             break;
                         }

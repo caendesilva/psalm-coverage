@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 /**
@@ -11,21 +9,9 @@ namespace Psalm\Type\Atomic;
  */
 final class TCallableObject extends TObject
 {
-    use HasIntersectionTrait;
-
-    public function __construct(bool $from_docblock = false, public ?TCallable $callable = null)
-    {
-        parent::__construct($from_docblock);
-    }
-
     public function getKey(bool $include_extra = true): string
     {
-        $key = 'callable-object';
-        if ($this->callable !== null) {
-            $key .= $this->callable->getParamString() . $this->callable->getReturnTypeString();
-        }
-
-        return $key;
+        return 'callable-object';
     }
 
     /**
@@ -35,7 +21,7 @@ final class TCallableObject extends TObject
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id,
+        int $analysis_php_version_id
     ): ?string {
         return $analysis_php_version_id >= 7_02_00 ? 'object' : null;
     }

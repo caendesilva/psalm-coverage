@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Block\IfElse;
 
 use PhpParser;
@@ -36,16 +34,19 @@ use function array_key_exists;
 use function array_keys;
 use function array_merge;
 use function array_reduce;
+use function array_unique;
 use function count;
 use function in_array;
 use function preg_match;
 use function preg_quote;
 use function spl_object_id;
+use function strpos;
+use function substr;
 
 /**
  * @internal
  */
-final class IfAnalyzer
+class IfAnalyzer
 {
     /**
      * @param  array<string, Union> $pre_assignment_else_redefined_vars
@@ -58,7 +59,7 @@ final class IfAnalyzer
         IfConditionalScope $if_conditional_scope,
         Context $if_context,
         Context $outer_context,
-        array $pre_assignment_else_redefined_vars,
+        array $pre_assignment_else_redefined_vars
     ): ?bool {
         $cond_referenced_var_ids = $if_conditional_scope->cond_referenced_var_ids;
 
@@ -143,10 +144,10 @@ final class IfAnalyzer
 
         $if_context->reconciled_expression_clauses = [];
 
-        $outer_context->vars_possibly_in_scope = [
-            ...$if_context->vars_possibly_in_scope,
-            ...$outer_context->vars_possibly_in_scope,
-        ];
+        $outer_context->vars_possibly_in_scope = array_merge(
+            $if_context->vars_possibly_in_scope,
+            $outer_context->vars_possibly_in_scope,
+        );
 
         $old_if_context = clone $if_context;
 
@@ -271,6 +272,20 @@ final class IfAnalyzer
                 array_keys($if_scope->negated_types),
             );
 
+            $extra_vars_to_update = [];
+
+            // if there's an object-like array in there, we also need to update the root array variable
+            foreach ($vars_to_update as $var_id) {
+                $bracked_pos = strpos($var_id, '[');
+                if ($bracked_pos !== false) {
+                    $extra_vars_to_update[] = substr($var_id, 0, $bracked_pos);
+                }
+            }
+
+            if ($extra_vars_to_update) {
+                $vars_to_update = array_unique(array_merge($extra_vars_to_update, $vars_to_update));
+            }
+
             $outer_context->update(
                 $old_if_context,
                 $if_context,
@@ -291,10 +306,10 @@ final class IfAnalyzer
                     $if_scope->new_vars_possibly_in_scope = $vars_possibly_in_scope;
                 }
 
-                $if_context->loop_scope->vars_possibly_in_scope = [
-                    ...$vars_possibly_in_scope,
-                    ...$if_context->loop_scope->vars_possibly_in_scope,
-                ];
+                $if_context->loop_scope->vars_possibly_in_scope = array_merge(
+                    $vars_possibly_in_scope,
+                    $if_context->loop_scope->vars_possibly_in_scope,
+                );
             } elseif (!$has_leaving_statements) {
                 $if_scope->new_vars_possibly_in_scope = $vars_possibly_in_scope;
             }
@@ -321,7 +336,7 @@ final class IfAnalyzer
         PhpParser\Node\Expr $cond,
         Context $post_leaving_if_context,
         Context $post_if_context,
-        array $assigned_in_conditional_var_ids,
+        array $assigned_in_conditional_var_ids
     ): void {
         // this filters out coercions to expected types in ArgumentAnalyzer
         $assigned_in_conditional_var_ids = array_filter($assigned_in_conditional_var_ids);
@@ -425,7 +440,7 @@ final class IfAnalyzer
         array $assigned_var_ids,
         array $possibly_assigned_var_ids,
         array $newly_reconciled_var_ids,
-        bool $update_new_vars = true,
+        bool $update_new_vars = true
     ): void {
         $redefined_vars = $if_context->getRedefinedVars($outer_context->vars_in_scope);
 

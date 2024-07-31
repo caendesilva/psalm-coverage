@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -607,30 +605,6 @@ class InternalAnnotationTest extends TestCase
                         }
                     }
                 ',
-            ],
-            'callToInternalMethodFromAnonymousClass' => [
-                'code' => <<<'PHP'
-                <?php
-                namespace X;
-
-                /**
-                 * @internal
-                 * @psalm-internal X
-                 */
-                class A
-                {
-                    public function a(): void {}
-                }
-
-                new class (new A)
-                {
-                    public function __construct(
-                        private A $a
-                    ) {
-                        $a->a();
-                    }
-                };
-                PHP,
             ],
         ];
     }

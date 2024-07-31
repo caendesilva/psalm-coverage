@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use PhpParser;
@@ -22,7 +20,7 @@ use function implode;
 /**
  * @internal
  */
-final class AlgebraAnalyzer
+class AlgebraAnalyzer
 {
     /**
      * This looks to see if there are any clauses in one formula that contradict
@@ -41,11 +39,11 @@ final class AlgebraAnalyzer
         array $formula_2,
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node $stmt,
-        array $new_assigned_var_ids,
+        array $new_assigned_var_ids
     ): void {
         try {
             $negated_formula2 = Algebra::negateFormula($formula_2);
-        } catch (ComplicatedExpressionException) {
+        } catch (ComplicatedExpressionException $e) {
             return;
         }
 

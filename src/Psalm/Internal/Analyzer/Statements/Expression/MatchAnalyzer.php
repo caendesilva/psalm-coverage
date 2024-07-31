@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -15,6 +13,7 @@ use Psalm\Issue\UnhandledMatchCondition;
 use Psalm\IssueBuffer;
 use Psalm\Node\Expr\BinaryOp\VirtualIdentical;
 use Psalm\Node\Expr\VirtualArray;
+use Psalm\Node\Expr\VirtualArrayItem;
 use Psalm\Node\Expr\VirtualConstFetch;
 use Psalm\Node\Expr\VirtualFuncCall;
 use Psalm\Node\Expr\VirtualNew;
@@ -23,7 +22,6 @@ use Psalm\Node\Expr\VirtualThrow;
 use Psalm\Node\Expr\VirtualVariable;
 use Psalm\Node\Name\VirtualFullyQualified;
 use Psalm\Node\VirtualArg;
-use Psalm\Node\VirtualArrayItem;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TEnumCase;
@@ -46,12 +44,12 @@ use function substr;
 /**
  * @internal
  */
-final class MatchAnalyzer
+class MatchAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Match_ $stmt,
-        Context $context,
+        Context $context
     ): bool {
         $was_inside_call = $context->inside_call;
 
@@ -80,11 +78,10 @@ final class MatchAnalyzer
         if (!$switch_var_id) {
             if ($stmt->cond instanceof PhpParser\Node\Expr\FuncCall
                 && $stmt->cond->name instanceof PhpParser\Node\Name
-                && ($stmt->cond->name->getParts() === ['get_class']
-                    || $stmt->cond->name->getParts() === ['gettype']
-                    || $stmt->cond->name->getParts() === ['get_debug_type']
-                    || $stmt->cond->name->getParts() === ['count']
-                    || $stmt->cond->name->getParts() === ['sizeof'])
+                && ($stmt->cond->name->parts === ['get_class']
+                    || $stmt->cond->name->parts === ['gettype']
+                    || $stmt->cond->name->parts === ['get_debug_type']
+                    || $stmt->cond->name->parts === ['count'])
                 && $stmt->cond->getArgs()
             ) {
                 $first_arg = $stmt->cond->getArgs()[0];
@@ -112,16 +109,10 @@ final class MatchAnalyzer
                         $stmt->cond->getAttributes(),
                     );
                 }
-            } elseif ($stmt->cond instanceof PhpParser\Node\Expr\ClassConstFetch
-                && $stmt->cond->name instanceof PhpParser\Node\Identifier
-                && $stmt->cond->name->toString() === 'class'
+            } elseif ($stmt->cond instanceof PhpParser\Node\Expr\FuncCall
+                || $stmt->cond instanceof PhpParser\Node\Expr\MethodCall
+                || $stmt->cond instanceof PhpParser\Node\Expr\StaticCall
             ) {
-                // do nothing
-            } elseif ($stmt->cond instanceof PhpParser\Node\Expr\ConstFetch
-                && $stmt->cond->name->toString() === 'true'
-            ) {
-                // do nothing
-            } else {
                 $switch_var_id = '$__tmp_switch__' . (int) $stmt->cond->getAttribute('startFilePos');
 
                 $condition_type = $statements_analyzer->node_data->getType($stmt->cond) ?? Type::getMixed();
@@ -136,27 +127,18 @@ final class MatchAnalyzer
         }
 
         $arms = $stmt->arms;
-        $flattened_arms = [];
-        $last_arm = null;
 
-        foreach ($arms as $arm) {
+        foreach ($arms as $i => $arm) {
+            // move default to the end
             if ($arm->conds === null) {
-                $last_arm = $arm;
-                continue;
-            }
-
-            foreach ($arm->conds as $cond) {
-                $flattened_arms[] = new PhpParser\Node\MatchArm(
-                    [$cond],
-                    $arm->body,
-                    $arm->getAttributes(),
-                );
+                unset($arms[$i]);
+                $arms[] = $arm;
             }
         }
 
-        $arms = $flattened_arms;
         $arms = array_reverse($arms);
-        $last_arm ??= array_shift($arms);
+
+        $last_arm = array_shift($arms);
 
         if (!$last_arm) {
             IssueBuffer::maybeAdd(
@@ -318,12 +300,11 @@ final class MatchAnalyzer
 
     /**
      * @param non-empty-list<PhpParser\Node\Expr> $conds
-     * @param array<string, mixed> $attributes
      */
     private static function convertCondsToConditional(
         array $conds,
         PhpParser\Node\Expr $match_condition,
-        array $attributes,
+        array $attributes
     ): PhpParser\Node\Expr {
         if (count($conds) === 1) {
             return new VirtualIdentical(
@@ -334,7 +315,7 @@ final class MatchAnalyzer
         }
 
         $array_items = array_map(
-            static fn(PhpParser\Node\Expr $cond): PhpParser\Node\ArrayItem =>
+            static fn(PhpParser\Node\Expr $cond): PhpParser\Node\Expr\ArrayItem =>
                 new VirtualArrayItem($cond, null, false, $cond->getAttributes()),
             $conds,
         );

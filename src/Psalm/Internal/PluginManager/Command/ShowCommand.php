@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\PluginManager\Command;
 
 use Psalm\Internal\PluginManager\PluginListFactory;
@@ -19,14 +17,18 @@ use function count;
 use function getcwd;
 use function is_string;
 
+use const DIRECTORY_SEPARATOR;
+
 /**
  * @internal
  */
-final class ShowCommand extends Command
+class ShowCommand extends Command
 {
-    public function __construct(
-        private readonly PluginListFactory $plugin_list_factory,
-    ) {
+    private PluginListFactory $plugin_list_factory;
+
+    public function __construct(PluginListFactory $plugin_list_factory)
+    {
+        $this->plugin_list_factory = $plugin_list_factory;
         parent::__construct();
     }
 
@@ -42,7 +44,7 @@ final class ShowCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $current_dir = (string) getcwd();
+        $current_dir = (string) getcwd() . DIRECTORY_SEPARATOR;
 
         $config_file_path = $input->getOption('config');
         if ($config_file_path !== null && !is_string($config_file_path)) {

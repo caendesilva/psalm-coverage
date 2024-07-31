@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -19,13 +17,13 @@ use function strtolower;
 /**
  * @internal
  */
-final class ExpressionIdentifier
+class ExpressionIdentifier
 {
     public static function getVarId(
         PhpParser\Node\Expr $stmt,
         ?string $this_class_name,
         ?FileSource $source = null,
-        ?int &$nesting = null,
+        ?int &$nesting = null
     ): ?string {
         if ($stmt instanceof PhpParser\Node\Expr\Variable && is_string($stmt->name)) {
             return '$' . $stmt->name;
@@ -35,11 +33,11 @@ final class ExpressionIdentifier
             && $stmt->name instanceof PhpParser\Node\Identifier
             && $stmt->class instanceof PhpParser\Node\Name
         ) {
-            if (count($stmt->class->getParts()) === 1
-                && in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)
+            if (count($stmt->class->parts) === 1
+                && in_array(strtolower($stmt->class->parts[0]), ['self', 'static', 'parent'], true)
             ) {
                 if (!$this_class_name) {
-                    $fq_class_name = $stmt->class->getFirst();
+                    $fq_class_name = $stmt->class->parts[0];
                 } else {
                     $fq_class_name = $this_class_name;
                 }
@@ -49,7 +47,7 @@ final class ExpressionIdentifier
                         $stmt->class,
                         $source->getAliases(),
                     )
-                    : implode('\\', $stmt->class->getParts());
+                    : implode('\\', $stmt->class->parts);
             }
 
             return $fq_class_name . '::$' . $stmt->name->name;
@@ -77,7 +75,7 @@ final class ExpressionIdentifier
     public static function getRootVarId(
         PhpParser\Node\Expr $stmt,
         ?string $this_class_name,
-        ?FileSource $source = null,
+        ?FileSource $source = null
     ): ?string {
         if ($stmt instanceof PhpParser\Node\Expr\Variable
             || $stmt instanceof PhpParser\Node\Expr\StaticPropertyFetch
@@ -103,7 +101,7 @@ final class ExpressionIdentifier
     public static function getExtendedVarId(
         PhpParser\Node\Expr $stmt,
         ?string $this_class_name,
-        ?FileSource $source = null,
+        ?FileSource $source = null
     ): ?string {
         if ($stmt instanceof PhpParser\Node\Expr\Assign) {
             return self::getExtendedVarId($stmt->var, $this_class_name, $source);
@@ -116,7 +114,7 @@ final class ExpressionIdentifier
 
             if ($root_var_id) {
                 if ($stmt->dim instanceof PhpParser\Node\Scalar\String_
-                    || $stmt->dim instanceof PhpParser\Node\Scalar\Int_
+                    || $stmt->dim instanceof PhpParser\Node\Scalar\LNumber
                 ) {
                     $offset = $stmt->dim instanceof PhpParser\Node\Scalar\String_
                         ? '\'' . $stmt->dim->value . '\''
@@ -126,7 +124,7 @@ final class ExpressionIdentifier
                 ) {
                     $offset = '$' . $stmt->dim->name;
                 } elseif ($stmt->dim instanceof PhpParser\Node\Expr\ConstFetch) {
-                    $offset = implode('\\', $stmt->dim->name->getParts());
+                    $offset = implode('\\', $stmt->dim->name->parts);
                 } elseif ($stmt->dim instanceof PhpParser\Node\Expr\PropertyFetch) {
                     $object_id = self::getExtendedVarId($stmt->dim->var, $this_class_name, $source);
 
@@ -136,7 +134,7 @@ final class ExpressionIdentifier
                 } elseif ($stmt->dim instanceof PhpParser\Node\Expr\ClassConstFetch
                     && $stmt->dim->name instanceof PhpParser\Node\Identifier
                     && $stmt->dim->class instanceof PhpParser\Node\Name
-                    && $stmt->dim->class->getFirst() === 'static'
+                    && $stmt->dim->class->parts[0] === 'static'
                 ) {
                     $offset = 'static::' . $stmt->dim->name;
                 } elseif ($stmt->dim

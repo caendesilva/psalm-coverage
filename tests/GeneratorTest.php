@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -219,9 +217,8 @@ class GeneratorTest extends TestCase
                         echo yield;
                     }',
             ],
-            'SKIPPED-yieldFromTwiceWithVoidSend' => [
+            'yieldFromTwiceWithVoidSend' => [
                 'code' => '<?php
-                    // this test is all wrong
                     /**
                      * @return \Generator<int, string, void, string>
                      */

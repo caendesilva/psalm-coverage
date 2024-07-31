@@ -1,6 +1,0 @@
-<?php
-
-/**
- * @psalm-taint-source input
- */
-function custom_taint_source(){}

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\TypeVisitor;
 
 use Psalm\Type\Atomic\TClassConstant;
@@ -16,15 +14,17 @@ use function strtolower;
 /**
  * @internal
  */
-final class ClasslikeReplacer extends MutableTypeVisitor
+class ClasslikeReplacer extends MutableTypeVisitor
 {
-    private readonly string $old;
+    private string $old;
+    private string $new;
 
     public function __construct(
         string $old,
-        private readonly string $new,
+        string $new
     ) {
         $this->old = strtolower($old);
+        $this->new = $new;
     }
 
     protected function enterNode(TypeNode &$type): ?int

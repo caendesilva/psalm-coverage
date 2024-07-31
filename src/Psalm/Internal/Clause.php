@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal;
 
 use Psalm\Storage\Assertion;
@@ -11,11 +9,9 @@ use Psalm\Type\Atomic\TEnumCase;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
-use Stringable;
 
 use function array_diff;
 use function array_keys;
-use function assert;
 use function count;
 use function hash;
 use function implode;
@@ -24,13 +20,17 @@ use function reset;
 use function serialize;
 use function substr;
 
+use const PHP_VERSION_ID;
+
 /**
  * @internal
  * @psalm-immutable
  */
-final class Clause implements Stringable
+class Clause
 {
     use ImmutableNonCloneableTrait;
+
+    public int $creating_conditional_id;
 
     public int $creating_object_id;
 
@@ -71,6 +71,11 @@ final class Clause implements Stringable
 
     public bool $reconcilable;
 
+    public bool $generated = false;
+
+    /** @var array<string, bool> */
+    public array $redefined_vars = [];
+
     public string $hash;
 
     /**
@@ -79,12 +84,12 @@ final class Clause implements Stringable
      */
     public function __construct(
         array $possibilities,
-        public int $creating_conditional_id,
+        int $creating_conditional_id,
         int $creating_object_id,
         bool $wedge = false,
         bool $reconcilable = true,
-        public bool $generated = false,
-        public array $redefined_vars = [],
+        bool $generated = false,
+        array $redefined_vars = []
     ) {
         if ($wedge || !$reconcilable) {
             $this->hash = ($wedge ? 'w' : '') . $creating_object_id;
@@ -102,12 +107,15 @@ final class Clause implements Stringable
 
             /** @psalm-suppress ImpureFunctionCall */
             $data = serialize($possibility_strings);
-            $this->hash = hash('xxh128', $data);
+            $this->hash = PHP_VERSION_ID >= 8_01_00 ? hash('xxh128', $data) : hash('md4', $data);
         }
 
         $this->possibilities = $possibilities;
         $this->wedge = $wedge;
         $this->reconcilable = $reconcilable;
+        $this->generated = $generated;
+        $this->redefined_vars = $redefined_vars;
+        $this->creating_conditional_id = $creating_conditional_id;
         $this->creating_object_id = $creating_object_id;
     }
 
@@ -179,7 +187,6 @@ final class Clause implements Stringable
             if (count($var_id_clauses) > 1) {
                 $clause_strings[] = '('.implode(') || (', $var_id_clauses).')';
             } else {
-                assert(!empty($var_id_clauses));
                 $clause_strings[] = reset($var_id_clauses);
             }
         }
@@ -187,8 +194,6 @@ final class Clause implements Stringable
         if (count($clause_strings) > 1) {
             return '(' . implode(') || (', $clause_strings) . ')';
         }
-
-        assert(!empty($clause_strings));
 
         return reset($clause_strings);
     }

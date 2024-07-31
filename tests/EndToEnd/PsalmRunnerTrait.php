@@ -1,14 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\EndToEnd;
 
 use Symfony\Component\Process\Process;
 
 use function array_merge;
-use function array_unshift;
-use function in_array;
 
 trait PsalmRunnerTrait
 {
@@ -24,13 +20,8 @@ trait PsalmRunnerTrait
         array $args,
         string $workingDir,
         bool $shouldFail = false,
-        bool $relyOnConfigDir = true,
+        bool $relyOnConfigDir = true
     ): array {
-        // Ensure CI agnostic output
-        if (!in_array('--init', $args, true) && !in_array('--alter', $args, true)) {
-            array_unshift($args, '--output-format=console');
-        }
-
         // As config files all contain `resolveFromConfigFile="true"` Psalm
         // shouldn't need to be run from the same directory that the code being
         // analysed exists in.

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Codebase;
@@ -180,21 +178,6 @@ class TypeParseTest extends TestCase
         );
     }
 
-    public function testUnsealedArray(): void
-    {
-        $this->assertSame('array{a: int, ...<string, string>}', Type::parseString('array{a: int, ...<string, string>}')->getId());
-    }
-
-    public function testUnsealedList(): void
-    {
-        $this->assertSame('list{int, ...<string>}', Type::parseString('list{int, ...<string>}')->getId());
-    }
-
-    public function testUnsealedListComplex(): void
-    {
-        $this->assertSame('list{array{a: 123}, ...<123>}', Type::parseString('list{0: array{a: 123}, ...<123>}')->getId());
-    }
-
     public function testIntersectionAfterGeneric(): void
     {
         $this->assertSame('Countable&iterable<mixed, int>&I', (string) Type::parseString('Countable&iterable<int>&I'));
@@ -358,11 +341,6 @@ class TypeParseTest extends TestCase
         $this->assertSame('array{\'\\"\': int, \'\\\'\': string}', (string) Type::parseString('array{"\\"": int, "\\\'": string}'));
     }
 
-    public function testTKeyedArrayWithClassConstantValueType(): void
-    {
-        $this->assertSame('list{A::X|A::Y, B::X}', (string) Type::parseString('list{A::X|A::Y, B::X}'));
-    }
-
     public function testTKeyedArrayWithClassConstantKey(): void
     {
         $this->expectException(TypeParseTreeException::class);
@@ -487,7 +465,7 @@ class TypeParseTest extends TestCase
     public function testTKeyedCallableArrayNonList(): void
     {
         $this->assertSame(
-            'callable-array{class-string, string}',
+            'callable-array{0: class-string, 1: string}',
             (string)Type::parseString('callable-array{0: class-string, 1: string}'),
         );
     }
@@ -940,14 +918,6 @@ class TypeParseTest extends TestCase
         );
     }
 
-    public function testClassStringMapOf(): void
-    {
-        $this->assertSame(
-            'class-string-map<T as Foo, T>',
-            Type::parseString('class-string-map<T of Foo, T>')->getId(false),
-        );
-    }
-
     public function testVeryLargeType(): void
     {
         $very_large_type = 'array{a: Closure():(array<array-key, mixed>|null), b?: Closure():array<array-key, mixed>, c?: Closure():array<array-key, mixed>, d?: Closure():array<array-key, mixed>, e?: Closure():(array{f: null|string, g: null|string, h: null|string, i: string, j: mixed, k: mixed, l: mixed, m: mixed, n: bool, o?: array{0: string}}|null), p?: Closure():(array{f: null|string, g: null|string, h: null|string, i: string, j: mixed, k: mixed, l: mixed, m: mixed, n: bool, o?: array{0: string}}|null), q: string, r?: Closure():(array<array-key, mixed>|null), s: array<array-key, mixed>}|null';
@@ -1060,26 +1030,6 @@ class TypeParseTest extends TestCase
             '6',
             Type::parseString('6')->getId(),
         );
-    }
-
-    public function testSingleLiteralIntWithSeparators(): void
-    {
-        $this->assertSame('10', Type::parseString('1_0')->getId());
-    }
-
-    public function testIntRangeWithSeparators(): void
-    {
-        $this->assertSame('int<10, 20>', Type::parseString('int<1_0, 2_0>')->getId());
-    }
-
-    public function testLiteralIntUnionWithSeparators(): void
-    {
-        $this->assertSame('10|20', Type::parseString('1_0|2_0')->getId());
-    }
-
-    public function testIntMaskWithIntsWithSeparators(): void
-    {
-        $this->assertSame('0|10|20|30', Type::parseString('int-mask<1_0, 2_0>')->getId());
     }
 
     public function testSingleLiteralFloat(): void

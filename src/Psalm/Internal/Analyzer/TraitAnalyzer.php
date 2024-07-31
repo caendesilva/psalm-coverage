@@ -1,33 +1,34 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use PhpParser\Node\Stmt\Trait_;
 use Psalm\Aliases;
 use Psalm\Context;
-use Psalm\IssueBuffer;
 
 use function assert;
 
 /**
  * @internal
  */
-final class TraitAnalyzer extends ClassLikeAnalyzer
+class TraitAnalyzer extends ClassLikeAnalyzer
 {
+    private Aliases $aliases;
+
     public function __construct(
         Trait_ $class,
         SourceAnalyzer $source,
         string $fq_class_name,
-        private Aliases $aliases,
+        Aliases $aliases
     ) {
         $this->source = $source;
         $this->file_analyzer = $source->getFileAnalyzer();
+        $this->aliases = $source->getAliases();
         $this->class = $class;
         $this->fq_class_name = $fq_class_name;
         $codebase = $source->getCodebase();
         $this->storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $this->aliases = $aliases;
     }
 
     /** @psalm-mutation-free */
@@ -79,9 +80,5 @@ final class TraitAnalyzer extends ClassLikeAnalyzer
             AttributesAnalyzer::TARGET_CLASS,
             $storage->suppressed_issues + $statements_analyzer->getSuppressedIssues(),
         );
-
-        foreach ($storage->docblock_issues as $docblock_issue) {
-            IssueBuffer::maybeAdd($docblock_issue);
-        }
     }
 }

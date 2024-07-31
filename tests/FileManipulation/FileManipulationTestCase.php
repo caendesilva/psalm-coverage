@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\FileManipulation;
 
 use Psalm\Context;
@@ -36,7 +34,7 @@ abstract class FileManipulationTestCase extends TestCase
         string $php_version,
         array $issues_to_fix,
         bool $safe_types,
-        bool $allow_backwards_incompatible_changes = true,
+        bool $allow_backwards_incompatible_changes = true
     ): void {
         $test_name = $this->getTestName();
         if (strpos($test_name, 'SKIPPED-') !== false) {

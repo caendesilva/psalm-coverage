@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Cli;
 
 use AssertionError;
@@ -46,7 +44,6 @@ use function preg_last_error_msg;
 use function preg_replace;
 use function preg_split;
 use function realpath;
-use function str_starts_with;
 use function strpos;
 use function substr;
 
@@ -88,15 +85,11 @@ final class Refactor
 
         // get options from command line
         $options = getopt(implode('', $valid_short_options), $valid_long_options);
-        if ($options === false) {
-            fwrite(STDERR, 'Failed to parse cli options' . PHP_EOL);
-            exit(1);
-        }
 
         array_map(
             static function (string $arg) use ($valid_long_options): void {
-                if (str_starts_with($arg, '--') && $arg !== '--') {
-                    $arg_name = (string) preg_replace('/=.*$/', '', substr($arg, 2), 1);
+                if (strpos($arg, '--') === 0 && $arg !== '--') {
+                    $arg_name = preg_replace('/=.*$/', '', substr($arg, 2), 1);
 
                     if ($arg_name === 'refactor') {
                         // valid option for psalm, ignored by psalter
@@ -128,8 +121,7 @@ final class Refactor
         }
 
         if (isset($options['c']) && is_array($options['c'])) {
-            fwrite(STDERR, 'Too many config files provided' . PHP_EOL);
-            exit(1);
+            die('Too many config files provided' . PHP_EOL);
         }
 
         if (array_key_exists('h', $options)) {
@@ -173,20 +165,16 @@ final class Refactor
             $options['r'] = $options['root'];
         }
 
-        $current_dir = (string) getcwd();
+        $current_dir = (string)getcwd() . DIRECTORY_SEPARATOR;
 
         if (isset($options['r']) && is_string($options['r'])) {
             $root_path = realpath($options['r']);
 
-            if ($root_path === false) {
-                fwrite(
-                    STDERR,
-                    'Could not locate root directory ' . $current_dir . DIRECTORY_SEPARATOR . $options['r'] . PHP_EOL,
-                );
-                exit(1);
+            if (!$root_path) {
+                die('Could not locate root directory ' . $current_dir . DIRECTORY_SEPARATOR . $options['r'] . PHP_EOL);
             }
 
-            $current_dir = $root_path;
+            $current_dir = $root_path . DIRECTORY_SEPARATOR;
         }
 
         $vendor_dir = CliUtils::getVendorDir($current_dir);
@@ -199,7 +187,7 @@ final class Refactor
             // we ignore the FQN because of a hack in scoper.inc that needs full path
             // phpcs:ignore SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName
             static fn(): ?\Composer\Autoload\ClassLoader =>
-                CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir),
+                CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir)
         );
 
         // If Xdebug is enabled, restart without it
@@ -222,8 +210,7 @@ final class Refactor
 
             if ($arg === '--into') {
                 if ($operation !== 'move' || !$last_arg) {
-                    fwrite(STDERR, '--into is not expected here' . PHP_EOL);
-                    exit(1);
+                    die('--into is not expected here' . PHP_EOL);
                 }
 
                 $operation = 'move_into';
@@ -237,8 +224,7 @@ final class Refactor
 
             if ($arg === '--to') {
                 if ($operation !== 'rename' || !$last_arg) {
-                    fwrite(STDERR, '--to is not expected here' . PHP_EOL);
-                    exit(1);
+                    die('--to is not expected here' . PHP_EOL);
                 }
 
                 $operation = 'rename_to';
@@ -253,8 +239,7 @@ final class Refactor
 
             if ($operation === 'move_into' || $operation === 'rename_to') {
                 if (!$last_arg) {
-                    fwrite(STDERR, 'Expecting a previous argument' . PHP_EOL);
-                    exit(1);
+                    die('Expecting a previous argument' . PHP_EOL);
                 }
 
                 if ($operation === 'move_into') {
@@ -288,13 +273,11 @@ final class Refactor
                 continue;
             }
 
-            fwrite(STDERR, 'Unexpected argument "' . $arg . '"' . PHP_EOL);
-            exit(1);
+            die('Unexpected argument "' . $arg . '"' . PHP_EOL);
         }
 
         if (!$to_refactor) {
-            fwrite(STDERR, 'No --move or --rename arguments supplied' . PHP_EOL);
-            exit(1);
+            die('No --move or --rename arguments supplied' . PHP_EOL);
         }
 
         $config = CliUtils::initializeConfig(

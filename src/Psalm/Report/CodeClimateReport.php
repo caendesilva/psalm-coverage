@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Report;
 
 use Psalm\Config;
@@ -28,7 +26,7 @@ final class CodeClimateReport extends Report
         $options = $this->pretty ? Json::PRETTY : Json::DEFAULT;
 
         $issues_data = array_map(
-            $this->mapToNewStructure(...),
+            [$this, 'mapToNewStructure'],
             $this->issues_data,
         );
 
@@ -39,7 +37,7 @@ final class CodeClimateReport extends Report
      * convert our own severity to CodeClimate format
      * Values can be : info, minor, major, critical, or blocker
      */
-    private function convertSeverity(string $input): string
+    protected function convertSeverity(string $input): string
     {
         if (Config::REPORT_INFO === $input) {
             return 'info';
@@ -58,7 +56,7 @@ final class CodeClimateReport extends Report
     /**
      * calculate a unique fingerprint for a given issue
      */
-    private function calculateFingerprint(IssueData $issue): string
+    protected function calculateFingerprint(IssueData $issue): string
     {
         return md5($issue->type.$issue->message.$issue->file_name.$issue->from.$issue->to);
     }

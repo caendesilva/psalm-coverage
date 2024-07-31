@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 use Psalm\Codebase;
@@ -10,6 +8,8 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+
+use function array_merge;
 
 /**
  * Represents a closure where we know the return type and params
@@ -20,36 +20,35 @@ final class TClosure extends TNamedObject
 {
     use CallableTrait;
 
+    /** @var array<string, bool> */
+    public $byref_uses = [];
+
     /**
      * @param list<FunctionLikeParameter> $params
      * @param array<string, bool> $byref_uses
-     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $extra_types
+     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties> $extra_types
      */
     public function __construct(
         string $value = 'callable',
         ?array $params = null,
         ?Union $return_type = null,
         ?bool $is_pure = null,
-        public array $byref_uses = [],
+        array $byref_uses = [],
         array $extra_types = [],
-        bool $from_docblock = false,
+        bool $from_docblock = false
     ) {
+        $this->value = $value;
         $this->params = $params;
         $this->return_type = $return_type;
         $this->is_pure = $is_pure;
-        parent::__construct(
-            $value,
-            false,
-            false,
-            $extra_types,
-            $from_docblock,
-        );
+        $this->byref_uses = $byref_uses;
+        $this->extra_types = $extra_types;
+        $this->from_docblock = $from_docblock;
     }
 
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
-        // it can, if it's just 'Closure'
-        return $this->params === null && $this->return_type === null && $this->is_pure === null;
+        return false;
     }
 
     /**
@@ -57,7 +56,7 @@ final class TClosure extends TNamedObject
      */
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
-        ?Codebase $codebase,
+        ?Codebase $codebase
     ): self {
         $replaced = $this->replaceCallableTemplateTypesWithArgTypes($template_result, $codebase);
         $intersection = $this->replaceIntersectionTemplateTypesWithArgTypes($template_result, $codebase);
@@ -87,7 +86,7 @@ final class TClosure extends TNamedObject
         ?string $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        int $depth = 0,
+        int $depth = 0
     ): self {
         $replaced = $this->replaceCallableTemplateTypesWithStandins(
             $template_result,
@@ -128,6 +127,6 @@ final class TClosure extends TNamedObject
 
     protected function getChildNodeKeys(): array
     {
-        return [...parent::getChildNodeKeys(), ...$this->getCallableChildNodeKeys()];
+        return array_merge(parent::getChildNodeKeys(), $this->getCallableChildNodeKeys());
     }
 }

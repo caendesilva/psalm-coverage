@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\AddRemoveTaints;
 
 use PhpParser;
@@ -9,7 +7,6 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Plugin\EventHandler\AddTaintsInterface;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Plugin\EventHandler\RemoveTaintsInterface;
-use Psalm\Type\TaintKind;
 
 use function count;
 use function strtolower;
@@ -19,7 +16,7 @@ use const ENT_QUOTES;
 /**
  * @internal
  */
-final class HtmlFunctionTainter implements AddTaintsInterface, RemoveTaintsInterface
+class HtmlFunctionTainter implements AddTaintsInterface, RemoveTaintsInterface
 {
     /**
      * Called to see what taints should be added
@@ -35,13 +32,13 @@ final class HtmlFunctionTainter implements AddTaintsInterface, RemoveTaintsInter
             || !$item instanceof PhpParser\Node\Expr\FuncCall
             || $item->isFirstClassCallable()
             || !$item->name instanceof PhpParser\Node\Name
-            || count($item->name->getParts()) !== 1
+            || count($item->name->parts) !== 1
             || count($item->getArgs()) === 0
         ) {
             return [];
         }
 
-        $function_id = strtolower($item->name->getFirst());
+        $function_id = strtolower($item->name->parts[0]);
 
         if ($function_id === 'html_entity_decode'
             || $function_id === 'htmlspecialchars_decode'
@@ -49,25 +46,22 @@ final class HtmlFunctionTainter implements AddTaintsInterface, RemoveTaintsInter
             $second_arg = $item->getArgs()[1]->value ?? null;
 
             if ($second_arg === null) {
-                if ($statements_analyzer->getCodebase()->analysis_php_version_id >= 8_01_00) {
-                    return [TaintKind::INPUT_HTML, TaintKind::INPUT_HAS_QUOTES];
-                }
-                return [TaintKind::INPUT_HTML];
+                return ['html'];
             }
 
             $second_arg_value = $statements_analyzer->node_data->getType($second_arg);
 
             if (!$second_arg_value || !$second_arg_value->isSingleIntLiteral()) {
-                return [TaintKind::INPUT_HTML];
+                return ['html'];
             }
 
             $second_arg_value = $second_arg_value->getSingleIntLiteral()->value;
 
             if (($second_arg_value & ENT_QUOTES) === ENT_QUOTES) {
-                return [TaintKind::INPUT_HTML, TaintKind::INPUT_HAS_QUOTES];
+                return ['html', 'has_quotes'];
             }
 
-            return [TaintKind::INPUT_HTML];
+            return ['html'];
         }
 
         return [];
@@ -87,13 +81,13 @@ final class HtmlFunctionTainter implements AddTaintsInterface, RemoveTaintsInter
             || !$item instanceof PhpParser\Node\Expr\FuncCall
             || $item->isFirstClassCallable()
             || !$item->name instanceof PhpParser\Node\Name
-            || count($item->name->getParts()) !== 1
+            || count($item->name->parts) !== 1
             || count($item->getArgs()) === 0
         ) {
             return [];
         }
 
-        $function_id = strtolower($item->name->getFirst());
+        $function_id = strtolower($item->name->parts[0]);
 
         if ($function_id === 'htmlentities'
             || $function_id === 'htmlspecialchars'
@@ -101,25 +95,22 @@ final class HtmlFunctionTainter implements AddTaintsInterface, RemoveTaintsInter
             $second_arg = $item->getArgs()[1]->value ?? null;
 
             if ($second_arg === null) {
-                if ($statements_analyzer->getCodebase()->analysis_php_version_id >= 8_01_00) {
-                    return [TaintKind::INPUT_HTML, TaintKind::INPUT_HAS_QUOTES];
-                }
-                return [TaintKind::INPUT_HTML];
+                return ['html'];
             }
 
             $second_arg_value = $statements_analyzer->node_data->getType($second_arg);
 
             if (!$second_arg_value || !$second_arg_value->isSingleIntLiteral()) {
-                return [TaintKind::INPUT_HTML];
+                return ['html'];
             }
 
             $second_arg_value = $second_arg_value->getSingleIntLiteral()->value;
 
             if (($second_arg_value & ENT_QUOTES) === ENT_QUOTES) {
-                return [TaintKind::INPUT_HTML, TaintKind::INPUT_HAS_QUOTES];
+                return ['html', 'has_quotes'];
             }
 
-            return [TaintKind::INPUT_HTML];
+            return ['html'];
         }
 
         return [];

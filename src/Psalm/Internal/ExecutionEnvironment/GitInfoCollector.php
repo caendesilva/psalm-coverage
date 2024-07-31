@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\ExecutionEnvironment;
 
 use Psalm\SourceControl\Git\CommitInfo;
@@ -14,8 +12,7 @@ use function array_unique;
 use function count;
 use function explode;
 use function range;
-use function str_contains;
-use function str_starts_with;
+use function strpos;
 use function trim;
 
 /**
@@ -24,12 +21,12 @@ use function trim;
  * @author Kitamura Satoshi <with.no.parachute@gmail.com>
  * @internal
  */
-final class GitInfoCollector
+class GitInfoCollector
 {
     /**
      * Git command.
      */
-    private readonly SystemCommandExecutor $executor;
+    protected SystemCommandExecutor $executor;
 
     /**
      * Constructor.
@@ -58,12 +55,12 @@ final class GitInfoCollector
      *
      * @throws RuntimeException
      */
-    private function collectBranch(): string
+    protected function collectBranch(): string
     {
         $branchesResult = $this->executor->execute('git branch');
 
         foreach ($branchesResult as $result) {
-            if (str_starts_with($result, '* ')) {
+            if (strpos($result, '* ') === 0) {
                 $exploded = explode('* ', $result, 2);
 
                 return $exploded[1];
@@ -78,7 +75,7 @@ final class GitInfoCollector
      *
      * @throws RuntimeException
      */
-    private function collectCommit(): CommitInfo
+    protected function collectCommit(): CommitInfo
     {
         $commitResult = $this->executor->execute('git log -1 --pretty=format:%H%n%aN%n%ae%n%cN%n%ce%n%s%n%at');
 
@@ -104,7 +101,7 @@ final class GitInfoCollector
      * @throws RuntimeException
      * @return list<RemoteInfo>
      */
-    private function collectRemotes(): array
+    protected function collectRemotes(): array
     {
         $remotesResult = $this->executor->execute('git remote -v');
 
@@ -116,7 +113,7 @@ final class GitInfoCollector
         $results = [];
 
         foreach ($remotesResult as $result) {
-            if (str_contains($result, ' ')) {
+            if (strpos($result, ' ') !== false) {
                 [$remote] = explode(' ', $result, 2);
 
                 $results[] = $remote;
@@ -130,7 +127,7 @@ final class GitInfoCollector
         $remotes = [];
 
         foreach ($results as $result) {
-            if (str_contains($result, "\t")) {
+            if (strpos($result, "\t") !== false) {
                 [$name, $url] = explode("\t", $result, 2);
 
                 $remote = new RemoteInfo();

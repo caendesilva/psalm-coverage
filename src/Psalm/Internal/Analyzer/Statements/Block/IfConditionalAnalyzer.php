@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
 use PhpParser;
@@ -23,7 +21,7 @@ use Psalm\Type\Reconciler;
 
 use function array_diff_key;
 use function array_filter;
-use function array_key_first;
+use function array_keys;
 use function array_merge;
 use function array_values;
 use function count;
@@ -31,7 +29,7 @@ use function count;
 /**
  * @internal
  */
-final class IfConditionalAnalyzer
+class IfConditionalAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
@@ -39,7 +37,7 @@ final class IfConditionalAnalyzer
         Context $outer_context,
         Codebase $codebase,
         IfScope $if_scope,
-        int $branch_point,
+        int $branch_point
     ): IfConditionalScope {
         $entry_clauses = [];
 
@@ -80,7 +78,7 @@ final class IfConditionalAnalyzer
                             $entry_clauses,
                             static fn(Clause $c): bool => count($c->possibilities) > 1
                                 || $c->wedge
-                                || !isset($changed_var_ids[array_key_first($c->possibilities)]),
+                                || !isset($changed_var_ids[array_keys($c->possibilities)[0]])
                         ),
                     );
                 }
@@ -219,7 +217,7 @@ final class IfConditionalAnalyzer
         // get all the var ids that were referenced in the conditional, but not assigned in it
         $cond_referenced_var_ids = array_diff_key($cond_referenced_var_ids, $assigned_in_conditional_var_ids);
 
-        $cond_referenced_var_ids = [...$newish_var_ids, ...$cond_referenced_var_ids];
+        $cond_referenced_var_ids = array_merge($newish_var_ids, $cond_referenced_var_ids);
 
         return new IfConditionalScope(
             $if_context,
@@ -240,13 +238,13 @@ final class IfConditionalAnalyzer
             || $stmt instanceof PhpParser\Node\Expr\BinaryOp\Identical
         ) {
             if ($stmt->left instanceof PhpParser\Node\Expr\ConstFetch
-                && $stmt->left->name->getParts() === ['true']
+                && $stmt->left->name->parts === ['true']
             ) {
                 return self::getDefinitelyEvaluatedExpressionAfterIf($stmt->right);
             }
 
             if ($stmt->right instanceof PhpParser\Node\Expr\ConstFetch
-                && $stmt->right->name->getParts() === ['true']
+                && $stmt->right->name->parts === ['true']
             ) {
                 return self::getDefinitelyEvaluatedExpressionAfterIf($stmt->left);
             }
@@ -284,13 +282,13 @@ final class IfConditionalAnalyzer
             || $stmt instanceof PhpParser\Node\Expr\BinaryOp\Identical
         ) {
             if ($stmt->left instanceof PhpParser\Node\Expr\ConstFetch
-                && $stmt->left->name->getParts() === ['true']
+                && $stmt->left->name->parts === ['true']
             ) {
                 return self::getDefinitelyEvaluatedExpressionInsideIf($stmt->right);
             }
 
             if ($stmt->right instanceof PhpParser\Node\Expr\ConstFetch
-                && $stmt->right->name->getParts() === ['true']
+                && $stmt->right->name->parts === ['true']
             ) {
                 return self::getDefinitelyEvaluatedExpressionInsideIf($stmt->left);
             }
@@ -321,7 +319,7 @@ final class IfConditionalAnalyzer
     public static function handleParadoxicalCondition(
         StatementsAnalyzer  $statements_analyzer,
         PhpParser\Node\Expr $stmt,
-        bool $emit_redundant_with_assignation = false,
+        bool $emit_redundant_with_assignation = false
     ): void {
         $type = $statements_analyzer->node_data->getType($stmt);
 
@@ -368,10 +366,6 @@ final class IfConditionalAnalyzer
                         $statements_analyzer->getSuppressedIssues(),
                     );
                 }
-            } elseif (!($stmt instanceof PhpParser\Node\Expr\BinaryOp\NotIdentical)
-                && !($stmt instanceof PhpParser\Node\Expr\BinaryOp\Identical)
-                && !($stmt instanceof PhpParser\Node\Expr\BooleanNot)) {
-                ExpressionAnalyzer::checkRiskyTruthyFalsyComparison($type, $statements_analyzer, $stmt);
             }
         }
     }

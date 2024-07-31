@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider;
 
 use Psalm\Config;
@@ -14,6 +12,7 @@ use function mkdir;
 use function touch;
 
 use const DIRECTORY_SEPARATOR;
+use const PHP_VERSION_ID;
 
 /**
  * Used to determine which files reference other files, necessary for using the --diff
@@ -30,9 +29,11 @@ class ProjectCacheProvider
 
     private ?string $composer_lock_hash = null;
 
-    public function __construct(
-        private readonly string $composer_lock_location,
-    ) {
+    private string $composer_lock_location;
+
+    public function __construct(string $composer_lock_location)
+    {
+        $this->composer_lock_location = $composer_lock_location;
     }
 
     public function canDiffFiles(): bool
@@ -66,7 +67,7 @@ class ProjectCacheProvider
 
             if (file_exists($run_cache_location)
                 && Providers::safeFileGetContents($run_cache_location) === $psalm_version) {
-                $this->last_run = (int) filemtime($run_cache_location);
+                $this->last_run = filemtime($run_cache_location);
             } else {
                 $this->last_run = 0;
             }
@@ -77,15 +78,20 @@ class ProjectCacheProvider
 
     public function hasLockfileChanged(): bool
     {
-        if (file_exists($this->composer_lock_location)) {
-            $lockfile_contents = Providers::safeFileGetContents($this->composer_lock_location);
-            if (!$lockfile_contents) {
-                return true;
-            }
+        if (!file_exists($this->composer_lock_location)) {
+            return true;
+        }
 
+        $lockfile_contents = Providers::safeFileGetContents($this->composer_lock_location);
+
+        if (!$lockfile_contents) {
+            return true;
+        }
+
+        if (PHP_VERSION_ID >= 8_01_00) {
             $hash = hash('xxh128', $lockfile_contents);
         } else {
-            $hash = '';
+            $hash = hash('md4', $lockfile_contents);
         }
 
         $changed = $hash !== $this->getComposerLockHash();
@@ -112,7 +118,7 @@ class ProjectCacheProvider
         file_put_contents($lock_hash_location, $this->composer_lock_hash);
     }
 
-    private function getComposerLockHash(): string
+    protected function getComposerLockHash(): string
     {
         if ($this->composer_lock_hash === null) {
             $cache_directory = Config::getInstance()->getCacheDirectory();

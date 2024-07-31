@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 /**
@@ -11,9 +9,16 @@ namespace Psalm\Type\Atomic;
  */
 final class TEnumCase extends TNamedObject
 {
-    public function __construct(string $fq_enum_name, public string $case_name)
+    /**
+     * @var string
+     */
+    public $case_name;
+
+    public function __construct(string $fq_enum_name, string $case_name)
     {
         parent::__construct($fq_enum_name);
+
+        $this->case_name = $case_name;
     }
 
     public function getKey(bool $include_extra = true): string
@@ -30,7 +35,7 @@ final class TEnumCase extends TNamedObject
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id,
+        int $analysis_php_version_id
     ): ?string {
         return $this->value;
     }
@@ -47,7 +52,7 @@ final class TEnumCase extends TNamedObject
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format,
+        bool $use_phpdoc_format
     ): string {
         return $this->value . '::' . $this->case_name;
     }

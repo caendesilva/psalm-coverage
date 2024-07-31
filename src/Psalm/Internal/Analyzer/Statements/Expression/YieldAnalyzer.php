@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -30,12 +28,12 @@ use function array_values;
 /**
  * @internal
  */
-final class YieldAnalyzer
+class YieldAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Yield_ $stmt,
-        Context $context,
+        Context $context
     ): bool {
         $doc_comment = $stmt->getDocComment();
 

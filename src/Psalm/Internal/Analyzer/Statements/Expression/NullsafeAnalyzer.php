@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -20,7 +18,7 @@ use Psalm\Type;
 /**
  * @internal
  */
-final class NullsafeAnalyzer
+class NullsafeAnalyzer
 {
     /**
      * @param PhpParser\Node\Expr\NullsafePropertyFetch|PhpParser\Node\Expr\NullsafeMethodCall $stmt
@@ -28,7 +26,7 @@ final class NullsafeAnalyzer
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $stmt,
-        Context $context,
+        Context $context
     ): bool {
         if (!$stmt->var instanceof PhpParser\Node\Expr\Variable) {
             $was_inside_general_use = $context->inside_general_use;

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\PluginManager;
 
 use Psalm\Internal\Composer;
@@ -9,26 +7,32 @@ use RuntimeException;
 
 use function array_filter;
 use function json_encode;
+use function rtrim;
 use function urlencode;
 
+use const DIRECTORY_SEPARATOR;
 use const JSON_THROW_ON_ERROR;
 
 /**
  * @internal
  */
-final class PluginListFactory
+class PluginListFactory
 {
-    public function __construct(
-        private readonly string $project_root,
-        private readonly string $psalm_root,
-    ) {
+    private string $project_root;
+
+    private string $psalm_root;
+
+    public function __construct(string $project_root, string $psalm_root)
+    {
+        $this->project_root = $project_root;
+        $this->psalm_root = $psalm_root;
     }
 
     public function __invoke(string $current_dir, ?string $config_file_path = null): PluginList
     {
         try {
             $config_file = new ConfigFile($current_dir, $config_file_path);
-        } catch (RuntimeException) {
+        } catch (RuntimeException $exception) {
             $config_file = null;
         }
         $composer_lock = new ComposerLock($this->findLockFiles());
@@ -49,13 +53,13 @@ final class PluginListFactory
         if ($this->psalm_root === $this->project_root) {
             // managing plugins for psalm itself
             $composer_lock_filenames = [
-                Composer::getLockFilePath($this->psalm_root),
+                Composer::getLockFilePath(rtrim($this->psalm_root, DIRECTORY_SEPARATOR)),
             ];
         } else {
             $composer_lock_filenames = [
-                Composer::getLockFilePath($this->project_root),
-                Composer::getLockFilePath($this->psalm_root . '/../../..'),
-                Composer::getLockFilePath($this->psalm_root),
+                Composer::getLockFilePath(rtrim($this->project_root, DIRECTORY_SEPARATOR)),
+                Composer::getLockFilePath(rtrim($this->psalm_root, DIRECTORY_SEPARATOR) . '/../../..'),
+                Composer::getLockFilePath(rtrim($this->psalm_root, DIRECTORY_SEPARATOR)),
             ];
         }
 

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -22,12 +20,10 @@ use Psalm\Type\Atomic\TString;
 use Psalm\Type\Union;
 use RuntimeException;
 
-use function is_int;
-
 /**
  * @internal
  */
-final class UnaryPlusMinusAnalyzer
+class UnaryPlusMinusAnalyzer
 {
     /**
      * @param PhpParser\Node\Expr\UnaryMinus|PhpParser\Node\Expr\UnaryPlus $stmt
@@ -35,7 +31,7 @@ final class UnaryPlusMinusAnalyzer
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $stmt,
-        Context $context,
+        Context $context
     ): bool {
         if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->expr, $context) === false) {
             return false;
@@ -55,9 +51,7 @@ final class UnaryPlusMinusAnalyzer
                         continue;
                     }
                     if ($type_part instanceof TLiteralInt) {
-                        /** @var int|float $value */
-                        $value = -$type_part->value;
-                        $type_part = is_int($value) ? new TLiteralInt($value) : new TLiteralFloat($value);
+                        $type_part = new TLiteralInt(-$type_part->value);
                     } elseif ($type_part instanceof TLiteralFloat) {
                         $type_part = new TLiteralFloat(-$type_part->value);
                     } elseif ($type_part instanceof TIntRange) {
@@ -115,7 +109,7 @@ final class UnaryPlusMinusAnalyzer
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $stmt,
         PhpParser\Node\Expr $value,
-        string $type,
+        string $type
     ): void {
         $result_type = $statements_analyzer->node_data->getType($stmt);
         if ($statements_analyzer->data_flow_graph instanceof VariableUseGraph && $result_type) {

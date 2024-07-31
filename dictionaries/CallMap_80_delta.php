@@ -27,17 +27,7 @@ return [
     'ReflectionFunctionAbstract::getAttributes' => ['list<ReflectionAttribute>', 'name='=>'?string', 'flags='=>'int'],
     'ReflectionParameter::getAttributes' => ['list<ReflectionAttribute>', 'name='=>'?string', 'flags='=>'int'],
     'ReflectionProperty::getAttributes' => ['list<ReflectionAttribute>', 'name='=>'?string', 'flags='=>'int'],
-    'ReflectionProperty::getDefaultValue' => ['mixed'],
-    'ReflectionProperty::hasDefaultValue' => ['bool'],
-    'ReflectionProperty::isPromoted' => ['bool'],
     'ReflectionUnionType::getTypes' => ['list<ReflectionNamedType>'],
-    'SplFixedArray::getIterator' => ['Iterator'],
-    'WeakMap::count' => ['int'],
-    'WeakMap::getIterator' => ['Iterator'],
-    'WeakMap::offsetExists' => ['bool', 'object'=>'object'],
-    'WeakMap::offsetGet' => ['mixed', 'object'=>'object'],
-    'WeakMap::offsetSet' => ['void', 'object'=>'object', 'value'=>'mixed'],
-    'WeakMap::offsetUnset' => ['void', 'object'=>'object'],
     'fdiv' => ['float', 'num1'=>'float', 'num2'=>'float'],
     'get_debug_type' => ['string', 'value'=>'mixed'],
     'get_resource_id' => ['int', 'resource'=>'resource'],
@@ -51,9 +41,9 @@ return [
       'old' => ['int|false'],
       'new' => ['int'],
     ],
-    'CURLFile::__construct' => [
-      'old' => ['void', 'filename'=>'string', 'mime_type='=>'string', 'posted_filename='=>'string'],
-      'new' => ['void', 'filename'=>'string', 'mime_type='=>'?string', 'posted_filename='=>'?string'],
+    'DateTime::diff' => [
+      'old' => ['DateInterval|false', 'datetime2'=>'DateTimeInterface', 'absolute='=>'bool'],
+      'new' => ['DateInterval', 'datetime2'=>'DateTimeInterface', 'absolute='=>'bool'],
     ],
     'DateTime::format' => [
       'old' => ['string|false', 'format'=>'string'],
@@ -62,6 +52,10 @@ return [
     'DateTime::getTimestamp' => [
       'old' => ['int|false'],
       'new' => ['int'],
+    ],
+    'DateTime::setTime' => [
+      'old' => ['static|false', 'hour'=>'int', 'minute'=>'int', 'second='=>'int', 'microseconds='=>'int'],
+      'new' => ['static', 'hour'=>'int', 'minute'=>'int', 'second='=>'int', 'microseconds='=>'int'],
     ],
     'DateTimeInterface::getTimestamp' => [
        'old' => ['int|false'],
@@ -87,73 +81,9 @@ return [
       'old' => ['void', 'dir_handle='=>'resource'],
       'new' => ['void'],
     ],
-    'DirectoryIterator::getFileInfo' => [
-      'old' => ['SplFileInfo', 'class='=>'class-string'],
-      'new' => ['SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'DirectoryIterator::getPathInfo' => [
-      'old' => ['?SplFileInfo', 'class='=>'class-string'],
-      'new' => ['?SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'DirectoryIterator::openFile' => [
-      'old' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'resource'],
-      'new' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'?resource'],
-    ],
-    'DOMDocument::getElementsByTagNameNS' => [
-      'old' => ['DOMNodeList', 'namespace'=>'string', 'localName'=>'string'],
-      'new' => ['DOMNodeList', 'namespace'=>'?string', 'localName'=>'string'],
-    ],
-    'DOMDocument::load' => [
-      'old' => ['DOMDocument|bool', 'filename'=>'string', 'options='=>'int'],
-      'new' => ['bool', 'filename'=>'string', 'options='=>'int'],
-    ],
-    'DOMDocument::loadXML' => [
-      'old' => ['DOMDocument|bool', 'source'=>'non-empty-string', 'options='=>'int'],
-      'new' => ['bool', 'source'=>'non-empty-string', 'options='=>'int'],
-    ],
-    'DOMDocument::loadHTML' => [
-      'old' => ['DOMDocument|bool', 'source'=>'non-empty-string', 'options='=>'int'],
-      'new' => ['bool', 'source'=>'non-empty-string', 'options='=>'int'],
-    ],
-    'DOMDocument::loadHTMLFile' => [
-      'old' => ['DOMDocument|bool', 'filename'=>'string', 'options='=>'int'],
-      'new' => ['bool', 'filename'=>'string', 'options='=>'int'],
-    ],
-    'DOMImplementation::createDocument' => [
-      'old' => ['DOMDocument|false', 'namespace='=>'string', 'qualifiedName='=>'string', 'doctype='=>'DOMDocumentType'],
-      'new' => ['DOMDocument|false', 'namespace='=>'?string', 'qualifiedName='=>'string', 'doctype='=>'?DOMDocumentType'],
-    ],
     'ErrorException::__construct' => [
       'old' => ['void', 'message='=>'string', 'code='=>'int', 'severity='=>'int', 'filename='=>'string', 'line='=>'int', 'previous='=>'?Throwable'],
       'new' => ['void', 'message='=>'string', 'code='=>'int', 'severity='=>'int', 'filename='=>'?string', 'line='=>'?int', 'previous='=>'?Throwable'],
-    ],
-    'FilesystemIterator::getFileInfo' => [
-      'old' => ['SplFileInfo', 'class='=>'class-string'],
-      'new' => ['SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'FilesystemIterator::getPathInfo' => [
-      'old' => ['?SplFileInfo', 'class='=>'class-string'],
-      'new' => ['?SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'FilesystemIterator::openFile' => [
-      'old' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'resource'],
-      'new' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'?resource'],
-    ],
-    'finfo::__construct' => [
-      'old' => ['void', 'flags='=>'int', 'magic_database='=>'string'],
-      'new' => ['void', 'flags='=>'int', 'magic_database='=>'?string'],
-    ],
-    'GlobIterator::getFileInfo' => [
-      'old' => ['SplFileInfo', 'class='=>'class-string'],
-      'new' => ['SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'GlobIterator::getPathInfo' => [
-      'old' => ['?SplFileInfo', 'class='=>'class-string'],
-      'new' => ['?SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'GlobIterator::openFile' => [
-      'old' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'resource'],
-      'new' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'?resource'],
     ],
     'IntlDateFormatter::__construct' => [
       'old' => ['void', 'locale'=>'?string', 'datetype'=>'null|int', 'timetype'=>'null|int', 'timezone='=>'IntlTimeZone|DateTimeZone|string|null', 'calendar='=>'IntlCalendar|int|null', 'pattern='=>'?string'],
@@ -216,44 +146,8 @@ return [
       'new' => ['void', 'lenient'=>'bool'],
     ],
     'IntlDateFormatter::setTimeZone' => [
-      'old' => ['null|false', 'zone'=>'IntlTimeZone|DateTimeZone|string|null'],
-      'new' => ['null|false', 'timezone'=>'IntlTimeZone|DateTimeZone|string|null'],
-    ],
-    'IntlTimeZone::getIDForWindowsID' => [
-      'old' => ['string|false', 'timezoneId'=>'string', 'region='=>'string'],
-      'new' => ['string|false', 'timezoneId'=>'string', 'region='=>'?string'],
-    ],
-    'Locale::getDisplayLanguage' => [
-      'old' => ['string', 'locale'=>'string', 'displayLocale='=>'string'],
-      'new' => ['string', 'locale'=>'string', 'displayLocale='=>'?string'],
-    ],
-    'Locale::getDisplayName' => [
-      'old' => ['string', 'locale'=>'string', 'displayLocale='=>'string'],
-      'new' => ['string', 'locale'=>'string', 'displayLocale='=>'?string'],
-    ],
-    'Locale::getDisplayRegion' => [
-      'old' => ['string', 'locale'=>'string', 'displayLocale='=>'string'],
-      'new' => ['string', 'locale'=>'string', 'displayLocale='=>'?string'],
-    ],
-    'Locale::getDisplayScript' => [
-      'old' => ['string', 'locale'=>'string', 'displayLocale='=>'string'],
-      'new' => ['string', 'locale'=>'string', 'displayLocale='=>'?string'],
-    ],
-    'Locale::getDisplayVariant' => [
-      'old' => ['string', 'locale'=>'string', 'displayLocale='=>'string'],
-      'new' => ['string', 'locale'=>'string', 'displayLocale='=>'?string'],
-    ],
-    'mysqli_field_seek' => [
-      'old' => ['bool', 'result'=>'mysqli_result', 'index'=>'int'],
-      'new' => ['true', 'result'=>'mysqli_result', 'index'=>'int'],
-    ],
-    'mysqli_result::field_seek' => [
-      'old' => ['bool', 'index'=>'int'],
-      'new' => ['true', 'index'=>'int'],
-    ],
-    'mysqli_stmt::__construct' => [
-      'old' => ['void', 'mysql'=>'mysqli', 'query='=>'string'],
-      'new' => ['void', 'mysql'=>'mysqli', 'query='=>'?string'],
+        'old' => ['null|false', 'zone'=>'IntlTimeZone|DateTimeZone|string|null'],
+        'new' => ['null|false', 'timezone'=>'IntlTimeZone|DateTimeZone|string|null'],
     ],
     'NumberFormatter::__construct' => [
       'old' => ['void', 'locale'=>'string', 'style'=>'int', 'pattern='=>'string'],
@@ -262,6 +156,18 @@ return [
     'NumberFormatter::create' => [
       'old' => ['NumberFormatter|null', 'locale'=>'string', 'style'=>'int', 'pattern='=>'string'],
       'new' => ['NumberFormatter|null', 'locale'=>'string', 'style'=>'int', 'pattern='=>'?string'],
+    ],
+    'PDOStatement::bindColumn' => [
+      'old' => ['bool', 'column'=>'mixed', '&rw_param'=>'mixed', 'type='=>'int', 'maxlen='=>'int', 'driverdata='=>'mixed'],
+      'new' => ['bool', 'column'=>'mixed', '&rw_var'=>'mixed', 'type='=>'int', 'maxLength='=>'int', 'driverOptions='=>'mixed'],
+    ],
+    'PDOStatement::bindParam' => [
+      'old' => ['bool', 'paramno'=>'mixed', '&rw_param'=>'mixed', 'type='=>'int', 'maxlen='=>'int', 'driverdata='=>'mixed'],
+      'new' => ['bool', 'param,'=>'string|int', '&rw_var'=>'mixed', 'type='=>'int', 'maxLength='=>'int', 'driverOptions='=>'mixed'],
+    ],
+    'PDOStatement::bindValue' => [
+      'old' => ['bool', 'paramno'=>'mixed', 'param'=>'mixed', 'type='=>'int'],
+      'new' => ['bool', 'param'=>'string|int', 'value'=>'mixed', 'type='=>'int'],
     ],
     'PDOStatement::debugDumpParams' => [
       'old' => ['void'],
@@ -287,21 +193,29 @@ return [
       'old' => ['string|int|float|bool|null', 'column_number='=>'int'],
       'new' => ['mixed', 'column='=>'int'],
     ],
+    'PDOStatement::fetchObject' => [
+      'old' => ['object|false', 'class_name='=>'string', 'ctor_args='=>'array'],
+      'new' => ['object|false', 'class='=>'?string', 'ctorArgs='=>'?array'],
+    ],
     'PDOStatement::setFetchMode' => [
       'old' => ['bool', 'mode'=>'int'],
       'new' => ['bool', 'mode'=>'int', '...args='=>'mixed'],
     ],
-    'Phar::addFile' => [
-      'old' => ['void', 'filename'=>'string', 'localName='=>'string'],
-      'new' => ['void', 'filename'=>'string', 'localName='=>'?string'],
+    'PharData::compress' => [
+      'old' => ['?PharData', 'compression'=>'int', 'extension='=>'string'],
+      'new' => ['?PharData', 'compression'=>'int', 'extension='=>'?string'],
     ],
-    'Phar::buildFromIterator' => [
-      'old' => ['array|false', 'iterator'=>'Traversable', 'baseDirectory='=>'string'],
-      'new' => ['array|false', 'iterator'=>'Traversable', 'baseDirectory='=>'?string'],
+    'PharData::convertToData' => [
+      'old' => ['?PharData', 'format='=>'int', 'compression='=>'int', 'extension='=>'string'],
+      'new' => ['?PharData', 'format='=>'?int', 'compression='=>'?int', 'extension='=>'?string'],
     ],
-    'Phar::createDefaultStub' => [
-      'old' => ['string', 'index='=>'string', 'webIndex='=>'string'],
-      'new' => ['string', 'index='=>'?string', 'webIndex='=>'?string'],
+    'PharData::convertToExecutable' => [
+      'old' => ['?Phar', 'format='=>'int', 'compression='=>'int', 'extension='=>'string'],
+      'new' => ['?Phar', 'format='=>'?int', 'compression='=>'?int', 'extension='=>'?string'],
+    ],
+    'PharData::decompress' => [
+      'old' => ['?PharData', 'extension='=>'string'],
+      'new' => ['?PharData', 'extension='=>'?string'],
     ],
     'Phar::compress' => [
       'old' => ['?Phar', 'compression'=>'int', 'extension='=>'string'],
@@ -323,69 +237,9 @@ return [
       'old' => ['mixed'],
       'new' => ['mixed', 'unserializeOptions='=>'array'],
     ],
-    'Phar::setDefaultStub' => [
-      'old' => ['bool', 'index='=>'?string', 'webIndex='=>'string'],
-      'new' => ['bool', 'index='=>'?string', 'webIndex='=>'?string'],
-    ],
-    'Phar::setSignatureAlgorithm' => [
-      'old' => ['void', 'algo'=>'int', 'privateKey='=>'string'],
-      'new' => ['void', 'algo'=>'int', 'privateKey='=>'?string'],
-    ],
-    'Phar::webPhar' => [
-      'old' => ['void', 'alias='=>'?string', 'index='=>'?string', 'fileNotFoundScript='=>'string', 'mimeTypes='=>'array', 'rewrite='=>'callable'],
-      'new' => ['void', 'alias='=>'?string', 'index='=>'?string', 'fileNotFoundScript='=>'?string', 'mimeTypes='=>'array', 'rewrite='=>'?callable'],
-    ],
-    'PharData::addFile' => [
-      'old' => ['void', 'filename'=>'string', 'localName='=>'string'],
-      'new' => ['void', 'filename'=>'string', 'localName='=>'?string'],
-    ],
-    'PharData::buildFromIterator' => [
-      'old' => ['array|false', 'iterator'=>'Traversable', 'baseDirectory='=>'string'],
-      'new' => ['array|false', 'iterator'=>'Traversable', 'baseDirectory='=>'?string'],
-    ],
-    'PharData::compress' => [
-      'old' => ['?PharData', 'compression'=>'int', 'extension='=>'string'],
-      'new' => ['?PharData', 'compression'=>'int', 'extension='=>'?string'],
-    ],
-    'PharData::convertToData' => [
-      'old' => ['?PharData', 'format='=>'int', 'compression='=>'int', 'extension='=>'string'],
-      'new' => ['?PharData', 'format='=>'?int', 'compression='=>'?int', 'extension='=>'?string'],
-    ],
-    'PharData::convertToExecutable' => [
-      'old' => ['?Phar', 'format='=>'int', 'compression='=>'int', 'extension='=>'string'],
-      'new' => ['?Phar', 'format='=>'?int', 'compression='=>'?int', 'extension='=>'?string'],
-    ],
-    'PharData::decompress' => [
-      'old' => ['?PharData', 'extension='=>'string'],
-      'new' => ['?PharData', 'extension='=>'?string'],
-    ],
-    'PharData::setDefaultStub' => [
-      'old' => ['bool', 'index='=>'?string', 'webIndex='=>'string'],
-      'new' => ['bool', 'index='=>'?string', 'webIndex='=>'?string'],
-    ],
-    'PharData::setSignatureAlgorithm' => [
-      'old' => ['void', 'algo'=>'int', 'privateKey='=>'string'],
-      'new' => ['void', 'algo'=>'int', 'privateKey='=>'?string'],
-    ],
     'PharFileInfo::getMetadata' => [
       'old' => ['mixed'],
       'new' => ['mixed', 'unserializeOptions='=>'array'],
-    ],
-    'PharFileInfo::isCompressed' => [
-      'old' => ['bool', 'compression='=>'int'],
-      'new' => ['bool', 'compression='=>'?int'],
-    ],
-    'RecursiveDirectoryIterator::getFileInfo' => [
-      'old' => ['SplFileInfo', 'class='=>'class-string'],
-      'new' => ['SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'RecursiveDirectoryIterator::getPathInfo' => [
-      'old' => ['?SplFileInfo', 'class='=>'class-string'],
-      'new' => ['?SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'RecursiveDirectoryIterator::openFile' => [
-      'old' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'resource'],
-      'new' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'?resource'],
     ],
     'RecursiveIteratorIterator::getSubIterator' => [
       'old' => ['?RecursiveIterator', 'level='=>'int'],
@@ -411,14 +265,6 @@ return [
       'old' => ['?Closure', 'object='=>'object'],
       'new' => ['Closure', 'object='=>'?object'],
     ],
-    'ReflectionObject::getConstants' => [
-      'old' => ['array<string,mixed>'],
-      'new' => ['array<string,mixed>', 'filter='=>'?int'],
-    ],
-    'ReflectionObject::getReflectionConstants' => [
-      'old' => ['list<\ReflectionClassConstant>'],
-      'new' => ['list<\ReflectionClassConstant>', 'filter='=>'?int'],
-    ],
     'ReflectionObject::newInstanceArgs' => [
       'old' => ['object', 'args='=>'list<mixed>'],
       'new' => ['object', 'args='=>'list<mixed>|array<string, mixed>'],
@@ -426,46 +272,6 @@ return [
     'ReflectionProperty::getValue' => [
       'old' => ['mixed', 'object='=>'object'],
       'new' => ['mixed', 'object='=>'null|object'],
-    ],
-    'ReflectionProperty::isInitialized' => [
-      'old' => ['bool', 'object'=>'object'],
-      'new' => ['bool', 'object='=>'null|object'],
-    ],
-    'SplFileInfo::getFileInfo' => [
-      'old' => ['SplFileInfo', 'class='=>'class-string'],
-      'new' => ['SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'SplFileInfo::getPathInfo' => [
-      'old' => ['SplFileInfo|null', 'class='=>'class-string'],
-      'new' => ['SplFileInfo|null', 'class='=>'?class-string'],
-    ],
-    'SplFileInfo::openFile' => [
-      'old' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'resource'],
-      'new' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'?resource'],
-    ],
-    'SplFileObject::getFileInfo' => [
-      'old' => ['SplFileInfo', 'class='=>'class-string'],
-      'new' => ['SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'SplFileObject::getPathInfo' => [
-      'old' => ['SplFileInfo|null', 'class='=>'class-string'],
-      'new' => ['SplFileInfo|null', 'class='=>'?class-string'],
-    ],
-    'SplFileObject::openFile' => [
-      'old' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'resource'],
-      'new' => ['SplFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'?resource'],
-    ],
-    'SplTempFileObject::getFileInfo' => [
-      'old' => ['SplFileInfo', 'class='=>'class-string'],
-      'new' => ['SplFileInfo', 'class='=>'?class-string'],
-    ],
-    'SplTempFileObject::getPathInfo' => [
-      'old' => ['SplFileInfo|null', 'class='=>'class-string'],
-      'new' => ['SplFileInfo|null', 'class='=>'?class-string'],
-    ],
-    'SplTempFileObject::openFile' => [
-      'old' => ['SplTempFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'resource'],
-      'new' => ['SplTempFileObject', 'mode='=>'string', 'useIncludePath='=>'bool', 'context='=>'?resource'],
     ],
     'tidy::__construct' => [
       'old' => ['void', 'filename='=>'string', 'config='=>'array|string', 'encoding='=>'string', 'useIncludePath='=>'bool'],
@@ -511,10 +317,6 @@ return [
       'old' => ['string|false'],
       'new' => ['string'],
     ],
-    'XMLReader::next' => [
-      'old' => ['bool', 'name='=>'string'],
-      'new' => ['bool', 'name='=>'?string'],
-    ],
     'XMLWriter::startAttributeNs' => [
       'old' => ['bool', 'prefix'=>'string', 'name'=>'string', 'namespace'=>'?string'],
       'new' => ['bool', 'prefix'=>'?string', 'name'=>'string', 'namespace'=>'?string'],
@@ -532,8 +334,8 @@ return [
       'new' => ['string'],
     ],
     'ZipArchive::setEncryptionIndex' => [
-      'old' => ['bool', 'index'=>'int', 'method'=>'int', 'password='=>'string'],
-      'new' => ['bool', 'index'=>'int', 'method'=>'int', 'password='=>'?string'],
+      'old' => ['bool', 'index'=>'int', 'method'=>'string', 'password='=>'string'],
+      'new' => ['bool', 'index'=>'int', 'method'=>'string', 'password='=>'?string'],
     ],
     'ZipArchive::setEncryptionName' => [
       'old' => ['bool', 'name'=>'string', 'method'=>'int', 'password='=>'string'],
@@ -544,40 +346,40 @@ return [
       'new' => ['array', 'array'=>'array', 'column_key'=>'int|string|null', 'index_key='=>'int|string|null'],
     ],
     'array_combine' => [
-      'old' => ['array|false', 'keys'=>'string[]|int[]', 'values'=>'array'],
-      'new' => ['array', 'keys'=>'string[]|int[]', 'values'=>'array'],
+      'old' => ['associative-array|false', 'keys'=>'string[]|int[]', 'values'=>'array'],
+      'new' => ['associative-array', 'keys'=>'string[]|int[]', 'values'=>'array'],
     ],
     'array_diff' => [
-      'old' => ['array', 'array'=>'array', '...arrays'=>'array'],
-      'new' => ['array', 'array'=>'array', '...arrays='=>'array'],
+      'old' => ['associative-array', 'array'=>'array', '...arrays'=>'array'],
+      'new' => ['associative-array', 'array'=>'array', '...arrays='=>'array'],
     ],
     'array_diff_assoc' => [
-      'old' => ['array', 'array'=>'array', '...arrays'=>'array'],
-      'new' => ['array', 'array'=>'array', '...arrays='=>'array'],
+      'old' => ['associative-array', 'array'=>'array', '...arrays'=>'array'],
+      'new' => ['associative-array', 'array'=>'array', '...arrays='=>'array'],
     ],
     'array_diff_key' => [
-      'old' => ['array', 'array'=>'array', '...arrays'=>'array'],
-      'new' => ['array', 'array'=>'array', '...arrays='=>'array'],
+      'old' => ['associative-array', 'array'=>'array', '...arrays'=>'array'],
+      'new' => ['associative-array', 'array'=>'array', '...arrays='=>'array'],
     ],
     'array_filter' => [
-      'old' => ['array', 'array'=>'array', 'callback='=>'callable(mixed,array-key=):mixed', 'mode='=>'int'],
-      'new' => ['array', 'array'=>'array', 'callback='=>'callable(mixed,array-key=):mixed|null', 'mode='=>'int'],
+      'old' => ['associative-array', 'array'=>'array', 'callback='=>'callable(mixed,mixed=):scalar', 'mode='=>'int'],
+      'new' => ['associative-array', 'array'=>'array', 'callback='=>'callable(mixed,mixed=):scalar|null', 'mode='=>'int'],
     ],
     'array_key_exists' => [
       'old' => ['bool', 'key'=>'string|int', 'array'=>'array|object'],
       'new' => ['bool', 'key'=>'string|int', 'array'=>'array'],
     ],
     'array_intersect' => [
-      'old' => ['array', 'array'=>'array', '...arrays'=>'array'],
-      'new' => ['array', 'array'=>'array', '...arrays='=>'array'],
+      'old' => ['associative-array', 'array'=>'array', '...arrays'=>'array'],
+      'new' => ['associative-array', 'array'=>'array', '...arrays='=>'array'],
     ],
     'array_intersect_assoc' => [
-      'old' => ['array', 'array'=>'array', '...arrays'=>'array'],
-      'new' => ['array', 'array'=>'array', '...arrays='=>'array'],
+      'old' => ['associative-array', 'array'=>'array', '...arrays'=>'array'],
+      'new' => ['associative-array', 'array'=>'array', '...arrays='=>'array'],
     ],
     'array_intersect_key' => [
-      'old' => ['array', 'array'=>'array', '...arrays'=>'array'],
-      'new' => ['array', 'array'=>'array', '...arrays='=>'array'],
+      'old' => ['associative-array', 'array'=>'array', '...arrays'=>'array'],
+      'new' => ['associative-array', 'array'=>'array', '...arrays='=>'array'],
     ],
     'array_splice' => [
       'old' => ['array', '&rw_array'=>'array', 'offset'=>'int', 'length='=>'int', 'replacement='=>'array|string'],
@@ -651,10 +453,6 @@ return [
       'old' => ['int<0, max>', 'value'=>'Countable|array|SimpleXMLElement', 'mode='=>'int'],
       'new' => ['int<0, max>', 'value'=>'Countable|array', 'mode='=>'int'],
     ],
-    'sizeof' => [
-      'old' => ['int<0, max>', 'value'=>'Countable|array|SimpleXMLElement', 'mode='=>'int'],
-      'new' => ['int<0, max>', 'value'=>'Countable|array', 'mode='=>'int'],
-    ],
     'count_chars' => [
       'old' => ['array<int,int>|false', 'input'=>'string', 'mode='=>'0|1|2'],
       'new' => ['array<int,int>', 'input'=>'string', 'mode='=>'0|1|2'],
@@ -672,8 +470,8 @@ return [
       'new' => ['void', 'handle'=>'CurlHandle'],
     ],
     'curl_copy_handle' => [
-      'old' => ['resource|false', 'ch'=>'resource'],
-      'new' => ['CurlHandle|false', 'handle'=>'CurlHandle'],
+      'old' => ['resource', 'ch'=>'resource'],
+      'new' => ['CurlHandle', 'handle'=>'CurlHandle'],
     ],
     'curl_errno' => [
       'old' => ['int', 'ch'=>'resource'],
@@ -852,8 +650,8 @@ return [
       'new' => ['DOMElement', 'node'=>'SimpleXMLElement'],
     ],
     'easter_date' => [
-      'old' => ['int', 'year='=>'int', 'mode='=>'int'],
-      'new' => ['int', 'year='=>'?int', 'mode='=>'int'],
+      'old' => ['int', 'year='=>'int'],
+      'new' => ['int', 'year='=>'?int'],
     ],
     'easter_days' => [
       'old' => ['int', 'year='=>'int', 'mode='=>'int'],
@@ -988,8 +786,8 @@ return [
       'new' => ['int|false', 'stream'=>'resource', 'data'=>'string', 'length='=>'?int'],
     ],
     'get_class_methods' => [
-      'old' => ['list<non-falsy-string>|null', 'object_or_class'=>'mixed'],
-      'new' => ['list<non-falsy-string>', 'object_or_class'=>'object|class-string'],
+      'old' => ['list<string>|null', 'object_or_class'=>'mixed'],
+      'new' => ['list<string>', 'object_or_class'=>'object|class-string'],
     ],
     'get_headers' => [
       'old' => ['array|false', 'url'=>'string', 'associative='=>'int', 'context='=>'?resource'],
@@ -1036,12 +834,12 @@ return [
       'new' => ['string|false', 'stream'=>'resource', 'length='=>'?int'],
     ],
     'gzputs' => [
-      'old' => ['int|false', 'stream'=>'resource', 'data'=>'string', 'length='=>'int'],
-      'new' => ['int|false', 'stream'=>'resource', 'data'=>'string', 'length='=>'?int'],
+      'old' => ['int', 'stream'=>'resource', 'data'=>'string', 'length='=>'int'],
+      'new' => ['int', 'stream'=>'resource', 'data'=>'string', 'length='=>'?int'],
     ],
     'gzwrite' => [
-      'old' => ['int|false', 'stream'=>'resource', 'data'=>'string', 'length='=>'int'],
-      'new' => ['int|false', 'stream'=>'resource', 'data'=>'string', 'length='=>'?int'],
+      'old' => ['int', 'stream'=>'resource', 'data'=>'string', 'length='=>'int'],
+      'new' => ['int', 'stream'=>'resource', 'data'=>'string', 'length='=>'?int'],
     ],
     'hash' => [
       'old' => ['string|false', 'algo'=>'string', 'data'=>'string', 'binary='=>'bool'],
@@ -1560,8 +1358,8 @@ return [
       'new' => ['bool|string', 'ldap'=>'resource', 'user='=>'string', 'old_password='=>'string', 'new_password='=>'string', '&w_controls='=>'array|null'],
     ],
     'ldap_list' => [
-      'old' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
-      'new' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'?array'],
+      'old' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
+      'new' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'?array'],
     ],
     'ldap_rename_ext' => [
       'old' => ['resource|false', 'ldap'=>'resource', 'dn'=>'string', 'new_rdn'=>'string', 'new_parent'=>'string', 'delete_old_rdn'=>'bool', 'controls='=>'array'],
@@ -1600,16 +1398,16 @@ return [
       'new' => ['bool', 'ldap'=>'resource', 'dn'=>'string', 'modifications_info'=>'array', 'controls='=>'?array'],
     ],
     'ldap_read' => [
-      'old' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
-      'new' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'?array'],
+      'old' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
+      'new' => ['resource|false', 'ldap'=>'resource|array', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'?array'],
     ],
     'ldap_rename' => [
       'old' => ['bool', 'ldap'=>'resource', 'dn'=>'string', 'new_rdn'=>'string', 'new_parent'=>'string', 'delete_old_rdn'=>'bool', 'controls='=>'array'],
       'new' => ['bool', 'ldap'=>'resource', 'dn'=>'string', 'new_rdn'=>'string', 'new_parent'=>'string', 'delete_old_rdn'=>'bool', 'controls='=>'?array'],
     ],
     'ldap_search' => [
-      'old' => ['resource[]|resource|false', 'ldap'=>'resource|resource[]', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
-      'new' => ['resource[]|resource|false', 'ldap'=>'resource|resource[]', 'base'=>'array|string', 'filter'=>'array|string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'?array'],
+      'old' => ['resource|false', 'ldap'=>'resource|resource[]', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'array'],
+      'new' => ['resource|false', 'ldap'=>'resource|resource[]', 'base'=>'string', 'filter'=>'string', 'attributes='=>'array', 'attributes_only='=>'int', 'sizelimit='=>'int', 'timelimit='=>'int', 'deref='=>'int', 'controls='=>'?array'],
     ],
     'ldap_set_rebind_proc' => [
       'old' => ['bool', 'ldap'=>'resource', 'callback'=>'callable'],
@@ -1920,8 +1718,8 @@ return [
       'new' => ['bool', 'mysql'=>'mysqli', 'flags='=>'int', 'name='=>'?string'],
     ],
     'number_format' => [
-      'old' => ['string', 'num'=>'float', 'decimals='=>'int'],
-      'new' => ['string', 'num'=>'float', 'decimals='=>'int', 'decimal_separator='=>'?string', 'thousands_separator='=>'?string'],
+      'old' => ['string', 'num'=>'float|int', 'decimals='=>'int'],
+      'new' => ['string', 'num'=>'float|int', 'decimals='=>'int', 'decimal_separator='=>'?string', 'thousands_separator='=>'?string'],
     ],
     'numfmt_create' => [
       'old' => ['NumberFormatter|null', 'locale'=>'string', 'style'=>'int', 'pattern='=>'string'],
@@ -2240,28 +2038,28 @@ return [
       'new' => ['bool', 'semaphore'=>'SysvSemaphore'],
     ],
     'session_cache_expire' => [
-      'old' => ['int|false', 'value='=>'int'],
-      'new' => ['int|false', 'value='=>'?int'],
+      'old' => ['int', 'value='=>'int'],
+      'new' => ['int', 'value='=>'?int'],
     ],
     'session_cache_limiter' => [
-      'old' => ['string|false', 'value='=>'string'],
-      'new' => ['string|false', 'value='=>'?string'],
+      'old' => ['string', 'value='=>'string'],
+      'new' => ['string', 'value='=>'?string'],
     ],
     'session_id' => [
       'old' => ['string|false', 'id='=>'string'],
       'new' => ['string|false', 'id='=>'?string'],
     ],
     'session_module_name' => [
-      'old' => ['string|false', 'module='=>'string'],
-      'new' => ['string|false', 'module='=>'?string'],
+      'old' => ['string', 'module='=>'string'],
+      'new' => ['string', 'module='=>'?string'],
     ],
     'session_name' => [
       'old' => ['string|false', 'name='=>'string'],
       'new' => ['string|false', 'name='=>'?string'],
     ],
     'session_save_path' => [
-      'old' => ['string|false', 'path='=>'string'],
-      'new' => ['string|false', 'path='=>'?string'],
+      'old' => ['string', 'path='=>'string'],
+      'new' => ['string', 'path='=>'?string'],
     ],
     'session_set_cookie_params' => [
       'old' => ['bool', 'lifetime'=>'int', 'path='=>'string', 'domain='=>'string', 'secure='=>'bool', 'httponly='=>'bool'],
@@ -2596,12 +2394,8 @@ return [
       'new' => ['string', 'string'=>'string', 'offset'=>'int', 'length='=>'?int'],
     ],
     'substr_replace' => [
-      'old' => ['string', 'string'=>'string', 'replace'=>'string|string[]', 'offset'=>'int|int[]', 'length='=>'int|int[]'],
-      'new' => ['string', 'string'=>'string', 'replace'=>'string|string[]', 'offset'=>'int|int[]', 'length='=>'int|int[]|null'],
-    ],
-    'substr_replace\'1' => [
-      'old' => ['string[]', 'string'=>'string[]', 'replace'=>'string|string[]', 'offset'=>'int|int[]', 'length='=>'int|int[]'],
-      'new' => ['string[]', 'string'=>'string[]', 'replace'=>'string|string[]', 'offset'=>'int|int[]', 'length='=>'int|int[]|null'],
+      'old' => ['string|string[]', 'string'=>'string|string[]', 'replace'=>'string|string[]', 'offset'=>'int|int[]', 'length='=>'int|int[]'],
+      'new' => ['string|string[]', 'string'=>'string|string[]', 'replace'=>'string|string[]', 'offset'=>'int|int[]', 'length='=>'int|int[]|null'],
     ],
     'tidy_parse_file' => [
       'old' => ['tidy', 'filename'=>'string', 'config='=>'array|string', 'encoding='=>'string', 'useIncludePath='=>'bool'],
@@ -2636,8 +2430,8 @@ return [
       'new' => ['int', 'mask='=>'?int'],
     ],
     'unixtojd' => [
-      'old' => ['int|false', 'timestamp='=>'int'],
-      'new' => ['int|false', 'timestamp='=>'?int'],
+      'old' => ['int', 'timestamp='=>'int'],
+      'new' => ['int', 'timestamp='=>'?int'],
     ],
     'xml_get_current_byte_index' => [
       'old' => ['int|false', 'parser'=>'resource'],
@@ -2676,8 +2470,8 @@ return [
       'new' => ['bool', 'parser'=>'XMLParser'],
     ],
     'xml_parser_get_option' => [
-      'old' => ['string|int', 'parser'=>'resource', 'option'=>'int'],
-      'new' => ['string|int', 'parser'=>'XMLParser', 'option'=>'int'],
+      'old' => ['string|false', 'parser'=>'resource', 'option'=>'int'],
+      'new' => ['string', 'parser'=>'XMLParser', 'option'=>'int'],
     ],
     'xml_parser_set_option' => [
       'old' => ['bool', 'parser'=>'resource', 'option'=>'int', 'value'=>'mixed'],
@@ -2920,7 +2714,7 @@ return [
     'ldap_control_paged_result' => ['bool', 'link_identifier'=>'resource', 'pagesize'=>'int', 'iscritical='=>'bool', 'cookie='=>'string'],
     'ldap_control_paged_result_response' => ['bool', 'link_identifier'=>'resource', 'result_identifier'=>'resource', '&w_cookie'=>'string', '&w_estimated'=>'int'],
     'ldap_sort' => ['bool', 'link_identifier'=>'resource', 'result_identifier'=>'resource', 'sortfilter'=>'string'],
-    'number_format\'1' => ['string', 'num'=>'float', 'decimals'=>'int', 'decimal_separator'=>'?string', 'thousands_separator'=>'?string'],
+    'number_format\'1' => ['string', 'num'=>'float|int', 'decimals'=>'int', 'decimal_separator'=>'?string', 'thousands_separator'=>'?string'],
     'png2wbmp' => ['bool', 'pngname'=>'string', 'wbmpname'=>'string', 'dest_height'=>'int', 'dest_width'=>'int', 'threshold'=>'int'],
     'read_exif_data' => ['array', 'filename'=>'string', 'sections_needed='=>'string', 'sub_arrays='=>'bool', 'read_thumbnail='=>'bool'],
     'Reflection::export' => ['?string', 'r'=>'reflector', 'return='=>'bool'],
@@ -2941,11 +2735,6 @@ return [
     'SimpleXMLIterator::next' => ['void'],
     'SimpleXMLIterator::hasChildren' => ['bool'],
     'SimpleXMLIterator::getChildren' => ['?SimpleXMLIterator'],
-    'SplFixedArray::current' => ['mixed'],
-    'SplFixedArray::key' => ['int'],
-    'SplFixedArray::next' => ['void'],
-    'SplFixedArray::rewind' => ['void'],
-    'SplFixedArray::valid' => ['bool'],
     'SplTempFileObject::fgetss' => ['string', 'allowable_tags='=>'string'],
     'xmlrpc_decode' => ['mixed', 'xml'=>'string', 'encoding='=>'string'],
     'xmlrpc_decode_request' => ['?array', 'xml'=>'string', '&w_method'=>'string', 'encoding='=>'string'],

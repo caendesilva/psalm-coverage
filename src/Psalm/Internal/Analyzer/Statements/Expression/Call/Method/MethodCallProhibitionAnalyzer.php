@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
 use Psalm\CodeLocation;
@@ -17,7 +15,7 @@ use Psalm\IssueBuffer;
 /**
  * @internal
  */
-final class MethodCallProhibitionAnalyzer
+class MethodCallProhibitionAnalyzer
 {
     /**
      * @param  string[]     $suppressed_issues
@@ -28,7 +26,7 @@ final class MethodCallProhibitionAnalyzer
         MethodIdentifier $method_id,
         ?string $caller_identifier,
         CodeLocation $code_location,
-        array $suppressed_issues,
+        array $suppressed_issues
     ): void {
         $codebase_methods = $codebase->methods;
 

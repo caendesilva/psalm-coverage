@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 use Psalm\Codebase;
@@ -10,6 +8,7 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function array_merge;
 use function count;
 use function implode;
 use function strrpos;
@@ -32,32 +31,32 @@ final class TGenericObject extends TNamedObject
      */
     public array $type_params;
 
+    /** @var bool if the parameters have been remapped to another class */
+    public $remapped_params = false;
+
     /**
      * @param string                $value the name of the object
      * @param non-empty-list<Union> $type_params
-     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $extra_types
+     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties> $extra_types
      */
     public function __construct(
         string $value,
         array $type_params,
-        /** @var bool if the parameters have been remapped to another class */
-        public bool $remapped_params = false,
+        bool $remapped_params = false,
         bool $is_static = false,
         array $extra_types = [],
-        bool $from_docblock = false,
+        bool $from_docblock = false
     ) {
         if ($value[0] === '\\') {
             $value = substr($value, 1);
         }
 
+        $this->value = $value;
         $this->type_params = $type_params;
-        parent::__construct(
-            $value,
-            $is_static,
-            false,
-            $extra_types,
-            $from_docblock,
-        );
+        $this->remapped_params = $remapped_params;
+        $this->is_static = $is_static;
+        $this->extra_types = $extra_types;
+        $this->from_docblock = $from_docblock;
     }
 
     public function getKey(bool $include_extra = true): string
@@ -89,7 +88,7 @@ final class TGenericObject extends TNamedObject
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id,
+        int $analysis_php_version_id
     ): ?string {
         $result = $this->toNamespacedString($namespace, $aliased_classes, $this_class, true);
         $intersection = strrpos($result, '&');
@@ -110,7 +109,7 @@ final class TGenericObject extends TNamedObject
         }
 
         foreach ($this->type_params as $i => $type_param) {
-            if (!$type_param->equals($other_type->type_params[$i], $ensure_source_equality, false)) {
+            if (!$type_param->equals($other_type->type_params[$i], $ensure_source_equality)) {
                 return false;
             }
         }
@@ -125,7 +124,7 @@ final class TGenericObject extends TNamedObject
 
     protected function getChildNodeKeys(): array
     {
-        return [...parent::getChildNodeKeys(), 'type_params'];
+        return array_merge(parent::getChildNodeKeys(), ['type_params']);
     }
 
     /**
@@ -141,7 +140,7 @@ final class TGenericObject extends TNamedObject
         ?string $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        int $depth = 0,
+        int $depth = 0
     ): self {
         $types = $this->replaceTypeParamsTemplateTypesWithStandins(
             $template_result,

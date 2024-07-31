@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Context;
@@ -51,7 +49,7 @@ class JsonOutputTest extends TestCase
         int $error_count,
         string $message,
         int $line_number,
-        string $error,
+        string $error
     ): void {
         $this->addFile('somefile.php', $code);
         $this->analyzeFile('somefile.php', new Context());
@@ -90,7 +88,7 @@ class JsonOutputTest extends TestCase
                     function fooFoo(int $a): int {
                         return $b + 1;
                     }',
-                'error_count' => 4,
+                'error_count' => 5,
                 'message' => 'Cannot find referenced variable $b',
                 'line' => 3,
                 'error' => '$b',
@@ -100,7 +98,7 @@ class JsonOutputTest extends TestCase
                     function fooFoo(Badger\Bodger $a): Badger\Bodger {
                         return $a;
                     }',
-                'error_count' => 2,
+                'error_count' => 3,
                 'message' => 'Class, interface or enum named Badger\\Bodger does not exist',
                 'line' => 2,
                 'error' => 'Badger\\Bodger',
@@ -140,7 +138,6 @@ class JsonOutputTest extends TestCase
             ],
             'singleIssueForTypeDifference' => [
                 'code' => '<?php
-                    /** @psalm-suppress RiskyTruthyFalsyComparison */
                     function fooFoo(?string $a, ?string $b): void {
                         if ($a || $b) {
                             if ($a || $b) {}
@@ -148,7 +145,7 @@ class JsonOutputTest extends TestCase
                     }',
                 'error_count' => 1,
                 'message' => 'Operand of type non-falsy-string is always truthy',
-                'line' => 5,
+                'line' => 4,
                 'error' => '$b',
             ],
         ];

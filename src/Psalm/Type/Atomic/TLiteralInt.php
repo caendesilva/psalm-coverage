@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 /**
@@ -11,9 +9,13 @@ namespace Psalm\Type\Atomic;
  */
 final class TLiteralInt extends TInt
 {
-    public function __construct(public int $value, bool $from_docblock = false)
+    /** @var int */
+    public $value;
+
+    public function __construct(int $value, bool $from_docblock = false)
     {
-        parent::__construct($from_docblock);
+        $this->value = $value;
+        $this->from_docblock = $from_docblock;
     }
 
     public function getKey(bool $include_extra = true): string
@@ -42,7 +44,7 @@ final class TLiteralInt extends TInt
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format,
+        bool $use_phpdoc_format
     ): string {
         return $use_phpdoc_format ? 'int' : (string) $this->value;
     }

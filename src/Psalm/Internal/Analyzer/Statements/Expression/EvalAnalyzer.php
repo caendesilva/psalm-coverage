@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -21,17 +19,14 @@ use function in_array;
 /**
  * @internal
  */
-final class EvalAnalyzer
+class EvalAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Eval_ $stmt,
-        Context $context,
+        Context $context
     ): void {
-        $was_inside_call = $context->inside_call;
-        $context->inside_call = true;
         ExpressionAnalyzer::analyze($statements_analyzer, $stmt->expr, $context);
-        $context->inside_call = $was_inside_call;
 
         $codebase = $statements_analyzer->getCodebase();
 

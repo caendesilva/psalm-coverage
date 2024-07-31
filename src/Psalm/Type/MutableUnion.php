@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type;
 
 use Psalm\Internal\DataFlow\DataFlowNode;
@@ -26,6 +24,7 @@ use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Atomic\TTrue;
 
 use function count;
+use function get_class;
 use function get_object_vars;
 use function strpos;
 
@@ -40,88 +39,120 @@ final class MutableUnion implements TypeNode
 
     /**
      * Whether the type originated in a docblock
+     *
+     * @var bool
      */
-    public bool $from_docblock = false;
+    public $from_docblock = false;
 
     /**
      * Whether the type originated from integer calculation
+     *
+     * @var bool
      */
-    public bool $from_calculation = false;
+    public $from_calculation = false;
 
     /**
      * Whether the type originated from a property
      *
      * This helps turn isset($foo->bar) into a different sort of issue
+     *
+     * @var bool
      */
-    public bool $from_property = false;
+    public $from_property = false;
 
     /**
      * Whether the type originated from *static* property
      *
      * Unlike non-static properties, static properties have no prescribed place
      * like __construct() to be initialized in
+     *
+     * @var bool
      */
-    public bool $from_static_property = false;
+    public $from_static_property = false;
 
     /**
      * Whether the property that this type has been derived from has been initialized in a constructor
+     *
+     * @var bool
      */
-    public bool $initialized = true;
+    public $initialized = true;
 
     /**
      * Which class the type was initialised in
+     *
+     * @var ?string
      */
-    public ?string $initialized_class = null;
+    public $initialized_class;
 
     /**
      * Whether or not the type has been checked yet
+     *
+     * @var bool
      */
-    public bool $checked = false;
+    public $checked = false;
 
-    public bool $failed_reconciliation = false;
+    /**
+     * @var bool
+     */
+    public $failed_reconciliation = false;
 
     /**
      * Whether or not to ignore issues with possibly-null values
+     *
+     * @var bool
      */
-    public bool $ignore_nullable_issues = false;
+    public $ignore_nullable_issues = false;
 
     /**
      * Whether or not to ignore issues with possibly-false values
+     *
+     * @var bool
      */
-    public bool $ignore_falsable_issues = false;
+    public $ignore_falsable_issues = false;
 
     /**
      * Whether or not to ignore issues with isset on this type
+     *
+     * @var bool
      */
-    public bool $ignore_isset = false;
+    public $ignore_isset = false;
 
     /**
      * Whether or not this variable is possibly undefined
+     *
+     * @var bool
      */
-    public bool $possibly_undefined = false;
+    public $possibly_undefined = false;
 
     /**
      * Whether or not this variable is possibly undefined
+     *
+     * @var bool
      */
-    public bool $possibly_undefined_from_try = false;
+    public $possibly_undefined_from_try = false;
 
     /**
      * whether this type had never set explicitly
      * since it's the bottom type, it's combined into everything else and lost
      *
      * @psalm-suppress PossiblyUnusedProperty used in setTypes and addType
+     * @var bool
      */
-    public bool $explicit_never = false;
+    public $explicit_never = false;
 
     /**
      * Whether or not this union had a template, since replaced
+     *
+     * @var bool
      */
-    public bool $had_template = false;
+    public $had_template = false;
 
     /**
      * Whether or not this union comes from a template "as" default
+     *
+     * @var bool
      */
-    public bool $from_template_default = false;
+    public $from_template_default = false;
 
     /**
      * @var array<string, TLiteralString>
@@ -147,14 +178,25 @@ final class MutableUnion implements TypeNode
      * True if the type was passed or returned by reference, or if the type refers to an object's
      * property or an item in an array. Note that this is not true for locally created references
      * that don't refer to properties or array items (see Context::$references_in_scope).
+     *
+     * @var bool
      */
-    public bool $by_ref = false;
+    public $by_ref = false;
 
-    public bool $reference_free = false;
+    /**
+     * @var bool
+     */
+    public $reference_free = false;
 
-    public bool $allow_mutations = true;
+    /**
+     * @var bool
+     */
+    public $allow_mutations = true;
 
-    public bool $has_mutations = true;
+    /**
+     * @var bool
+     */
+    public $has_mutations = true;
 
     /**
      * This is a cache of getId on non-exact mode
@@ -170,9 +212,12 @@ final class MutableUnion implements TypeNode
     /**
      * @var array<string, DataFlowNode>
      */
-    public array $parent_nodes = [];
+    public $parent_nodes = [];
 
-    public bool $different = false;
+    /**
+     * @var bool
+     */
+    public $different = false;
 
     /** @psalm-suppress PossiblyUnusedProperty */
     public bool $propagate_parent_nodes = false;
@@ -336,8 +381,10 @@ final class MutableUnion implements TypeNode
 
     /**
      * @psalm-external-mutation-free
+     * @param Union|MutableUnion $old_type
+     * @param Union|MutableUnion|null $new_type
      */
-    public function substitute(Union|MutableUnion $old_type, Union|MutableUnion|null $new_type = null): self
+    public function substitute($old_type, $new_type = null): self
     {
         if ($this->hasMixed() && !$this->isEmptyMixed()) {
             return $this;
@@ -408,7 +455,7 @@ final class MutableUnion implements TypeNode
             foreach ($new_type->types as $key => $new_type_part) {
                 if (!isset($this->types[$key])
                     || ($new_type_part instanceof Scalar
-                        && $new_type_part::class === $this->types[$key]::class)
+                        && get_class($new_type_part) === get_class($this->types[$key]))
                 ) {
                     $this->types[$key] = $new_type_part;
                 } else {

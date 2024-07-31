@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Codebase;
 
 use Exception;
@@ -30,6 +28,7 @@ use UnexpectedValueException;
 
 use function array_map;
 use function array_merge;
+use function get_class;
 use function implode;
 use function strtolower;
 
@@ -38,17 +37,21 @@ use function strtolower;
  *
  * Handles information gleaned from class and function reflection
  */
-final class Reflection
+class Reflection
 {
+    private ClassLikeStorageProvider $storage_provider;
+
+    private Codebase $codebase;
+
     /**
      * @var array<string, FunctionStorage>
      */
     private static array $builtin_functions = [];
 
-    public function __construct(
-        private readonly ClassLikeStorageProvider $storage_provider,
-        private readonly Codebase $codebase,
-    ) {
+    public function __construct(ClassLikeStorageProvider $storage_provider, Codebase $codebase)
+    {
+        $this->storage_provider = $storage_provider;
+        $this->codebase = $codebase;
         self::$builtin_functions = [];
     }
 
@@ -66,7 +69,7 @@ final class Reflection
             $this->storage_provider->get($class_name_lower);
 
             return;
-        } catch (Exception) {
+        } catch (Exception $e) {
             // this is fine
         }
 
@@ -406,7 +409,7 @@ final class Reflection
             }
 
             $storage->cased_name = $reflection_function->getName();
-        } catch (ReflectionException) {
+        } catch (ReflectionException $e) {
             return false;
         }
 
@@ -423,6 +426,7 @@ final class Reflection
         if ($reflection_type instanceof ReflectionNamedType) {
             $type = $reflection_type->getName();
         } elseif ($reflection_type instanceof ReflectionUnionType) {
+            /** @psalm-suppress MixedArgument */
             $type = implode(
                 '|',
                 array_map(
@@ -431,7 +435,7 @@ final class Reflection
                 ),
             );
         } else {
-            throw new LogicException('Unexpected reflection class ' . $reflection_type::class . ' found.');
+            throw new LogicException('Unexpected reflection class ' . get_class($reflection_type) . ' found.');
         }
 
         if ($reflection_type->allowsNull()) {
@@ -443,7 +447,7 @@ final class Reflection
 
     private function registerInheritedMethods(
         string $fq_class_name,
-        string $parent_class,
+        string $parent_class
     ): void {
         $parent_storage = $this->storage_provider->get($parent_class);
         $storage = $this->storage_provider->get($fq_class_name);
@@ -469,7 +473,7 @@ final class Reflection
      */
     private function registerInheritedProperties(
         string $fq_class_name,
-        string $parent_class,
+        string $parent_class
     ): void {
         $parent_storage = $this->storage_provider->get($parent_class);
         $storage = $this->storage_provider->get($fq_class_name);

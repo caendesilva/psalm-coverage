@@ -1,14 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use PhpParser;
 use Psalm\Aliases;
-use Psalm\CodeLocation;
-use Psalm\CodeLocation\DocblockTypeLocation;
-use Psalm\Context;
 use Psalm\DocComment;
 use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\IncorrectDocblockException;
@@ -18,24 +13,18 @@ use Psalm\Internal\Scanner\DocblockParser;
 use Psalm\Internal\Scanner\ParsedDocblock;
 use Psalm\Internal\Scanner\VarDocblockComment;
 use Psalm\Internal\Type\TypeAlias;
-use Psalm\Internal\Type\TypeExpander;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
-use Psalm\Issue\InvalidDocblock;
-use Psalm\Issue\MissingDocblockType;
-use Psalm\IssueBuffer;
 use Psalm\Type\Union;
-use UnexpectedValueException;
 
+use function array_merge;
 use function count;
-use function is_string;
 use function preg_match;
 use function preg_replace;
 use function preg_split;
 use function rtrim;
 use function str_replace;
 use function strlen;
-use function strpos;
 use function substr;
 use function substr_count;
 use function trim;
@@ -43,7 +32,7 @@ use function trim;
 /**
  * @internal
  */
-final class CommentAnalyzer
+class CommentAnalyzer
 {
     public const TYPE_REGEX = '(\??\\\?[\(\)A-Za-z0-9_&\<\.=,\>\[\]\-\{\}:|?\\\\]*|\$[a-zA-Z_0-9_]+)';
 
@@ -58,7 +47,7 @@ final class CommentAnalyzer
         FileSource $source,
         Aliases $aliases,
         ?array $template_type_map = null,
-        ?array $type_aliases = null,
+        ?array $type_aliases = null
     ): array {
         $parsed_docblock = DocComment::parsePreservingLength($comment);
 
@@ -84,7 +73,7 @@ final class CommentAnalyzer
         FileSource $source,
         Aliases $aliases,
         ?array $template_type_map = null,
-        ?array $type_aliases = null,
+        ?array $type_aliases = null
     ): array {
         $var_id = null;
 
@@ -138,7 +127,7 @@ final class CommentAnalyzer
                             $template_type_map,
                             $type_aliases,
                         );
-                    } catch (TypeParseTreeException) {
+                    } catch (TypeParseTreeException $e) {
                         throw new DocblockParseException($line_parts[0] . ' is not a valid type');
                     }
 
@@ -153,7 +142,7 @@ final class CommentAnalyzer
                         } else {
                             $description = trim(substr($var_line, strlen($line_parts[0]) + 1));
                         }
-                        $description = (string) preg_replace('/\\n \\*\\s+/um', ' ', $description);
+                        $description = preg_replace('/\\n \\*\\s+/um', ' ', $description);
                     }
                 }
 
@@ -219,7 +208,7 @@ final class CommentAnalyzer
 
     private static function decorateVarDocblockComment(
         VarDocblockComment $var_comment,
-        ParsedDocblock $parsed_docblock,
+        ParsedDocblock $parsed_docblock
     ): void {
         $var_comment->deprecated = isset($parsed_docblock->tags['deprecated']);
         $var_comment->internal = isset($parsed_docblock->tags['internal']);
@@ -260,11 +249,9 @@ final class CommentAnalyzer
      */
     public static function sanitizeDocblockType(string $docblock_type): string
     {
-        $docblock_type = (string) preg_replace('@^[ \t]*\*@m', '', $docblock_type);
-        $docblock_type = (string) preg_replace('/,[\n\s]+}/', '}', $docblock_type);
-        $docblock_type = (string) preg_replace('/[ \t]+/', ' ', $docblock_type);
-
-        return trim(str_replace("\n", '', $docblock_type));
+        $docblock_type = preg_replace('@^[ \t]*\*@m', '', $docblock_type);
+        $docblock_type = preg_replace('/,\n\s+\}/', '}', $docblock_type);
+        return str_replace("\n", '', $docblock_type);
     }
 
     /**
@@ -330,22 +317,6 @@ final class CommentAnalyzer
                 continue;
             }
 
-            if ($char === '/' && $next_char === '/') {
-                // Ignore the rest of the current line
-                $i = strpos($return_block, "\n", $i);
-                if ($i === false) {
-                    throw new IncorrectDocblockException(
-                        'Comment lines must be terminated with a new line character (\\n).',
-                    );
-                }
-
-                // Remove trailing whitespaces (needed for `sanitizeDocblockType`)
-                $type = rtrim($type);
-                $type .= "\n";
-
-                continue;
-            }
-
             if ($char === '[' || $char === '{' || $char === '(' || $char === '<') {
                 $brackets .= $char;
             } elseif ($char === ']' || $char === '}' || $char === ')' || $char === '>') {
@@ -362,11 +333,6 @@ final class CommentAnalyzer
             } elseif ($char === ' ') {
                 if ($brackets) {
                     $expects_callable_return = false;
-                    $type .= ' ';
-                    continue;
-                }
-
-                if ($next_char === '{') {
                     $type .= ' ';
                     continue;
                 }
@@ -399,10 +365,10 @@ final class CommentAnalyzer
                     continue;
                 }
 
-                $remaining = trim((string) preg_replace('@^[ \t]*\* *@m', ' ', substr($return_block, $i + 1)));
+                $remaining = trim(preg_replace('@^[ \t]*\* *@m', ' ', substr($return_block, $i + 1)));
 
                 if ($remaining) {
-                    return [rtrim($type), ...preg_split('/\s+/', $remaining) ?: []];
+                    return array_merge([rtrim($type)], preg_split('/[ \s]+/', $remaining) ?: []);
                 }
 
                 return [$type];
@@ -414,133 +380,5 @@ final class CommentAnalyzer
         }
 
         return [$type];
-    }
-
-    /** @return list<VarDocblockComment> */
-    public static function getVarComments(
-        PhpParser\Comment\Doc $doc_comment,
-        StatementsAnalyzer $statements_analyzer,
-        PhpParser\Node\Expr\Variable $var,
-    ): array {
-        $codebase = $statements_analyzer->getCodebase();
-        $parsed_docblock = $statements_analyzer->getParsedDocblock();
-
-        if (!$parsed_docblock) {
-            return [];
-        }
-
-        $var_comments = [];
-
-        try {
-            $file_path = $statements_analyzer->getRootFilePath();
-            $file_storage_provider = $codebase->file_storage_provider;
-            $file_storage = $file_storage_provider->get($file_path);
-
-            $var_comments = $codebase->config->disable_var_parsing
-                ? []
-                : self::arrayToDocblocks(
-                    $doc_comment,
-                    $parsed_docblock,
-                    $statements_analyzer->getSource(),
-                    $statements_analyzer->getSource()->getAliases(),
-                    $statements_analyzer->getSource()->getTemplateTypeMap(),
-                    $file_storage->type_aliases,
-                );
-        } catch (IncorrectDocblockException $e) {
-            IssueBuffer::maybeAdd(
-                new MissingDocblockType(
-                    $e->getMessage(),
-                    new CodeLocation($statements_analyzer, $var),
-                ),
-            );
-        } catch (DocblockParseException $e) {
-            IssueBuffer::maybeAdd(
-                new InvalidDocblock(
-                    $e->getMessage(),
-                    new CodeLocation($statements_analyzer->getSource(), $var),
-                ),
-            );
-        }
-
-        return $var_comments;
-    }
-
-    /**
-     * @param list<VarDocblockComment> $var_comments
-     */
-    public static function populateVarTypesFromDocblock(
-        array $var_comments,
-        PhpParser\Node\Expr\Variable $var,
-        Context $context,
-        StatementsAnalyzer $statements_analyzer,
-    ): ?Union {
-        if (!is_string($var->name)) {
-            return null;
-        }
-        $codebase = $statements_analyzer->getCodebase();
-        $comment_type = null;
-        $var_id = '$' . $var->name;
-
-        foreach ($var_comments as $var_comment) {
-            if (!$var_comment->type) {
-                continue;
-            }
-
-            try {
-                $var_comment_type = TypeExpander::expandUnion(
-                    $codebase,
-                    $var_comment->type,
-                    $context->self,
-                    $context->self,
-                    $statements_analyzer->getParentFQCLN(),
-                );
-
-                $var_comment_type = $var_comment_type->setFromDocblock();
-
-                /** @psalm-suppress UnusedMethodCall */
-                $var_comment_type->check(
-                    $statements_analyzer,
-                    new CodeLocation($statements_analyzer->getSource(), $var),
-                    $statements_analyzer->getSuppressedIssues(),
-                );
-
-                if ($codebase->alter_code
-                    && $var_comment->type_start
-                    && $var_comment->type_end
-                    && $var_comment->line_number
-                ) {
-                    $type_location = new DocblockTypeLocation(
-                        $statements_analyzer,
-                        $var_comment->type_start,
-                        $var_comment->type_end,
-                        $var_comment->line_number,
-                    );
-
-                    $codebase->classlikes->handleDocblockTypeInMigration(
-                        $codebase,
-                        $statements_analyzer,
-                        $var_comment_type,
-                        $type_location,
-                        $context->calling_method_id,
-                    );
-                }
-
-                if (!$var_comment->var_id || $var_comment->var_id === $var_id) {
-                    $comment_type = $var_comment_type;
-                    continue;
-                }
-
-                $context->vars_in_scope[$var_comment->var_id] = $var_comment_type;
-            } catch (UnexpectedValueException $e) {
-                IssueBuffer::maybeAdd(
-                    new InvalidDocblock(
-                        $e->getMessage(),
-                        new CodeLocation($statements_analyzer, $var),
-                    ),
-                );
-            }
-        }
-
-        return $comment_type;
     }
 }

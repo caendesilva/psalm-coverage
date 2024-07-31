@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\FileManipulation;
 
 use Psalm\CodeLocation;
@@ -21,7 +19,7 @@ use function substr_replace;
 /**
  * @internal
  */
-final class FileManipulationBuffer
+class FileManipulationBuffer
 {
     /** @var array<string, FileManipulation[]> */
     private static array $file_manipulations = [];
@@ -55,7 +53,7 @@ final class FileManipulationBuffer
     private static function getCodeOffsets(
         string $source_file_path,
         int $source_start,
-        int $source_end,
+        int $source_end
     ): array {
         if (!isset(self::$file_manipulations[$source_file_path])) {
             return [0, 0];
@@ -83,7 +81,7 @@ final class FileManipulationBuffer
     public static function addForCodeLocation(
         CodeLocation $code_location,
         string $replacement_text,
-        bool $swallow_newlines = false,
+        bool $swallow_newlines = false
     ): void {
         $bounds = $code_location->getSnippetBounds();
 

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage;
 
 use Psalm\Aliases;
@@ -12,81 +10,94 @@ use Psalm\Type\Union;
 final class FileStorage
 {
     use CustomMetadataTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @var array<lowercase-string, string>
      */
-    public array $classlikes_in_file = [];
+    public $classlikes_in_file = [];
 
     /**
      * @var array<lowercase-string, string>
      */
-    public array $referenced_classlikes = [];
+    public $referenced_classlikes = [];
 
     /**
      * @var array<lowercase-string, string>
      */
-    public array $required_classes = [];
+    public $required_classes = [];
 
     /**
      * @var array<lowercase-string, string>
      */
-    public array $required_interfaces = [];
+    public $required_interfaces = [];
+
+    /** @var string */
+    public $file_path;
 
     /**
      * @var array<string, FunctionStorage>
      */
-    public array $functions = [];
+    public $functions = [];
 
     /** @var array<string, string> */
-    public array $declaring_function_ids = [];
+    public $declaring_function_ids = [];
 
     /**
      * @var array<string, Union>
      */
-    public array $constants = [];
+    public $constants = [];
 
     /** @var array<string, string> */
-    public array $declaring_constants = [];
+    public $declaring_constants = [];
 
     /** @var array<lowercase-string, string> */
-    public array $required_file_paths = [];
+    public $required_file_paths = [];
 
     /** @var array<lowercase-string, string> */
-    public array $required_by_file_paths = [];
+    public $required_by_file_paths = [];
 
-    public bool $populated = false;
+    /** @var bool */
+    public $populated = false;
 
-    public bool $deep_scan = false;
+    /** @var bool */
+    public $deep_scan = false;
 
-    public bool $has_extra_statements = false;
+    /** @var bool */
+    public $has_extra_statements = false;
 
-    public string $hash = '';
+    /**
+     * @var string
+     */
+    public $hash = '';
 
-    public bool $has_visitor_issues = false;
+    /**
+     * @var bool
+     */
+    public $has_visitor_issues = false;
 
     /**
      * @var list<CodeIssue>
      */
-    public array $docblock_issues = [];
+    public $docblock_issues = [];
 
     /**
      * @var array<string, TypeAlias>
      */
-    public array $type_aliases = [];
+    public $type_aliases = [];
 
     /**
      * @var array<string, string>
      */
-    public array $classlike_aliases = [];
+    public $classlike_aliases = [];
 
-    public ?Aliases $aliases = null;
+    /** @var ?Aliases */
+    public $aliases;
 
     /** @var Aliases[] */
-    public array $namespace_aliases = [];
+    public $namespace_aliases = [];
 
-    public function __construct(public string $file_path)
+    public function __construct(string $file_path)
     {
+        $this->file_path = $file_path;
     }
 }

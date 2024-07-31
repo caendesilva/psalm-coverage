@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
@@ -14,7 +12,7 @@ use Psalm\Type\Atomic\TNamedObject;
 /**
  * @internal
  */
-final class GenericTypeComparator
+class GenericTypeComparator
 {
     /**
      * @param TGenericObject|TIterable $container_type_part
@@ -24,7 +22,7 @@ final class GenericTypeComparator
         Atomic $input_type_part,
         Atomic $container_type_part,
         bool $allow_interface_equality = false,
-        ?TypeComparisonResult $atomic_comparison_result = null,
+        ?TypeComparisonResult $atomic_comparison_result = null
     ): bool {
         $all_types_contain = true;
         $container_was_iterable = false;

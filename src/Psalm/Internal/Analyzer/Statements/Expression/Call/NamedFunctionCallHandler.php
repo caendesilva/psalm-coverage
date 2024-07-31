@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
 use PhpParser;
@@ -25,9 +23,9 @@ use Psalm\Issue\RedundantFunctionCall;
 use Psalm\Issue\RedundantFunctionCallGivenDocblockType;
 use Psalm\IssueBuffer;
 use Psalm\Node\Expr\VirtualArray;
+use Psalm\Node\Expr\VirtualArrayItem;
 use Psalm\Node\Expr\VirtualVariable;
 use Psalm\Node\Scalar\VirtualString;
-use Psalm\Node\VirtualArrayItem;
 use Psalm\Type;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TClassString;
@@ -37,7 +35,7 @@ use Psalm\Type\Atomic\TDependentGetDebugType;
 use Psalm\Type\Atomic\TDependentGetType;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
-use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TLowercaseString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
@@ -50,23 +48,16 @@ use Psalm\Type\Reconciler;
 use Psalm\Type\Union;
 
 use function array_map;
-use function count;
 use function extension_loaded;
 use function in_array;
-use function is_numeric;
 use function is_string;
-use function preg_match;
-use function str_starts_with;
 use function strpos;
 use function strtolower;
-
-use const EXTR_OVERWRITE;
-use const EXTR_SKIP;
 
 /**
  * @internal
  */
-final class NamedFunctionCallHandler
+class NamedFunctionCallHandler
 {
     /**
      * @param lowercase-string $function_id
@@ -78,7 +69,7 @@ final class NamedFunctionCallHandler
         PhpParser\Node\Expr\FuncCall $real_stmt,
         PhpParser\Node\Name $function_name,
         string $function_id,
-        Context $context,
+        Context $context
     ): void {
         if ($function_id === 'get_class'
             || $function_id === 'gettype'
@@ -235,127 +226,15 @@ final class NamedFunctionCallHandler
         }
 
         if ($function_id === 'defined') {
-            if ($first_arg && !$context->inside_negation) {
-                $fq_const_name = ConstFetchAnalyzer::getConstName(
-                    $first_arg->value,
-                    $statements_analyzer->node_data,
-                    $codebase,
-                    $statements_analyzer->getAliases(),
-                );
-
-                if ($fq_const_name !== null) {
-                    $const_type = ConstFetchAnalyzer::getConstType(
-                        $statements_analyzer,
-                        $fq_const_name,
-                        true,
-                        $context,
-                    );
-
-                    if (!$const_type) {
-                        ConstFetchAnalyzer::setConstType(
-                            $statements_analyzer,
-                            $fq_const_name,
-                            Type::getMixed(),
-                            $context,
-                        );
-
-                        $context->check_consts = false;
-                    }
-                } else {
-                    $context->check_consts = false;
-                }
-            } else {
-                $context->check_consts = false;
-            }
+            $context->check_consts = false;
             return;
         }
 
         if ($function_id === 'extract') {
-            $flag_value = false;
-            if (!isset($stmt->args[1])) {
-                $flag_value = EXTR_OVERWRITE;
-            } elseif (isset($stmt->args[1]->value)
-                && $stmt->args[1]->value instanceof PhpParser\Node\Expr
-                && ($flags_type = $statements_analyzer->node_data->getType($stmt->args[1]->value))
-                && $flags_type->hasLiteralInt() && count($flags_type->getAtomicTypes()) === 1) {
-                $flag_type_value = $flags_type->getSingleIntLiteral()->value;
-                if ($flag_type_value === EXTR_SKIP) {
-                    $flag_value = EXTR_SKIP;
-                } elseif ($flag_type_value === EXTR_OVERWRITE) {
-                    $flag_value = EXTR_OVERWRITE;
-                }
-                // @todo add support for other flags
-            }
-
-            $is_unsealed = true;
-            $validated_var_ids = [];
-            if ($flag_value !== false && isset($stmt->args[0]->value)
-                && $stmt->args[0]->value instanceof PhpParser\Node\Expr
-                && ($array_type_union = $statements_analyzer->node_data->getType($stmt->args[0]->value))
-                && $array_type_union->isSingle()
-            ) {
-                foreach ($array_type_union->getAtomicTypes() as $array_type) {
-                    if ($array_type instanceof TKeyedArray) {
-                        foreach ($array_type->properties as $key => $type) {
-                            // variables must start with letters or underscore
-                            if ($key === '' || is_numeric($key) || preg_match('/^[A-Za-z_]/', $key) !== 1) {
-                                continue;
-                            }
-
-                            $var_id = '$' . $key;
-                            $validated_var_ids[] = $var_id;
-
-                            if (isset($context->vars_in_scope[$var_id]) && $flag_value === EXTR_SKIP) {
-                                continue;
-                            }
-
-                            if (!isset($context->vars_in_scope[$var_id]) && $type->possibly_undefined === true) {
-                                $context->possibly_assigned_var_ids[$var_id] = true;
-                            } elseif (isset($context->vars_in_scope[$var_id])
-                                && $type->possibly_undefined === true
-                                && $flag_value === EXTR_OVERWRITE) {
-                                $type = Type::combineUnionTypes(
-                                    $context->vars_in_scope[$var_id],
-                                    $type,
-                                    $codebase,
-                                    false,
-                                    true,
-                                    500,
-                                    false,
-                                );
-                            }
-
-                            $context->vars_in_scope[$var_id] = $type;
-                            $context->assigned_var_ids[$var_id] = (int) $stmt->getAttribute('startFilePos');
-                        }
-
-                        if (!isset($array_type->fallback_params)) {
-                            $is_unsealed = false;
-                        }
-                    }
-                }
-            }
-
-            if ($flag_value === EXTR_OVERWRITE && $is_unsealed === false) {
-                return;
-            }
-
-            if ($flag_value === EXTR_SKIP && $is_unsealed === false) {
-                return;
-            }
-
             $context->check_variables = false;
-
-            if ($flag_value === EXTR_SKIP) {
-                return;
-            }
 
             foreach ($context->vars_in_scope as $var_id => $_) {
                 if ($var_id === '$this' || strpos($var_id, '[') || strpos($var_id, '>')) {
-                    continue;
-                }
-
-                if (in_array($var_id, $validated_var_ids, true)) {
                     continue;
                 }
 
@@ -512,7 +391,7 @@ final class NamedFunctionCallHandler
 
         if ($first_arg
             && $function_id
-            && str_starts_with($function_id, 'is_')
+            && strpos($function_id, 'is_') === 0
             && $function_id !== 'is_a'
             && !$context->inside_negation
         ) {
@@ -635,42 +514,6 @@ final class NamedFunctionCallHandler
                 }
             }
         }
-
-        if ($first_arg
-            && $function_id === 'is_a'
-            // assertion reconsiler already emits relevant (but different) issues
-            && !$context->inside_conditional
-        ) {
-            $first_arg_type = $statements_analyzer->node_data->getType($first_arg->value);
-
-            if ($first_arg_type && $first_arg_type->isString()) {
-                $third_arg = $stmt->getArgs()[2] ?? null;
-                if ($third_arg) {
-                    $third_arg_type = $statements_analyzer->node_data->getType($third_arg->value);
-                } else {
-                    $third_arg_type = Type::getFalse();
-                }
-
-                if ($third_arg_type
-                    && $third_arg_type->isSingle()
-                    && $third_arg_type->isFalse()
-                ) {
-                    if ($first_arg_type->from_docblock) {
-                        IssueBuffer::maybeAdd(new RedundantFunctionCallGivenDocblockType(
-                            'Call to is_a always return false when first argument is string '
-                            . 'unless third argument is true',
-                            new CodeLocation($statements_analyzer, $function_name),
-                        ));
-                    } else {
-                        IssueBuffer::maybeAdd(new RedundantFunctionCall(
-                            'Call to is_a always return false when first argument is string '
-                            . 'unless third argument is true',
-                            new CodeLocation($statements_analyzer, $function_name),
-                        ));
-                    }
-                }
-            }
-        }
     }
 
     private static function handleDependentTypeFunction(
@@ -678,7 +521,7 @@ final class NamedFunctionCallHandler
         PhpParser\Node\Expr\FuncCall $stmt,
         PhpParser\Node\Expr\FuncCall $real_stmt,
         string $function_id,
-        Context $context,
+        Context $context
     ): void {
         $first_arg = $stmt->getArgs()[0] ?? null;
 
@@ -746,17 +589,17 @@ final class NamedFunctionCallHandler
                         $class_string_types[] = new TClassString();
                     } else {
                         if ($class_type instanceof TInt) {
-                            $class_string_types[] = Type::getAtomicStringFromLiteral('int');
+                            $class_string_types[] = new TLiteralString('int');
                         } elseif ($class_type instanceof TString) {
-                            $class_string_types[] = Type::getAtomicStringFromLiteral('string');
+                            $class_string_types[] = new TLiteralString('string');
                         } elseif ($class_type instanceof TFloat) {
-                            $class_string_types[] = Type::getAtomicStringFromLiteral('float');
+                            $class_string_types[] = new TLiteralString('float');
                         } elseif ($class_type instanceof TBool) {
-                            $class_string_types[] = Type::getAtomicStringFromLiteral('bool');
+                            $class_string_types[] = new TLiteralString('bool');
                         } elseif ($class_type instanceof TClosedResource) {
-                            $class_string_types[] = Type::getAtomicStringFromLiteral('resource (closed)');
+                            $class_string_types[] = new TLiteralString('resource (closed)');
                         } elseif ($class_type instanceof TNull) {
-                            $class_string_types[] = Type::getAtomicStringFromLiteral('null');
+                            $class_string_types[] = new TLiteralString('null');
                         } else {
                             $class_string_types[] = new TString();
                         }

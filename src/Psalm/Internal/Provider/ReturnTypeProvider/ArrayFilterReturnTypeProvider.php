@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use PhpParser;
@@ -38,7 +36,7 @@ use function spl_object_id;
 /**
  * @internal
  */
-final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>
@@ -60,22 +58,19 @@ final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderI
             return Type::getMixed();
         }
 
-        $fallback = new TArray([Type::getArrayKey(), Type::getMixed()]);
         $array_arg = $call_args[0]->value ?? null;
-        if (!$array_arg) {
-            $first_arg_array = $fallback;
-        } else {
-            $first_arg_type = $statements_source->node_data->getType($array_arg);
-            if (!$first_arg_type || $first_arg_type->isMixed()) {
-                $first_arg_array = $fallback;
-            } else {
-                $first_arg_array = $first_arg_type->hasType('array')
-                                   && ($array_atomic_type = $first_arg_type->getArray())
-                                   && ($array_atomic_type instanceof TArray
-                                       || $array_atomic_type instanceof TKeyedArray)
-                    ? $array_atomic_type
-                    : $fallback;
-            }
+
+        $first_arg_array = $array_arg
+            && ($first_arg_type = $statements_source->node_data->getType($array_arg))
+            && $first_arg_type->hasType('array')
+            && ($array_atomic_type = $first_arg_type->getArray())
+            && ($array_atomic_type instanceof TArray
+                || $array_atomic_type instanceof TKeyedArray)
+            ? $array_atomic_type
+            : null;
+
+        if (!$first_arg_array) {
+            return Type::getArray();
         }
 
         if ($first_arg_array instanceof TArray) {
@@ -108,7 +103,7 @@ final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderI
                         },
                         $first_arg_array->properties,
                     ),
-                    static fn($keyed_type) => !$keyed_type->isNever(),
+                    static fn($keyed_type) => !$keyed_type->isNever()
                 );
 
                 if (!$new_properties) {
@@ -169,34 +164,14 @@ final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderI
         if (!isset($call_args[2])) {
             $function_call_arg = $call_args[1];
 
-            $callable_extended_var_id = ExpressionIdentifier::getExtendedVarId(
-                $function_call_arg->value,
-                null,
-                $statements_source,
-            );
-
-            $mapping_function_ids = array();
-            if ($callable_extended_var_id) {
-                $possibly_function_ids = $context->vars_in_scope[$callable_extended_var_id] ?? null;
-                // @todo for array callables
-                if ($possibly_function_ids && $possibly_function_ids->allStringLiterals()) {
-                    foreach ($possibly_function_ids->getLiteralStrings() as $atomic) {
-                        $mapping_function_ids[] = $atomic->value;
-                    }
-                }
-            }
-
             if ($function_call_arg->value instanceof PhpParser\Node\Scalar\String_
                 || $function_call_arg->value instanceof PhpParser\Node\Expr\Array_
                 || $function_call_arg->value instanceof PhpParser\Node\Expr\BinaryOp\Concat
-                || $mapping_function_ids !== array()
             ) {
-                if ($mapping_function_ids === array()) {
-                    $mapping_function_ids = CallAnalyzer::getFunctionIdsFromCallableArg(
-                        $statements_source,
-                        $function_call_arg->value,
-                    );
-                }
+                $mapping_function_ids = CallAnalyzer::getFunctionIdsFromCallableArg(
+                    $statements_source,
+                    $function_call_arg->value,
+                );
 
                 if ($array_arg && $mapping_function_ids) {
                     $assertions = [];
@@ -293,7 +268,7 @@ final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderI
                                 $statements_source,
                                 $codebase,
                             );
-                        } catch (ComplicatedExpressionException) {
+                        } catch (ComplicatedExpressionException $e) {
                             $filter_clauses = [];
                         }
 

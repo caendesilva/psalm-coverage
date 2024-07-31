@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\FileManipulation;
 
 class UnusedVariableManipulationTest extends FileManipulationTestCase
@@ -24,27 +22,6 @@ class UnusedVariableManipulationTest extends FileManipulationTestCase
                             $b = "hello";
                             echo $b;
                         }
-                    }',
-                'php_version' => '7.1',
-                'issues_to_fix' => ['UnusedVariable'],
-                'safe_types' => true,
-            ],
-            'dontRemovePossiblyUndefined' => [
-                'input' => '<?php
-                    function foo(bool $b): void {
-                        if ($b) {
-                            $v = "hi";
-                        }
-
-                        echo $v;
-                    }',
-                'output' => '<?php
-                    function foo(bool $b): void {
-                        if ($b) {
-                            $v = "hi";
-                        }
-
-                        echo $v;
                     }',
                 'php_version' => '7.1',
                 'issues_to_fix' => ['UnusedVariable'],

@@ -15,7 +15,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class DomDocumentPropertyTypeProvider implements PropertyTypeProviderInterface
+class DomDocumentPropertyTypeProvider implements PropertyTypeProviderInterface
 {
     private static ?Union $cache = null;
     public static function getPropertyType(PropertyTypeProviderEvent $event): ?Union

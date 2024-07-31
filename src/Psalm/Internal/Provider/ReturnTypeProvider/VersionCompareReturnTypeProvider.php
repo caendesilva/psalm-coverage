@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -11,6 +9,7 @@ use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
 use Psalm\Type;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TLiteralInt;
+use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Union;
 
@@ -19,7 +18,7 @@ use function count;
 /**
  * @internal
  */
-final class VersionCompareReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class VersionCompareReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>
@@ -43,20 +42,20 @@ final class VersionCompareReturnTypeProvider implements FunctionReturnTypeProvid
             if ($operator_type) {
                 if (!$operator_type->hasMixed()) {
                     $acceptable_operator_type = new Union([
-                        Type::getAtomicStringFromLiteral('<'),
-                        Type::getAtomicStringFromLiteral('lt'),
-                        Type::getAtomicStringFromLiteral('<='),
-                        Type::getAtomicStringFromLiteral('le'),
-                        Type::getAtomicStringFromLiteral('>'),
-                        Type::getAtomicStringFromLiteral('gt'),
-                        Type::getAtomicStringFromLiteral('>='),
-                        Type::getAtomicStringFromLiteral('ge'),
-                        Type::getAtomicStringFromLiteral('=='),
-                        Type::getAtomicStringFromLiteral('='),
-                        Type::getAtomicStringFromLiteral('eq'),
-                        Type::getAtomicStringFromLiteral('!='),
-                        Type::getAtomicStringFromLiteral('<>'),
-                        Type::getAtomicStringFromLiteral('ne'),
+                        new TLiteralString('<'),
+                        new TLiteralString('lt'),
+                        new TLiteralString('<='),
+                        new TLiteralString('le'),
+                        new TLiteralString('>'),
+                        new TLiteralString('gt'),
+                        new TLiteralString('>='),
+                        new TLiteralString('ge'),
+                        new TLiteralString('=='),
+                        new TLiteralString('='),
+                        new TLiteralString('eq'),
+                        new TLiteralString('!='),
+                        new TLiteralString('<>'),
+                        new TLiteralString('ne'),
                     ]);
 
                     $codebase = $statements_source->getCodebase();

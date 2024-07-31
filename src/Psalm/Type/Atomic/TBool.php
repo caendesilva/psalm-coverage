@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 /**
@@ -23,7 +21,7 @@ class TBool extends Scalar
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id,
+        int $analysis_php_version_id
     ): ?string {
         return $analysis_php_version_id >= 7_00_00 ? 'bool' : null;
     }

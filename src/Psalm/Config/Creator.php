@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Config;
 
 use JsonException;
@@ -17,7 +15,6 @@ use function array_shift;
 use function array_sum;
 use function array_unique;
 use function array_values;
-use function assert;
 use function count;
 use function explode;
 use function file_exists;
@@ -26,7 +23,6 @@ use function glob;
 use function implode;
 use function is_array;
 use function is_dir;
-use function is_string;
 use function json_decode;
 use function ksort;
 use function max;
@@ -50,7 +46,6 @@ final class Creator
     xmlns="https://getpsalm.org/schema/config"
     xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
     findUnusedBaselineEntry="true"
-    findUnusedCode="true"
 >
     <projectFiles>
         <directory name="src" />
@@ -68,7 +63,7 @@ final class Creator
         string $current_dir,
         ?string $suggested_dir,
         int $level,
-        string $vendor_dir,
+        string $vendor_dir
     ): string {
         $paths = self::getPaths($current_dir, $suggested_dir);
 
@@ -103,7 +98,7 @@ final class Creator
     public static function createBareConfig(
         string $current_dir,
         ?string $suggested_dir,
-        string $vendor_dir,
+        string $vendor_dir
     ): Config {
         $config_contents = self::getContents($current_dir, $suggested_dir, 1, $vendor_dir);
 
@@ -199,10 +194,8 @@ final class Creator
                 );
             }
             try {
-                $composer_json_contents = file_get_contents($composer_json_location);
-                assert($composer_json_contents !== false);
                 $composer_json = json_decode(
-                    $composer_json_contents,
+                    file_get_contents($composer_json_location),
                     true,
                     512,
                     JSON_THROW_ON_ERROR,
@@ -256,17 +249,13 @@ final class Creator
             }
 
             foreach ($paths as $path) {
-                if (!is_string($path)) {
-                    continue;
-                }
-
                 if ($path === '') {
                     $nodes = [...$nodes, ...self::guessPhpFileDirs($current_dir)];
 
                     continue;
                 }
 
-                $path = (string) preg_replace('@[/\\\]$@', '', $path, 1);
+                $path = preg_replace('@[/\\\]$@', '', $path, 1);
 
                 if ($path !== 'tests') {
                     $nodes[] = '<directory name="' . $path . '" />';
@@ -289,11 +278,11 @@ final class Creator
         $nodes = [];
 
         /** @var string[] */
-        $php_files = [
-            ...glob($current_dir . DIRECTORY_SEPARATOR . '*.php', GLOB_NOSORT) ?: [],
-            ...glob($current_dir . DIRECTORY_SEPARATOR . '**/*.php', GLOB_NOSORT) ?: [],
-            ...glob($current_dir . DIRECTORY_SEPARATOR . '**/**/*.php', GLOB_NOSORT) ?: [],
-        ];
+        $php_files = array_merge(
+            glob($current_dir . DIRECTORY_SEPARATOR . '*.php', GLOB_NOSORT),
+            glob($current_dir . DIRECTORY_SEPARATOR . '**/*.php', GLOB_NOSORT),
+            glob($current_dir . DIRECTORY_SEPARATOR . '**/**/*.php', GLOB_NOSORT),
+        );
 
         foreach ($php_files as $php_file) {
             $php_file = str_replace($current_dir . DIRECTORY_SEPARATOR, '', $php_file);

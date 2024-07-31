@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use PhpParser;
@@ -29,7 +27,7 @@ class FileDiffTest extends TestCase
         array $same_signatures,
         array $changed_methods,
         array $diff_map_offsets,
-        array $deletion_ranges,
+        array $deletion_ranges
     ): void {
         if (strpos($this->getTestName(), 'SKIPPED-') !== false) {
             $this->markTestSkipped();
@@ -64,7 +62,7 @@ class FileDiffTest extends TestCase
              * @param array{0: int, 1: int, 2: int, 3: int} $arr
              * @return array{0: int, 1: int}
              */
-            static fn(array $arr): array => [$arr[2], $arr[3]],
+            fn(array $arr): array => [$arr[2], $arr[3]],
             $diff[3],
         );
 
@@ -86,7 +84,7 @@ class FileDiffTest extends TestCase
         array $same_methods,
         array $same_signatures,
         array $changed_methods,
-        array $diff_map_offsets,
+        array $diff_map_offsets
     ): void {
         if (strpos($this->getTestName(), 'SKIPPED-') !== false) {
             $this->markTestSkipped();
@@ -135,7 +133,7 @@ class FileDiffTest extends TestCase
              * @param array{0: int, 1: int, 2: int, 3: int} $arr
              * @return array{0: int, 1: int}
              */
-            static fn(array $arr): array => [$arr[2], $arr[3]],
+            fn(array $arr): array => [$arr[2], $arr[3]],
             $diff[3],
         );
 
@@ -545,63 +543,6 @@ class FileDiffTest extends TestCase
                 ['foo\a::$a', 'foo\a::$a'],
                 [],
                 [[84, 133]],
-            ],
-            'propertyTypeAddition' => [
-                '<?php
-                namespace Foo;
-
-                class A {
-                    public $a;
-                }',
-                '<?php
-                namespace Foo;
-
-                class A {
-                    public string $a;
-                }',
-                [],
-                [],
-                ['foo\a::$a', 'foo\a::$a'],
-                [],
-                [[84, 93]],
-            ],
-            'propertyTypeRemoval' => [
-                '<?php
-                namespace Foo;
-
-                class A {
-                    public string $a;
-                }',
-                '<?php
-                namespace Foo;
-
-                class A {
-                    public $a;
-                }',
-                [],
-                [],
-                ['foo\a::$a', 'foo\a::$a'],
-                [],
-                [[84, 100]],
-            ],
-            'propertyTypeChange' => [
-                '<?php
-                namespace Foo;
-
-                class A {
-                    public string $a;
-                }',
-                '<?php
-                namespace Foo;
-
-                class A {
-                    public ?string $a;
-                }',
-                [],
-                [],
-                ['foo\a::$a', 'foo\a::$a'],
-                [],
-                [[84, 100]],
             ],
             'addDocblockToFirst' => [
                 '<?php

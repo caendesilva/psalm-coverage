@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
@@ -12,6 +10,7 @@ use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TNonEmptyArray;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
@@ -24,12 +23,12 @@ use function in_array;
 /**
  * @internal
  */
-final class ArrayPointerAdjustmentReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class ArrayPointerAdjustmentReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * These functions are already handled by the CoreGenericFunctions stub
      */
-    public const IGNORE_FUNCTION_IDS_FOR_FALSE_RETURN_TYPE = [
+    const IGNORE_FUNCTION_IDS_FOR_FALSE_RETURN_TYPE = [
         'reset',
         'end',
         'current',
@@ -75,7 +74,9 @@ final class ArrayPointerAdjustmentReturnTypeProvider implements FunctionReturnTy
                 continue;
             }
 
-
+            if ($atomic_type instanceof TList) {
+                $atomic_type = $atomic_type->getKeyedArray();
+            }
 
             if ($atomic_type instanceof TArray) {
                 $value_type = $atomic_type->type_params[1];

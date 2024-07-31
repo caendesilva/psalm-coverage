@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
 use PhpParser;
@@ -50,6 +48,7 @@ use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TCallableString;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
@@ -79,13 +78,13 @@ use function strtolower;
 /**
  * @internal
  */
-final class FunctionCallAnalyzer extends CallAnalyzer
+class FunctionCallAnalyzer extends CallAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\FuncCall $stmt,
         Context $context,
-        ?TemplateResult $template_result = null,
+        ?TemplateResult $template_result = null
     ): bool {
         $function_name = $stmt->name;
 
@@ -103,7 +102,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
             && isset($stmt->getArgs()[0])
             && !$stmt->getArgs()[0]->unpack
         ) {
-            $original_function_id = implode('\\', $function_name->getParts());
+            $original_function_id = implode('\\', $function_name->parts);
 
             if ($original_function_id === 'call_user_func') {
                 $other_args = array_slice($stmt->getArgs(), 1);
@@ -161,7 +160,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         $set_inside_conditional = false;
 
         if ($function_name instanceof PhpParser\Node\Name
-            && $function_name->getParts() === ['assert']
+            && $function_name->parts === ['assert']
             && !$context->inside_conditional
         ) {
             $context->inside_conditional = true;
@@ -206,9 +205,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     $statements_analyzer->node_data,
                 );
 
-                if (!$codebase->functions->params_provider->has($function_call_info->function_id)) {
-                    $function_call_info->function_params = $function_callable->params;
-                }
+                $function_call_info->function_params = $function_callable->params;
             }
         }
 
@@ -238,7 +235,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
             $function_call_info->function_id,
         );
 
-        $template_result->lower_bounds = [...$template_result->lower_bounds, ...$already_inferred_lower_bounds];
+        $template_result->lower_bounds += $already_inferred_lower_bounds;
 
         if ($function_name instanceof PhpParser\Node\Name && $function_call_info->function_id) {
             $stmt_type = FunctionCallReturnTypeFetcher::fetch(
@@ -322,7 +319,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         }
 
         if ($function_name instanceof PhpParser\Node\Name
-            && $function_name->getParts() === ['assert']
+            && $function_name->parts === ['assert']
             && isset($stmt->getArgs()[0])
         ) {
             self::processAssertFunctionEffects(
@@ -402,6 +399,13 @@ final class FunctionCallAnalyzer extends CallAnalyzer
             }
         }
 
+        if ($function_call_info->byref_uses) {
+            foreach ($function_call_info->byref_uses as $byref_use_var => $_) {
+                $context->vars_in_scope['$' . $byref_use_var] = Type::getMixed();
+                $context->vars_possibly_in_scope['$' . $byref_use_var] = true;
+            }
+        }
+
         if ($function_name instanceof PhpParser\Node\Name && $function_call_info->function_id) {
             NamedFunctionCallHandler::handle(
                 $statements_analyzer,
@@ -426,14 +430,14 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         PhpParser\Node\Expr\FuncCall $stmt,
         PhpParser\Node\Name $function_name,
         Context $context,
-        CodeLocation $code_location,
+        CodeLocation $code_location
     ): FunctionCallInfo {
         $function_call_info = new FunctionCallInfo();
 
         $codebase = $statements_analyzer->getCodebase();
         $codebase_functions = $codebase->functions;
 
-        $original_function_id = $function_name->toString();
+        $original_function_id = implode('\\', $function_name->parts);
 
         if (!$function_name instanceof PhpParser\Node\Name\FullyQualified) {
             $function_call_info->function_id = $codebase_functions->getFullyQualifiedFunctionNameFromString(
@@ -467,7 +471,6 @@ final class FunctionCallAnalyzer extends CallAnalyzer
             = $function_call_info->is_stubbed || $function_call_info->in_call_map || $namespaced_function_exists;
 
         if ($function_call_info->function_exists
-            && !$stmt->isFirstClassCallable()
             && $codebase->store_node_types
             && !$context->collect_initializations
             && !$context->collect_mutations
@@ -483,7 +486,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         $is_predefined = true;
 
         $is_maybe_root_function = !$function_name instanceof PhpParser\Node\Name\FullyQualified
-            && count($function_name->getParts()) === 1;
+            && count($function_name->parts) === 1;
 
         $args = $stmt->isFirstClassCallable() ? [] : $stmt->getArgs();
 
@@ -559,7 +562,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         $function_call_info->defined_constants = $function_storage->defined_constants;
                         $function_call_info->global_variables = $function_storage->global_variables;
                     }
-                } catch (UnexpectedValueException) {
+                } catch (UnexpectedValueException $e) {
                     $function_call_info->function_params = [
                         new FunctionLikeParameter('args', false, null, null, null, null, false, false, true),
                     ];
@@ -605,7 +608,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         PhpParser\Node\Expr\FuncCall $stmt,
         PhpParser\Node\Expr\FuncCall $real_stmt,
         PhpParser\Node\Expr $function_name,
-        Context $context,
+        Context $context
     ): FunctionCallInfo {
         $function_call_info = new FunctionCallInfo();
 
@@ -660,7 +663,9 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     continue;
                 }
 
-
+                if ($var_type_part instanceof TList) {
+                    $var_type_part = $var_type_part->getKeyedArray();
+                }
 
                 if ($var_type_part instanceof TClosure || $var_type_part instanceof TCallable) {
                     if (!$var_type_part->is_pure) {
@@ -717,17 +722,8 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
-                } elseif ($var_type_part instanceof TCallableObject) {
-                    $has_valid_function_call_type = true;
-                    self::analyzeInvokeCall(
-                        $statements_analyzer,
-                        $stmt,
-                        $real_stmt,
-                        $function_name,
-                        $context,
-                        $var_type_part,
-                    );
-                } elseif ($var_type_part instanceof TCallableString
+                } elseif ($var_type_part instanceof TCallableObject
+                    || $var_type_part instanceof TCallableString
                     || ($var_type_part instanceof TNamedObject && $var_type_part->value === 'Closure')
                     || ($var_type_part instanceof TObjectWithProperties && isset($var_type_part->methods['__invoke']))
                 ) {
@@ -760,7 +756,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         if (strpos($var_type_part->value, '::')) {
                             $parts = explode('::', strtolower($var_type_part->value));
                             $fq_class_name = $parts[0];
-                            $fq_class_name = (string) preg_replace('/^\\\/', '', $fq_class_name, 1);
+                            $fq_class_name = preg_replace('/^\\\/', '', $fq_class_name, 1);
                             $potential_method_id = new MethodIdentifier($fq_class_name, $parts[1]);
                         } else {
                             $function_call_info->new_function_name = new VirtualFullyQualified(
@@ -878,7 +874,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         PhpParser\Node\Expr\FuncCall $real_stmt,
         PhpParser\Node\Expr $function_name,
         Context $context,
-        Atomic $atomic_type,
+        Atomic $atomic_type
     ): void {
         $old_data_provider = $statements_analyzer->node_data;
 
@@ -934,7 +930,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         Codebase $codebase,
         PhpParser\Node\Expr\FuncCall $stmt,
         PhpParser\Node\Arg $first_arg,
-        Context $context,
+        Context $context
     ): void {
         $first_arg_value_id = spl_object_id($first_arg->value);
 
@@ -1026,7 +1022,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         PhpParser\Node\Expr\FuncCall $stmt,
         PhpParser\Node $function_name,
         FunctionCallInfo $function_call_info,
-        Context $context,
+        Context $context
     ): void {
         $config = $codebase->config;
 
@@ -1114,7 +1110,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
 
     private static function callUsesByReferenceArguments(
         FunctionCallInfo $function_call_info,
-        PhpParser\Node\Expr\FuncCall $stmt,
+        PhpParser\Node\Expr\FuncCall $stmt
     ): bool {
         // If the function doesn't have any by-reference parameters
         // we shouldn't look any further.

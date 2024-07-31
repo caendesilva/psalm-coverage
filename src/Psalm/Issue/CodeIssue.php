@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Issue;
 
 use Psalm\CodeLocation;
@@ -17,12 +15,29 @@ abstract class CodeIssue
     /** @var int<0, max> */
     public const SHORTCODE = 0;
 
-    public ?string $dupe_key = null;
+    /**
+     * @var CodeLocation
+     * @readonly
+     */
+    public $code_location;
+
+    /**
+     * @var string
+     * @readonly
+     */
+    public $message;
+
+    /**
+     * @var ?string
+     */
+    public $dupe_key;
 
     public function __construct(
-        public readonly string $message,
-        public readonly CodeLocation $code_location,
+        string $message,
+        CodeLocation $code_location
     ) {
+        $this->code_location = $code_location;
+        $this->message = $message;
     }
 
     public function getShortLocationWithPrevious(): string
@@ -53,9 +68,6 @@ abstract class CodeIssue
         return array_pop($fqcn_parts);
     }
 
-    /**
-     * @param IssueData::SEVERITY_* $severity
-     */
     public function toIssueData(string $severity): IssueData
     {
         $location = $this->code_location;

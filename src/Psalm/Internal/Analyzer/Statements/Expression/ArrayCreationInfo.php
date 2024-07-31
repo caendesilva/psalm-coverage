@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use Psalm\Internal\DataFlow\DataFlowNode;
@@ -11,7 +9,7 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class ArrayCreationInfo
+class ArrayCreationInfo
 {
     /**
      * @var list<Atomic>
@@ -40,12 +38,7 @@ final class ArrayCreationInfo
      */
     public array $array_keys = [];
 
-    /**
-     * Holds the integer offset of the *last* element added
-     *
-     * -1 may mean no elements have been added yet, but can also mean there's an element with offset -1
-     */
-    public int $int_offset = -1;
+    public int $int_offset = 0;
 
     public bool $all_list = true;
 

@@ -1,19 +1,18 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider;
 
 use InvalidArgumentException;
 use LogicException;
 use Psalm\Storage\ClassLikeStorage;
 
+use function array_merge;
 use function strtolower;
 
 /**
  * @internal
  */
-final class ClassLikeStorageProvider
+class ClassLikeStorageProvider
 {
     /**
      * Storing this statically is much faster (at least in PHP 7.2.1)
@@ -27,8 +26,11 @@ final class ClassLikeStorageProvider
      */
     private static array $new_storage = [];
 
-    public function __construct(public ?ClassLikeStorageCacheProvider $cache = null)
+    public ?ClassLikeStorageCacheProvider $cache = null;
+
+    public function __construct(?ClassLikeStorageCacheProvider $cache = null)
     {
+        $this->cache = $cache;
     }
 
     /**
@@ -47,14 +49,10 @@ final class ClassLikeStorageProvider
         return self::$storage[$fq_classlike_name_lc];
     }
 
-    /**
-     * @psalm-mutation-free
-     */
     public function has(string $fq_classlike_name): bool
     {
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
 
-        /** @psalm-suppress ImpureStaticProperty Used only for caching */
         return isset(self::$storage[$fq_classlike_name_lc]);
     }
 
@@ -99,8 +97,8 @@ final class ClassLikeStorageProvider
      */
     public function addMore(array $more): void
     {
-        self::$new_storage = [...self::$new_storage, ...$more];
-        self::$storage = [...self::$storage, ...$more];
+        self::$new_storage = array_merge(self::$new_storage, $more);
+        self::$storage = array_merge(self::$storage, $more);
     }
 
     public function makeNew(string $fq_classlike_name_lc): void

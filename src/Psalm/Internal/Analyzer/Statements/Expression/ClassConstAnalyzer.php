@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use InvalidArgumentException;
@@ -27,7 +25,6 @@ use Psalm\Issue\InaccessibleClassConstant;
 use Psalm\Issue\InternalClass;
 use Psalm\Issue\InvalidClassConstantType;
 use Psalm\Issue\InvalidConstantAssignmentValue;
-use Psalm\Issue\InvalidStringClass;
 use Psalm\Issue\LessSpecificClassConstantType;
 use Psalm\Issue\NonStaticSelfCall;
 use Psalm\Issue\OverriddenFinalConstant;
@@ -44,7 +41,6 @@ use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TObject;
-use Psalm\Type\Atomic\TString;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Union;
@@ -58,7 +54,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class ClassConstAnalyzer
+class ClassConstAnalyzer
 {
     /**
      * @psalm-suppress ComplexMethod to be refactored. We should probably regroup the two big if about $stmt->class and
@@ -67,14 +63,14 @@ final class ClassConstAnalyzer
     public static function analyzeFetch(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\ClassConstFetch $stmt,
-        Context $context,
+        Context $context
     ): bool {
         $codebase = $statements_analyzer->getCodebase();
 
         $statements_analyzer->node_data->setType($stmt, Type::getMixed());
 
         if ($stmt->class instanceof PhpParser\Node\Name) {
-            $first_part_lc = strtolower($stmt->class->getFirst());
+            $first_part_lc = strtolower($stmt->class->parts[0]);
 
             if ($first_part_lc === 'self' || $first_part_lc === 'static') {
                 if (!$context->self) {
@@ -130,7 +126,7 @@ final class ClassConstAnalyzer
             $moved_class = false;
 
             if ($codebase->alter_code
-                && !in_array($stmt->class->getFirst(), ['parent', 'static'])
+                && !in_array($stmt->class->parts[0], ['parent', 'static'])
             ) {
                 $moved_class = $codebase->classlikes->handleClassLikeReferenceInMigration(
                     $codebase,
@@ -139,7 +135,7 @@ final class ClassConstAnalyzer
                     $fq_class_name,
                     $context->calling_method_id,
                     false,
-                    $stmt->class->getFirst() === 'self',
+                    $stmt->class->parts[0] === 'self',
                 );
             }
 
@@ -208,25 +204,7 @@ final class ClassConstAnalyzer
             }
 
             if (!$stmt->name instanceof PhpParser\Node\Identifier) {
-                if ($codebase->analysis_php_version_id < 8_03_00) {
-                    IssueBuffer::maybeAdd(
-                        new ParseError(
-                            'Dynamically fetching class constants and enums requires PHP 8.3',
-                            new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        ),
-                        $statements_analyzer->getSuppressedIssues(),
-                    );
-                }
-
-                $was_inside_general_use = $context->inside_general_use;
-
-                $context->inside_general_use = true;
-
-                $ret = ExpressionAnalyzer::analyze($statements_analyzer, $stmt->name, $context);
-
-                $context->inside_general_use = $was_inside_general_use;
-
-                return $ret;
+                return true;
             }
 
             $const_id = $fq_class_name . '::' . $stmt->name;
@@ -279,11 +257,11 @@ final class ClassConstAnalyzer
                     $class_visibility,
                     $statements_analyzer,
                     [],
-                    $stmt->class->getFirst() === "static",
+                    $stmt->class->parts[0] === "static",
                 );
-            } catch (InvalidArgumentException) {
+            } catch (InvalidArgumentException $_) {
                 return true;
-            } catch (CircularReferenceException) {
+            } catch (CircularReferenceException $e) {
                 IssueBuffer::maybeAdd(
                     new CircularReference(
                         'Constant ' . $const_id . ' contains a circular reference',
@@ -405,11 +383,7 @@ final class ClassConstAnalyzer
                 );
             }
 
-            if ($first_part_lc !== 'static' || $const_class_storage->final || $class_constant_type->from_docblock
-                || (isset($const_class_storage->constants[$stmt->name->name])
-                    && $const_class_storage->constants[$stmt->name->name]->final
-                )
-            ) {
+            if ($first_part_lc !== 'static' || $const_class_storage->final || $class_constant_type->from_docblock) {
                 $stmt_type = $class_constant_type;
 
                 $statements_analyzer->node_data->setType($stmt, $stmt_type);
@@ -493,17 +467,6 @@ final class ClassConstAnalyzer
                 } elseif ($atomic_type instanceof TLiteralClassString) {
                     $fq_class_name = $atomic_type->value;
                     $lhs_type_definite_class = $atomic_type->definite_class;
-                } elseif ($atomic_type instanceof TString
-                    && !$atomic_type instanceof TClassString
-                    && !$codebase->config->allow_string_standin_for_class
-                ) {
-                    IssueBuffer::maybeAdd(
-                        new InvalidStringClass(
-                            'String cannot be used as a class',
-                            new CodeLocation($statements_analyzer->getSource(), $stmt->class),
-                        ),
-                        $statements_analyzer->getSuppressedIssues(),
-                    );
                 }
             }
 
@@ -585,9 +548,9 @@ final class ClassConstAnalyzer
                     $class_visibility,
                     $statements_analyzer,
                 );
-            } catch (InvalidArgumentException) {
+            } catch (InvalidArgumentException $_) {
                 return true;
-            } catch (CircularReferenceException) {
+            } catch (CircularReferenceException $e) {
                 IssueBuffer::maybeAdd(
                     new CircularReference(
                         'Constant ' . $const_id . ' contains a circular reference',
@@ -712,7 +675,7 @@ final class ClassConstAnalyzer
     public static function analyzeAssignment(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt\ClassConst $stmt,
-        Context $context,
+        Context $context
     ): void {
         assert($context->self !== null);
         $class_storage = $statements_analyzer->getCodebase()->classlike_storage_provider->get($context->self);
@@ -723,27 +686,19 @@ final class ClassConstAnalyzer
 
             // Check assigned type matches docblock type
             if ($assigned_type = $statements_analyzer->node_data->getType($const->value)) {
-                $const_storage_type = $const_storage->type;
-
-                if ($const_storage_type !== null
+                if ($const_storage->type !== null
                     && $const_storage->stmt_location !== null
-                    && $assigned_type !== $const_storage_type
-                    // Check if this type was defined via a dockblock or type hint otherwise the inferred type
-                    // should always match the assigned type and we don't even need to do additional checks
-                    // There is an issue with constants over a certain length where additional values
-                    // are added to fallback_params in the assigned_type but not in const_storage_type
-                    // which causes a false flag for this error to appear. Usually happens with arrays
-                    && ($const_storage_type->from_docblock || $const_storage_type->from_property)
+                    && $assigned_type !== $const_storage->type
                     && !UnionTypeComparator::isContainedBy(
                         $statements_analyzer->getCodebase(),
                         $assigned_type,
-                        $const_storage_type,
+                        $const_storage->type,
                     )
                 ) {
                     IssueBuffer::maybeAdd(
                         new InvalidConstantAssignmentValue(
                             "{$class_storage->name}::{$const->name->name} with declared type "
-                            . "{$const_storage_type->getId()} cannot be assigned type {$assigned_type->getId()}",
+                            . "{$const_storage->type->getId()} cannot be assigned type {$assigned_type->getId()}",
                             $const_storage->stmt_location,
                             "{$class_storage->name}::{$const->name->name}",
                         ),
@@ -756,7 +711,7 @@ final class ClassConstAnalyzer
 
     public static function analyze(
         ClassLikeStorage $class_storage,
-        Codebase $codebase,
+        Codebase $codebase
     ): void {
         foreach ($class_storage->constants as $const_name => $const_storage) {
             [$parent_classlike_storage, $parent_const_storage] = self::getOverriddenConstant(
@@ -854,7 +809,7 @@ final class ClassConstAnalyzer
         ClassLikeStorage $class_storage,
         ClassConstantStorage $const_storage,
         string $const_name,
-        Codebase $codebase,
+        Codebase $codebase
     ): ?array {
         $parent_classlike_storage = $interface_const_storage = $parent_const_storage = null;
         $interface_overrides = [];
@@ -876,7 +831,6 @@ final class ClassConstAnalyzer
                     assert($parent_classlike_storage !== null);
                     if (!isset($parent_classlike_storage->parent_interfaces[strtolower($interface)])
                         && !isset($interface_storage->parent_interfaces[strtolower($parent_classlike_storage->name)])
-                        && $interface_const_storage !== $parent_const_storage
                     ) {
                         IssueBuffer::maybeAdd(
                             new AmbiguousConstantInheritance(

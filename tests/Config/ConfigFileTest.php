@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\Config;
 
 use Psalm\Config;
@@ -10,7 +8,6 @@ use Psalm\Internal\PluginManager\ConfigFile;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Tests\TestCase;
 
-use function assert;
 use function file_get_contents;
 use function file_put_contents;
 use function getcwd;
@@ -29,9 +26,7 @@ class ConfigFileTest extends TestCase
     public function setUp(): void
     {
         RuntimeCaches::clearAll();
-        $temp_name = tempnam(sys_get_temp_dir(), 'psalm-test-config');
-        assert($temp_name !== false);
-        $this->file_path = $temp_name;
+        $this->file_path = tempnam(sys_get_temp_dir(), 'psalm-test-config');
     }
 
     public function tearDown(): void
@@ -70,8 +65,6 @@ class ConfigFileTest extends TestCase
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
         $config_file->addPlugin('a\b\c');
-        $file_contents = file_get_contents($this->file_path);
-        assert($file_contents !== false);
 
         $this->assertTrue(static::compareContentWithTemplateAndTrailingLineEnding(
             '<?xml version="1.0" encoding="UTF-8"?>
@@ -80,7 +73,7 @@ class ConfigFileTest extends TestCase
             >
                 <plugins><pluginClass xmlns="' . Config::CONFIG_NAMESPACE . '" class="a\b\c"/></plugins>
             </psalm>',
-            $file_contents,
+            file_get_contents($this->file_path),
         ));
     }
 
@@ -97,13 +90,11 @@ class ConfigFileTest extends TestCase
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
         $config_file->addPlugin('a\b\c');
-        $file_contents = file_get_contents($this->file_path);
-        assert($file_contents !== false);
 
         $this->assertTrue(static::compareContentWithTemplateAndTrailingLineEnding(
             '<?xml version="1.0"?>
             <psalm><plugins><pluginClass xmlns="' . Config::CONFIG_NAMESPACE . '" class="a\b\c"/></plugins></psalm>',
-            $file_contents,
+            file_get_contents($this->file_path),
         ));
     }
 
@@ -119,12 +110,10 @@ class ConfigFileTest extends TestCase
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
         $config_file->removePlugin('a\b\c');
-        $file_contents = file_get_contents($this->file_path);
-        assert($file_contents !== false);
 
         $this->assertSame(
             $noPlugins,
-            $file_contents,
+            file_get_contents($this->file_path),
         );
     }
 
@@ -145,12 +134,10 @@ class ConfigFileTest extends TestCase
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
         $config_file->removePlugin('a\b\c');
-        $file_contents = file_get_contents($this->file_path);
-        assert($file_contents !== false);
 
         $this->assertXmlStringEqualsXmlString(
             $noPlugins,
-            $file_contents,
+            file_get_contents($this->file_path),
         );
     }
 
@@ -173,12 +160,10 @@ class ConfigFileTest extends TestCase
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
         $config_file->removePlugin('a\b\c');
-        $file_contents = file_get_contents($this->file_path);
-        assert($file_contents !== false);
 
         $this->assertXmlStringEqualsXmlString(
             $noPlugins,
-            $file_contents,
+            file_get_contents($this->file_path),
         );
     }
 
@@ -210,12 +195,10 @@ class ConfigFileTest extends TestCase
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
         $config_file->removePlugin('a\b\c');
-        $file_contents = file_get_contents($this->file_path);
-        assert($file_contents !== false);
 
         $this->assertXmlStringEqualsXmlString(
             $noPlugins,
-            $file_contents,
+            file_get_contents($this->file_path),
         );
     }
 
@@ -285,9 +268,8 @@ class ConfigFileTest extends TestCase
         $passed = false;
 
         foreach ([PHP_EOL, "\n", "\r", "\r\n"] as $eol) {
-            if ($contents === ($expected_template . $eol)) {
+            if (!$passed && $contents === ($expected_template . $eol)) {
                 $passed = true;
-                break;
             }
         }
 

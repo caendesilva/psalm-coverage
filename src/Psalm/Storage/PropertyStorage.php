@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage;
 
 use Psalm\CodeLocation;
@@ -11,68 +9,118 @@ use Psalm\Type\Union;
 final class PropertyStorage implements HasAttributesInterface
 {
     use CustomMetadataTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
-    public ?bool $is_static = null;
+    /**
+     * @var ?bool
+     */
+    public $is_static;
 
     /**
      * @var ClassLikeAnalyzer::VISIBILITY_*
      */
-    public int $visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
+    public $visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
 
-    public ?CodeLocation $location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $location;
 
-    public ?CodeLocation $stmt_location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $stmt_location;
 
-    public ?CodeLocation $type_location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $type_location;
 
-    public ?CodeLocation $signature_type_location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $signature_type_location;
 
-    public ?Union $type = null;
+    /**
+     * @var Union|null
+     */
+    public $type;
 
-    public ?Union $signature_type = null;
+    /**
+     * @var Union|null
+     */
+    public $signature_type;
 
-    public ?Union $suggested_type = null;
+    /**
+     * @var Union|null
+     */
+    public $suggested_type;
 
-    public bool $has_default = false;
+    /**
+     * @var bool
+     */
+    public $has_default = false;
 
-    public bool $deprecated = false;
+    /**
+     * @var bool
+     */
+    public $deprecated = false;
 
-    public bool $readonly = false;
+    /**
+     * @var bool
+     */
+    public $readonly = false;
 
     /**
      * Whether or not to allow mutation by internal methods
+     *
+     * @var bool
      */
-    public bool $allow_private_mutation = false;
+    public $allow_private_mutation = false;
 
     /**
      * @var list<non-empty-string>
      */
-    public array $internal = [];
+    public $internal = [];
 
-    public ?string $getter_method = null;
+    /**
+     * @var ?string
+     */
+    public $getter_method;
 
-    public bool $is_promoted = false;
+    /**
+     * @var bool
+     */
+    public $is_promoted = false;
 
     /**
      * @var list<AttributeStorage>
      */
-    public array $attributes = [];
+    public $attributes = [];
 
     /**
      * @var array<int, string>
      */
-    public array $suppressed_issues = [];
+    public $suppressed_issues = [];
 
-    public ?string $description = null;
+    /**
+     * @var ?string
+     */
+    public $description;
 
     public function getInfo(): string
     {
-        $visibility_text = match ($this->visibility) {
-            ClassLikeAnalyzer::VISIBILITY_PRIVATE => 'private',
-            ClassLikeAnalyzer::VISIBILITY_PROTECTED => 'protected',
-            default => 'public',
-        };
+        switch ($this->visibility) {
+            case ClassLikeAnalyzer::VISIBILITY_PRIVATE:
+                $visibility_text = 'private';
+                break;
+
+            case ClassLikeAnalyzer::VISIBILITY_PROTECTED:
+                $visibility_text = 'protected';
+                break;
+
+            default:
+                $visibility_text = 'public';
+        }
 
         return $visibility_text . ' ' . ($this->type ? $this->type->getId() : 'mixed');
     }

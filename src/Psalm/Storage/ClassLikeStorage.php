@@ -1,142 +1,188 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage;
 
 use Psalm\Aliases;
 use Psalm\CodeLocation;
-use Psalm\Codebase;
-use Psalm\Config;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TypeAlias\ClassTypeAlias;
 use Psalm\Issue\CodeIssue;
-use Psalm\Issue\DeprecatedClass;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
 
 use function array_values;
-use function in_array;
 
 final class ClassLikeStorage implements HasAttributesInterface
 {
     use CustomMetadataTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @var array<string, ClassConstantStorage>
      */
-    public array $constants = [];
+    public $constants = [];
 
     /**
      * Aliases to help Psalm understand constant refs
+     *
+     * @var ?Aliases
      */
-    public ?Aliases $aliases = null;
+    public $aliases;
 
-    public bool $populated = false;
+    /**
+     * @var bool
+     */
+    public $populated = false;
 
-    public bool $stubbed = false;
+    /**
+     * @var bool
+     */
+    public $stubbed = false;
 
-    public bool $deprecated = false;
+    /**
+     * @var bool
+     */
+    public $deprecated = false;
 
     /**
      * @var list<non-empty-string>
      */
-    public array $internal = [];
+    public $internal = [];
 
     /**
      * @var TTemplateParam[]
      */
-    public array $templatedMixins = [];
+    public $templatedMixins = [];
 
     /**
      * @var list<TNamedObject>
      */
-    public array $namedMixins = [];
+    public $namedMixins = [];
 
-    public ?string $mixin_declaring_fqcln = null;
+    /**
+     * @var ?string
+     */
+    public $mixin_declaring_fqcln;
 
-    public ?bool $sealed_properties = null;
+    /**
+     * @var bool
+     */
+    public $sealed_properties = false;
 
-    public ?bool $sealed_methods = null;
+    /**
+     * @var bool
+     */
+    public $sealed_methods = false;
 
-    public bool $override_property_visibility = false;
+    /**
+     * @var bool
+     */
+    public $override_property_visibility = false;
 
-    public bool $override_method_visibility = false;
+    /**
+     * @var bool
+     */
+    public $override_method_visibility = false;
 
     /**
      * @var array<int, string>
      */
-    public array $suppressed_issues = [];
+    public $suppressed_issues = [];
+
+    /**
+     * @var string
+     */
+    public $name;
 
     /**
      * Is this class user-defined
+     *
+     * @var bool
      */
-    public bool $user_defined = false;
+    public $user_defined = false;
 
     /**
      * Interfaces this class implements directly
      *
      * @var array<lowercase-string, string>
      */
-    public array $direct_class_interfaces = [];
+    public $direct_class_interfaces = [];
 
     /**
      * Interfaces this class implements explicitly and implicitly
      *
      * @var array<lowercase-string, string>
      */
-    public array $class_implements = [];
+    public $class_implements = [];
 
     /**
      * Parent interfaces listed explicitly
      *
      * @var array<lowercase-string, string>
      */
-    public array $direct_interface_parents = [];
+    public $direct_interface_parents = [];
 
     /**
      * Parent interfaces
      *
      * @var  array<lowercase-string, string>
      */
-    public array $parent_interfaces = [];
+    public $parent_interfaces = [];
 
     /**
      * There can only be one direct parent class
+     *
+     * @var ?string
      */
-    public ?string $parent_class = null;
+    public $parent_class;
 
     /**
      * Parent classes
      *
      * @var array<lowercase-string, string>
      */
-    public array $parent_classes = [];
+    public $parent_classes = [];
 
-    public ?CodeLocation $location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $location;
 
-    public ?CodeLocation $stmt_location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $stmt_location;
 
-    public ?CodeLocation $namespace_name_location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $namespace_name_location;
 
-    public bool $abstract = false;
+    /**
+     * @var bool
+     */
+    public $abstract = false;
 
-    public bool $final = false;
+    /**
+     * @var bool
+     */
+    public $final = false;
 
-    public bool $final_from_docblock = false;
+    /**
+     * @var bool
+     */
+    public $final_from_docblock = false;
 
     /**
      * @var array<lowercase-string, string>
      */
-    public array $used_traits = [];
+    public $used_traits = [];
 
     /**
      * @var array<lowercase-string, lowercase-string>
      */
-    public array $trait_alias_map = [];
+    public $trait_alias_map = [];
 
     /**
      * @var array<string, string>
@@ -146,39 +192,57 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * @var array<lowercase-string, bool>
      */
-    public array $trait_final_map = [];
+    public $trait_final_map = [];
 
     /**
      * @var array<string, ClassLikeAnalyzer::VISIBILITY_*>
      */
-    public array $trait_visibility_map = [];
+    public $trait_visibility_map = [];
 
-    public bool $is_trait = false;
+    /**
+     * @var bool
+     */
+    public $is_trait = false;
 
-    public bool $is_interface = false;
+    /**
+     * @var bool
+     */
+    public $is_interface = false;
 
-    public bool $is_enum = false;
+    /**
+     * @var bool
+     */
+    public $is_enum = false;
 
-    public bool $external_mutation_free = false;
+    /**
+     * @var bool
+     */
+    public $external_mutation_free = false;
 
-    public bool $mutation_free = false;
+    /**
+     * @var bool
+     */
+    public $mutation_free = false;
 
-    public bool $specialize_instance = false;
+    /**
+     * @var bool
+     */
+    public $specialize_instance = false;
 
     /**
      * @var array<lowercase-string, MethodStorage>
      */
-    public array $methods = [];
+    public $methods = [];
 
     /**
      * @var array<lowercase-string, MethodStorage>
      */
-    public array $pseudo_methods = [];
+    public $pseudo_methods = [];
 
     /**
      * @var array<lowercase-string, MethodStorage>
      */
-    public array $pseudo_static_methods = [];
+    public $pseudo_static_methods = [];
 
     /**
      * Maps pseudo method names to the original declaring method identifier
@@ -188,17 +252,17 @@ final class ClassLikeStorage implements HasAttributesInterface
      *
      * @var array<lowercase-string, MethodIdentifier>
      */
-    public array $declaring_pseudo_method_ids = [];
+    public $declaring_pseudo_method_ids = [];
 
     /**
      * @var array<lowercase-string, MethodIdentifier>
      */
-    public array $declaring_method_ids = [];
+    public $declaring_method_ids = [];
 
     /**
      * @var array<lowercase-string, MethodIdentifier>
      */
-    public array $appearing_method_ids = [];
+    public $appearing_method_ids = [];
 
     /**
      * Map from lowercase method name to list of declarations in order from parent, to grandparent, to
@@ -207,59 +271,57 @@ final class ClassLikeStorage implements HasAttributesInterface
      *
      * @var array<lowercase-string, array<string, MethodIdentifier>>
      */
-    public array $overridden_method_ids = [];
+    public $overridden_method_ids = [];
 
     /**
      * @var array<lowercase-string, MethodIdentifier>
      */
-    public array $documenting_method_ids = [];
+    public $documenting_method_ids = [];
 
     /**
      * @var array<lowercase-string, MethodIdentifier>
      */
-    public array $inheritable_method_ids = [];
+    public $inheritable_method_ids = [];
 
     /**
      * @var array<lowercase-string, array<string, bool>>
      */
-    public array $potential_declaring_method_ids = [];
+    public $potential_declaring_method_ids = [];
 
     /**
      * @var array<string, PropertyStorage>
      */
-    public array $properties = [];
+    public $properties = [];
 
     /**
      * @var array<string, Union>
      */
-    public array $pseudo_property_set_types = [];
+    public $pseudo_property_set_types = [];
 
     /**
      * @var array<string, Union>
      */
-    public array $pseudo_property_get_types = [];
+    public $pseudo_property_get_types = [];
 
     /**
      * @var array<string, string>
      */
-    public array $declaring_property_ids = [];
+    public $declaring_property_ids = [];
 
     /**
      * @var array<string, string>
      */
-    public array $appearing_property_ids = [];
-
-    public ?Union $inheritors = null;
+    public $appearing_property_ids = [];
 
     /**
      * @var array<string, string>
      */
-    public array $inheritable_property_ids = [];
+    public $inheritable_property_ids = [];
 
     /**
      * @var array<string, array<string>>
      */
-    public array $overridden_property_ids = [];
+    public $overridden_property_ids = [];
 
     /**
      * An array holding the class template "as" types.
@@ -272,12 +334,12 @@ final class ClassLikeStorage implements HasAttributesInterface
      *
      * @var array<string, non-empty-array<string, Union>>|null
      */
-    public ?array $template_types = null;
+    public $template_types;
 
     /**
      * @var array<int, bool>|null
      */
-    public ?array $template_covariants = null;
+    public $template_covariants;
 
     /**
      * A map of which generic classlikes are extended or implemented by this class or interface.
@@ -287,7 +349,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      * @internal
      * @var array<string, non-empty-array<int, Union>>|null
      */
-    public ?array $template_extended_offsets = null;
+    public $template_extended_offsets;
 
     /**
      * A map of which generic classlikes are extended or implemented by this class or interface.
@@ -303,94 +365,114 @@ final class ClassLikeStorage implements HasAttributesInterface
      *
      * @var array<string, array<string, Union>>|null
      */
-    public ?array $template_extended_params = null;
+    public $template_extended_params;
 
     /**
      * @var array<string, int>|null
      */
-    public ?array $template_type_extends_count = null;
+    public $template_type_extends_count;
 
 
     /**
      * @var array<string, int>|null
      */
-    public ?array $template_type_implements_count = null;
+    public $template_type_implements_count;
 
-    public ?Union $yield = null;
+    /**
+     * @var ?Union
+     */
+    public $yield;
 
-    public ?string $declaring_yield_fqcn = null;
+    /** @var ?string */
+    public $declaring_yield_fqcn;
 
     /**
      * @var array<string, int>|null
      */
-    public ?array $template_type_uses_count = null;
+    public $template_type_uses_count;
 
     /**
      * @var array<string, bool>
      */
-    public array $initialized_properties = [];
+    public $initialized_properties = [];
 
     /**
      * @var array<string, true>
      */
-    public array $invalid_dependencies = [];
+    public $invalid_dependencies = [];
 
     /**
      * @var array<lowercase-string, bool>
      */
-    public array $dependent_classlikes = [];
+    public $dependent_classlikes = [];
 
     /**
      * A hash of the source file's name, contents, and this file's modified on date
+     *
+     * @var string
      */
-    public string $hash = '';
+    public $hash = '';
 
-    public bool $has_visitor_issues = false;
+    /**
+     * @var bool
+     */
+    public $has_visitor_issues = false;
 
     /**
      * @var list<CodeIssue>
      */
-    public array $docblock_issues = [];
+    public $docblock_issues = [];
 
     /**
      * @var array<string, ClassTypeAlias>
      */
-    public array $type_aliases = [];
+    public $type_aliases = [];
 
-    public bool $preserve_constructor_signature = false;
+    /**
+     * @var bool
+     */
+    public $preserve_constructor_signature = false;
 
-    public bool $enforce_template_inheritance = false;
+    /**
+     * @var bool
+     */
+    public $enforce_template_inheritance = false;
 
-    public ?string $extension_requirement = null;
+    /**
+     * @var null|string
+     */
+    public $extension_requirement;
 
     /**
      * @var array<int, string>
      */
-    public array $implementation_requirements = [];
+    public $implementation_requirements = [];
 
     /**
      * @var list<AttributeStorage>
      */
-    public array $attributes = [];
+    public $attributes = [];
 
     /**
      * @var array<string, EnumCaseStorage>
      */
-    public array $enum_cases = [];
+    public $enum_cases = [];
 
     /**
      * @var 'int'|'string'|null
      */
-    public ?string $enum_type = null;
+    public $enum_type;
 
-    public ?string $description = null;
+    /**
+     * @var ?string
+     */
+    public $description;
 
     public bool $public_api = false;
 
-    public bool $readonly = false;
-
-    public function __construct(public string $name)
+    public function __construct(string $name)
     {
+        $this->name = $name;
     }
 
     /**
@@ -399,28 +481,6 @@ final class ClassLikeStorage implements HasAttributesInterface
     public function getAttributeStorages(): array
     {
         return $this->attributes;
-    }
-
-    public function hasAttributeIncludingParents(
-        string $fq_class_name,
-        Codebase $codebase,
-    ): bool {
-        if ($this->hasAttribute($fq_class_name)) {
-            return true;
-        }
-
-        foreach ($this->parent_classes as $parent_class) {
-            // skip missing dependencies
-            if (!$codebase->classlike_storage_provider->has($parent_class)) {
-                continue;
-            }
-            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class);
-            if ($parent_class_storage->hasAttribute($fq_class_name)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -437,44 +497,5 @@ final class ClassLikeStorage implements HasAttributesInterface
         }
 
         return $type_params;
-    }
-
-    public function hasSealedProperties(Config $config): bool
-    {
-        return $this->sealed_properties ?? $config->seal_all_properties;
-    }
-
-    public function hasSealedMethods(Config $config): bool
-    {
-        return $this->sealed_methods ?? $config->seal_all_methods;
-    }
-
-    private function hasAttribute(string $fq_class_name): bool
-    {
-        foreach ($this->attributes as $attribute) {
-            if ($fq_class_name === $attribute->fq_class_name) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public function getSuppressedIssuesForTemplateExtendParams(): array
-    {
-        $allowed_issue_types = [
-            DeprecatedClass::getIssueType(),
-        ];
-        $suppressed_issues_for_template_extend_params = [];
-        foreach ($this->suppressed_issues as $offset => $suppressed_issue) {
-            if (!in_array($suppressed_issue, $allowed_issue_types, true)) {
-                continue;
-            }
-            $suppressed_issues_for_template_extend_params[$offset] = $suppressed_issue;
-        }
-        return $suppressed_issues_for_template_extend_params;
     }
 }

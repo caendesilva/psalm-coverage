@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Config;
@@ -10,7 +8,6 @@ use Psalm\Internal\IncludeCollector;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
-use Psalm\Internal\VersionUtils;
 use Psalm\IssueBuffer;
 use Psalm\Plugin\EventHandler\AfterCodebasePopulatedInterface;
 use Psalm\Plugin\EventHandler\Event\AfterCodebasePopulatedEvent;
@@ -46,11 +43,11 @@ class ProjectCheckerTest extends TestCase
         self::$config = new TestConfig();
 
         if (!defined('PSALM_VERSION')) {
-            define('PSALM_VERSION', VersionUtils::getPsalmVersion());
+            define('PSALM_VERSION', '4.0.0');
         }
 
         if (!defined('PHP_PARSER_VERSION')) {
-            define('PHP_PARSER_VERSION', VersionUtils::getPhpParserVersion());
+            define('PHP_PARSER_VERSION', '4.0.0');
         }
     }
 
@@ -96,7 +93,7 @@ class ProjectCheckerTest extends TestCase
 
         ob_start();
         $this->project_analyzer->check('tests/fixtures/DummyProject');
-        $output = (string) ob_get_clean();
+        $output = ob_get_clean();
 
         $this->assertStringContainsString('Target PHP version: 8.1 (set by tests)', $output);
         $this->assertStringContainsString('Scanning files...', $output);
@@ -191,7 +188,7 @@ class ProjectCheckerTest extends TestCase
         $this->assertSame(0, IssueBuffer::getErrorCount());
 
         $this->assertSame(
-            "No files analyzed\nPsalm was able to infer types for 100% of the codebase",
+            'Psalm was able to infer types for 100% of the codebase',
             $this->project_analyzer->getCodebase()->analyzer->getTypeInferenceSummary(
                 $this->project_analyzer->getCodebase(),
             ),
@@ -228,7 +225,7 @@ class ProjectCheckerTest extends TestCase
             ),
         );
 
-        $bat_file_path = (string) getcwd()
+        $bat_file_path = getcwd()
             . DIRECTORY_SEPARATOR . 'tests'
             . DIRECTORY_SEPARATOR . 'fixtures'
             . DIRECTORY_SEPARATOR . 'DummyProject'
@@ -283,7 +280,7 @@ class Bat
 
         ob_start();
         $this->project_analyzer->checkDir('tests/fixtures/DummyProject');
-        $output = (string) ob_get_clean();
+        $output = ob_get_clean();
 
         $this->assertStringContainsString('Target PHP version: 8.1 (set by tests)', $output);
         $this->assertStringContainsString('Scanning files...', $output);
@@ -321,10 +318,10 @@ class Bat
         // checkPaths expects absolute paths,
         // otherwise it's unable to match them against configured folders
         $this->project_analyzer->checkPaths([
-            (string) realpath((string) getcwd() . '/tests/fixtures/DummyProject/Bar.php'),
-            (string) realpath((string) getcwd() . '/tests/fixtures/DummyProject/SomeTrait.php'),
+            realpath(getcwd() . '/tests/fixtures/DummyProject/Bar.php'),
+            realpath(getcwd() . '/tests/fixtures/DummyProject/SomeTrait.php'),
         ]);
-        $output = (string) ob_get_clean();
+        $output = ob_get_clean();
 
         $this->assertStringContainsString('Target PHP version: 8.1 (set by tests)', $output);
         $this->assertStringContainsString('Scanning files...', $output);
@@ -362,10 +359,10 @@ class Bat
         // checkPaths expects absolute paths,
         // otherwise it's unable to match them against configured folders
         $this->project_analyzer->checkPaths([
-            (string) realpath((string) getcwd() . '/tests/fixtures/DummyProject/Bar.php'),
-            (string) realpath((string) getcwd() . '/tests/fixtures/DummyProject/SomeTrait.php'),
+            realpath(getcwd() . '/tests/fixtures/DummyProject/Bar.php'),
+            realpath(getcwd() . '/tests/fixtures/DummyProject/SomeTrait.php'),
         ]);
-        $output = (string) ob_get_clean();
+        $output = ob_get_clean();
 
         $this->assertStringContainsString('Target PHP version: 8.1 (set by tests)', $output);
         $this->assertStringContainsString('Scanning files...', $output);

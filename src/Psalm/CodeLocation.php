@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm;
 
 use Exception;
@@ -35,25 +33,34 @@ class CodeLocation
 {
     use ImmutableNonCloneableTrait;
 
-    public string $file_path;
+    /** @var string */
+    public $file_path;
 
-    public string $file_name;
+    /** @var string */
+    public $file_name;
 
-    public int $raw_line_number;
+    /** @var int */
+    public $raw_line_number;
 
     private int $end_line_number = -1;
 
-    public int $raw_file_start;
+    /** @var int */
+    public $raw_file_start;
 
-    public int $raw_file_end;
+    /** @var int */
+    public $raw_file_end;
 
-    protected int $file_start;
+    /** @var int */
+    protected $file_start;
 
-    protected int $file_end;
+    /** @var int */
+    protected $file_end;
 
-    protected bool $single_line;
+    /** @var bool */
+    protected $single_line;
 
-    protected int $preview_start;
+    /** @var int */
+    protected $preview_start;
 
     private int $preview_end = -1;
 
@@ -69,17 +76,20 @@ class CodeLocation
 
     private ?string $text = null;
 
-    public ?int $docblock_start = null;
+    /** @var int|null */
+    public $docblock_start;
 
     private ?int $docblock_start_line_number = null;
 
-    protected ?int $docblock_line_number = null;
+    /** @var int|null */
+    protected $docblock_line_number;
 
     private ?int $regex_type = null;
 
     private bool $have_recalculated = false;
 
-    public ?CodeLocation $previous_location = null;
+    /** @var null|CodeLocation */
+    public $previous_location;
 
     public const VAR_TYPE = 0;
     public const FUNCTION_RETURN_TYPE = 1;
@@ -90,32 +100,6 @@ class CodeLocation
     public const CATCH_VAR = 6;
     public const FUNCTION_PHPDOC_METHOD = 7;
 
-    private const PROPERTY_KEYS_FOR_UNSERIALIZE = [
-        'file_path' => 'file_path',
-        'file_name' => 'file_name',
-        'raw_line_number' => 'raw_line_number',
-        "\0" . self::class . "\0" . 'end_line_number' => 'end_line_number',
-        'raw_file_start' => 'raw_file_start',
-        'raw_file_end' => 'raw_file_end',
-        "\0*\0" . 'file_start' => 'file_start',
-        "\0*\0" . 'file_end' => 'file_end',
-        "\0*\0" . 'single_line' => 'single_line',
-        "\0*\0" . 'preview_start' => 'preview_start',
-        "\0" . self::class . "\0" . 'preview_end' => 'preview_end',
-        "\0" . self::class . "\0" . 'selection_start' => 'selection_start',
-        "\0" . self::class . "\0" . 'selection_end' => 'selection_end',
-        "\0" . self::class . "\0" . 'column_from' => 'column_from',
-        "\0" . self::class . "\0" . 'column_to' => 'column_to',
-        "\0" . self::class . "\0" . 'snippet' => 'snippet',
-        "\0" . self::class . "\0" . 'text' => 'text',
-        'docblock_start' => 'docblock_start',
-        "\0" . self::class . "\0" . 'docblock_start_line_number' => 'docblock_start_line_number',
-        "\0*\0" . 'docblock_line_number' => 'docblock_line_number',
-        "\0" . self::class . "\0" . 'regex_type' => 'regex_type',
-        "\0" . self::class . "\0" . 'have_recalculated' => 'have_recalculated',
-        'previous_location' => 'previous_location',
-    ];
-
     public function __construct(
         FileSource $file_source,
         PhpParser\Node $stmt,
@@ -123,7 +107,7 @@ class CodeLocation
         bool $single_line = false,
         ?int $regex_type = null,
         ?string $selected_text = null,
-        ?int $comment_line = null,
+        ?int $comment_line = null
     ) {
         /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
         $this->file_start = (int)$stmt->getAttribute('startFilePos');
@@ -147,22 +131,9 @@ class CodeLocation
         $this->preview_start = $this->docblock_start ?: $this->file_start;
 
         /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $this->raw_line_number = $stmt->getStartLine();
+        $this->raw_line_number = $stmt->getLine();
 
         $this->docblock_line_number = $comment_line;
-    }
-
-    /**
-     * Suppresses memory usage when unserializing objects.
-     *
-     * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait
-     */
-    public function __unserialize(array $properties): void
-    {
-        foreach (self::PROPERTY_KEYS_FOR_UNSERIALIZE as $key => $property_name) {
-            /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
-            $this->$property_name = $properties[$key];
-        }
     }
 
     /**
@@ -198,7 +169,6 @@ class CodeLocation
 
         $codebase = $project_analyzer->getCodebase();
 
-        /** @psalm-suppress ImpureMethodCall */
         $file_contents = $codebase->getFileContents($this->file_path);
 
         $file_length = strlen($file_contents);
@@ -251,24 +221,49 @@ class CodeLocation
 
             $indentation = (int)strpos($key_line, '@');
 
-            $key_line = trim((string) preg_replace('@\**/\s*@', '', mb_strcut($key_line, $indentation)));
+            $key_line = trim(preg_replace('@\**/\s*@', '', mb_strcut($key_line, $indentation)));
 
             $this->selection_start = $preview_offset + $indentation + $this->preview_start;
             $this->selection_end = $this->selection_start + strlen($key_line);
         }
 
         if ($this->regex_type !== null) {
-            $regex = match ($this->regex_type) {
-                self::VAR_TYPE => '/@(?:psalm-)?var[ \t]+' . CommentAnalyzer::TYPE_REGEX . '/',
-                self::FUNCTION_RETURN_TYPE => '/\\:\s+(\\??\s*[A-Za-z0-9_\\\\\[\]]+)/',
-                self::FUNCTION_PARAM_TYPE => '/^(\\??\s*[A-Za-z0-9_\\\\\[\]]+)\s/',
-                self::FUNCTION_PHPDOC_RETURN_TYPE => '/@(?:psalm-)?return[ \t]+' . CommentAnalyzer::TYPE_REGEX . '/',
-                self::FUNCTION_PHPDOC_METHOD => '/@(?:psalm-)?method[ \t]+(.*)/',
-                self::FUNCTION_PHPDOC_PARAM_TYPE => '/@(?:psalm-)?param[ \t]+' . CommentAnalyzer::TYPE_REGEX . '/',
-                self::FUNCTION_PARAM_VAR => '/(\$[^ ]*)/',
-                self::CATCH_VAR => '/(\$[^ ^\)]*)/',
-                default => throw new UnexpectedValueException('Unrecognised regex type ' . $this->regex_type),
-            };
+            switch ($this->regex_type) {
+                case self::VAR_TYPE:
+                    $regex = '/@(?:psalm-)?var[ \t]+' . CommentAnalyzer::TYPE_REGEX . '/';
+                    break;
+
+                case self::FUNCTION_RETURN_TYPE:
+                    $regex = '/\\:\s+(\\??\s*[A-Za-z0-9_\\\\\[\]]+)/';
+                    break;
+
+                case self::FUNCTION_PARAM_TYPE:
+                    $regex = '/^(\\??\s*[A-Za-z0-9_\\\\\[\]]+)\s/';
+                    break;
+
+                case self::FUNCTION_PHPDOC_RETURN_TYPE:
+                    $regex = '/@(?:psalm-)?return[ \t]+' . CommentAnalyzer::TYPE_REGEX . '/';
+                    break;
+
+                case self::FUNCTION_PHPDOC_METHOD:
+                    $regex = '/@(?:psalm-)?method[ \t]+(.*)/';
+                    break;
+
+                case self::FUNCTION_PHPDOC_PARAM_TYPE:
+                    $regex = '/@(?:psalm-)?param[ \t]+' . CommentAnalyzer::TYPE_REGEX . '/';
+                    break;
+
+                case self::FUNCTION_PARAM_VAR:
+                    $regex = '/(\$[^ ]*)/';
+                    break;
+
+                case self::CATCH_VAR:
+                    $regex = '/(\$[^ ^\)]*)/';
+                    break;
+
+                default:
+                    throw new UnexpectedValueException('Unrecognised regex type ' . $this->regex_type);
+            }
 
             $preview_snippet = mb_strcut(
                 $file_contents,

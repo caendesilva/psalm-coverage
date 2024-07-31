@@ -1,84 +1,112 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage;
 
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Issue\CodeIssue;
 use Psalm\Type\Union;
-use Stringable;
 
 use function array_column;
 use function array_fill_keys;
 use function array_map;
-use function count;
 use function implode;
 
-abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
+abstract class FunctionLikeStorage implements HasAttributesInterface
 {
     use CustomMetadataTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
-    public ?CodeLocation $location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $location;
 
-    public ?CodeLocation $stmt_location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $stmt_location;
 
     /**
      * @psalm-readonly-allow-private-mutation
      * @var list<FunctionLikeParameter>
      */
-    public array $params = [];
+    public $params = [];
 
     /**
      * @psalm-readonly-allow-private-mutation
      * @var array<string, bool>
      */
-    public array $param_lookup = [];
+    public $param_lookup = [];
 
-    public ?Union $return_type = null;
+    /**
+     * @var Union|null
+     */
+    public $return_type;
 
-    public ?CodeLocation $return_type_location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $return_type_location;
 
-    public ?Union $signature_return_type = null;
+    /**
+     * @var Union|null
+     */
+    public $signature_return_type;
 
-    public ?CodeLocation $signature_return_type_location = null;
+    /**
+     * @var CodeLocation|null
+     */
+    public $signature_return_type_location;
 
-    public ?string $cased_name = null;
+    /**
+     * @var ?string
+     */
+    public $cased_name;
 
     /**
      * @var array<int, string>
      */
-    public array $suppressed_issues = [];
+    public $suppressed_issues = [];
 
-    public ?bool $deprecated = null;
+    /**
+     * @var ?bool
+     */
+    public $deprecated;
 
     /**
      * @var list<non-empty-string>
      */
-    public array $internal = [];
+    public $internal = [];
 
-    public bool $variadic = false;
+    /**
+     * @var bool
+     */
+    public $variadic = false;
 
-    public bool $returns_by_ref = false;
+    /**
+     * @var bool
+     */
+    public $returns_by_ref = false;
 
-    public ?int $required_param_count = null;
+    /**
+     * @var ?int
+     */
+    public $required_param_count;
 
     /**
      * @var array<string, Union>
      */
-    public array $defined_constants = [];
+    public $defined_constants = [];
 
     /**
      * @var array<string, bool>
      */
-    public array $global_variables = [];
+    public $global_variables = [];
 
     /**
      * @var array<string, Union>
      */
-    public array $global_types = [];
+    public $global_types = [];
 
     /**
      * An array holding the class template "as" types.
@@ -91,154 +119,162 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      *
      * @var array<string, non-empty-array<string, Union>>|null
      */
-    public ?array $template_types = null;
+    public $template_types;
 
     /**
      * @var array<int, Possibilities>
      */
-    public array $assertions = [];
+    public $assertions = [];
 
     /**
      * @var array<int, Possibilities>
      */
-    public array $if_true_assertions = [];
+    public $if_true_assertions = [];
 
     /**
      * @var array<int, Possibilities>
      */
-    public array $if_false_assertions = [];
+    public $if_false_assertions = [];
 
-    public bool $has_visitor_issues = false;
+    /**
+     * @var bool
+     */
+    public $has_visitor_issues = false;
 
     /**
      * @var list<CodeIssue>
      */
-    public array $docblock_issues = [];
+    public $docblock_issues = [];
 
     /**
      * @var array<string, bool>
      */
-    public array $throws = [];
+    public $throws = [];
 
     /**
      * @var array<string, CodeLocation>
      */
-    public array $throw_locations = [];
-
-    public bool $has_yield = false;
-
-    public bool $mutation_free = false;
-
-    public ?string $return_type_description = null;
+    public $throw_locations = [];
 
     /**
-     * @var array<string, CodeLocation>
+     * @var bool
      */
-    public array $unused_docblock_parameters = [];
+    public $has_yield = false;
 
-    public bool $has_undertyped_native_parameters = false;
+    /**
+     * @var bool
+     */
+    public $mutation_free = false;
 
-    public bool $is_static = false;
+    /**
+     * @var string|null
+     */
+    public $return_type_description;
 
-    public bool $pure = false;
+    /**
+     * @var array<string, CodeLocation>|null
+     */
+    public $unused_docblock_params;
+
+    /**
+     * @var bool
+     */
+    public $pure = false;
 
     /**
      * Whether or not the function output is dependent solely on input - a function can be
      * impure but still have this property (e.g. var_export). Useful for taint analysis.
+     *
+     * @var bool
      */
-    public bool $specialize_call = false;
+    public $specialize_call = false;
 
     /**
      * @var array<string>
      */
-    public array $taint_source_types = [];
+    public $taint_source_types = [];
 
     /**
      * @var array<string>
      */
-    public array $added_taints = [];
+    public $added_taints = [];
 
     /**
      * @var array<string>
      */
-    public array $removed_taints = [];
+    public $removed_taints = [];
 
     /**
      * @var array<Union>
      */
-    public array $conditionally_removed_taints = [];
+    public $conditionally_removed_taints = [];
 
     /**
      * @var array<int, string>
      */
-    public array $return_source_params = [];
+    public $return_source_params = [];
 
-    public bool $allow_named_arg_calls = true;
+    /**
+     * @var bool
+     */
+    public $allow_named_arg_calls = true;
 
     /**
      * @var list<AttributeStorage>
      */
-    public array $attributes = [];
+    public $attributes = [];
 
     /**
      * @var list<array{fqn: string, params: array<int>, return: bool}>|null
      */
-    public ?array $proxy_calls = [];
-
-    public ?string $description = null;
-
-    public bool $public_api = false;
+    public $proxy_calls = [];
 
     /**
-     * Used in the Language Server
+     * @var ?string
      */
-    public function getHoverMarkdown(): string
+    public $description;
+
+    public function __toString(): string
     {
-        $params = count($this->params) > 0 ? "\n" . implode(
-            ",\n",
-            array_map(
-                static function (FunctionLikeParameter $param): string {
-                    $realType = $param->type ?: 'mixed';
-                    return "    {$realType} \${$param->name}";
-                },
-                $this->params,
-            ),
-        ) . "\n" : '';
-        $return_type = $this->return_type ?: 'mixed';
-        $symbol_text = "function {$this->cased_name}({$params}): {$return_type}";
-
-        if (!$this instanceof MethodStorage) {
-            return $symbol_text;
-        }
-
-        $visibility_text = match ($this->visibility) {
-            ClassLikeAnalyzer::VISIBILITY_PRIVATE => 'private',
-            ClassLikeAnalyzer::VISIBILITY_PROTECTED => 'protected',
-            default => 'public',
-        };
-
-        return $visibility_text . ' ' . $symbol_text;
+        return $this->getSignature(false);
     }
 
-    public function getCompletionSignature(): string
+    public function getSignature(bool $allow_newlines): string
     {
-        $symbol_text = 'function ' . $this->cased_name . '('   . implode(
-            ',',
-            array_map(
-                static fn(FunctionLikeParameter $param): string => ($param->type ?: 'mixed') . ' $' . $param->name,
-                $this->params,
-            ),
-        ) .  ') : ' . ($this->return_type ?: 'mixed');
+        $newlines = $allow_newlines && !empty($this->params);
+
+        $symbol_text = 'function ' . $this->cased_name . '('
+            . ($newlines ? "\n" : '')
+            . implode(
+                ',' . ($newlines ? "\n" : ' '),
+                array_map(
+                    static fn(FunctionLikeParameter $param): string =>
+                        ($newlines ? '    ' : '')
+                        . ($param->type ? $param->type->getId(false) : 'mixed')
+                        . ' $' . $param->name,
+                    $this->params,
+                ),
+            )
+            . ($newlines ? "\n" : '')
+            . ') : '
+            . ($this->return_type ?: 'mixed');
 
         if (!$this instanceof MethodStorage) {
             return $symbol_text;
         }
 
-        $visibility_text = match ($this->visibility) {
-            ClassLikeAnalyzer::VISIBILITY_PRIVATE => 'private',
-            ClassLikeAnalyzer::VISIBILITY_PROTECTED => 'protected',
-            default => 'public',
-        };
+        switch ($this->visibility) {
+            case ClassLikeAnalyzer::VISIBILITY_PRIVATE:
+                $visibility_text = 'private';
+                break;
+
+            case ClassLikeAnalyzer::VISIBILITY_PROTECTED:
+                $visibility_text = 'protected';
+                break;
+
+            default:
+                $visibility_text = 'public';
+        }
 
         return $visibility_text . ' ' . $symbol_text;
     }
@@ -269,10 +305,5 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
     public function getAttributeStorages(): array
     {
         return $this->attributes;
-    }
-
-    public function __toString(): string
-    {
-        return $this->getCompletionSignature();
     }
 }

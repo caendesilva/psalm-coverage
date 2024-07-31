@@ -1,71 +1,36 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Fork;
 
 use Composer\XdebugHandler\XdebugHandler;
 
 use function array_filter;
-use function array_merge;
 use function array_splice;
-use function assert;
-use function count;
-use function defined;
 use function extension_loaded;
 use function file_get_contents;
 use function file_put_contents;
 use function implode;
 use function in_array;
 use function ini_get;
-use function is_int;
 use function preg_replace;
-use function strlen;
-use function strtolower;
+
+use const PHP_VERSION_ID;
 
 /**
  * @internal
  */
-final class PsalmRestarter extends XdebugHandler
+class PsalmRestarter extends XdebugHandler
 {
-    private const REQUIRED_OPCACHE_SETTINGS = [
-        'enable_cli' => 1,
-        'jit' => 1205,
-        'validate_timestamps' => 0,
-        'file_update_protection' => 0,
-        'jit_buffer_size' => 128 * 1024 * 1024,
-        'max_accelerated_files' => 1_000_000,
-        'interned_strings_buffer' => 64,
-        'jit_max_root_traces' => 1_000_000,
-        'jit_max_side_traces' => 1_000_000,
-        'jit_max_exit_counters' => 1_000_000,
-        'jit_hot_loop' => 1,
-        'jit_hot_func' => 1,
-        'jit_hot_return' => 1,
-        'jit_hot_side_exit' => 1,
-        'jit_blacklist_root_trace' => 255,
-        'jit_blacklist_side_trace' => 255,
-        'optimization_level' => '0x7FFEBFFF',
-        'preload' => '',
-        'log_verbosity_level' => 0,
-    ];
-
     private bool $required = false;
 
     /**
      * @var string[]
      */
-    private array $disabled_extensions = [];
+    private array $disabledExtensions = [];
 
-    public function disableExtension(string $disabled_extension): void
+    public function disableExtension(string $disabledExtension): void
     {
-        $this->disabled_extensions[] = $disabled_extension;
-    }
-
-    /** @param list<non-empty-string> $disable_extensions */
-    public function disableExtensions(array $disable_extensions): void
-    {
-        $this->disabled_extensions = array_merge($this->disabled_extensions, $disable_extensions);
+        $this->disabledExtensions[] = $disabledExtension;
     }
 
     /**
@@ -77,100 +42,56 @@ final class PsalmRestarter extends XdebugHandler
     protected function requiresRestart($default): bool
     {
         $this->required = (bool) array_filter(
-            $this->disabled_extensions,
-            static fn(string $extension): bool => extension_loaded($extension),
+            $this->disabledExtensions,
+            static fn(string $extension): bool => extension_loaded($extension)
         );
 
-        $opcache_loaded = extension_loaded('opcache') || extension_loaded('Zend OPcache');
-
-        if ($opcache_loaded && !defined('PHP_WINDOWS_VERSION_MAJOR')) {
+        if (PHP_VERSION_ID >= 8_00_00 && (extension_loaded('opcache') || extension_loaded('Zend OPcache'))) {
             // restart to enable JIT if it's not configured in the optimal way
-            foreach (self::REQUIRED_OPCACHE_SETTINGS as $ini_name => $required_value) {
-                $value = (string) ini_get("opcache.$ini_name");
-                if ($ini_name === 'jit_buffer_size') {
-                    $value = self::toBytes($value);
-                } elseif ($ini_name === 'enable_cli') {
-                    $value = in_array($value, ['1', 'true', true, 1]) ? 1 : 0;
-                } elseif (is_int($required_value)) {
-                    $value = (int) $value;
-                }
-                if ($value !== $required_value) {
-                    return true;
-                }
+            if (!in_array(ini_get('opcache.enable_cli'), ['1', 'true', true, 1])) {
+                return true;
             }
-        }
 
-        // opcache.save_comments is required for json mapper (used in language server) to work
-        if ($opcache_loaded && in_array(ini_get('opcache.save_comments'), ['0', 'false', 0, false])) {
-            return true;
+            if (((int) ini_get('opcache.jit')) !== 1205) {
+                return true;
+            }
+
+            if (((int) ini_get('opcache.jit')) === 0) {
+                return true;
+            }
         }
 
         return $default || $this->required;
     }
 
-    private static function toBytes(string $value): int
-    {
-        if (strlen($value) === 0) {
-            return 0;
-        }
-
-        $unit = strtolower($value[strlen($value) - 1]);
-
-        if (in_array($unit, ['g', 'm', 'k'], true)) {
-            $value = (int) $value;
-        } else {
-            $unit = '';
-            $value = (int) $value;
-        }
-
-        switch ($unit) {
-            case 'g':
-                $value *= 1024;
-                // no break
-            case 'm':
-                $value *= 1024;
-                // no break
-            case 'k':
-                $value *= 1024;
-        }
-
-        return $value;
-    }
-
-
     /**
      * No type hint to allow xdebug-handler v1 and v2 usage
      *
-     * @param non-empty-list<string> $command
-     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingNativeTypeHint
+     * @param string[] $command
      */
-    protected function restart($command): void
+    protected function restart(array $command): void
     {
         if ($this->required && $this->tmpIni) {
-            $regex = '/^\s*((?:zend_)?extension\s*=.*(' . implode('|', $this->disabled_extensions) . ').*)$/mi';
+            $regex = '/^\s*(extension\s*=.*(' . implode('|', $this->disabledExtensions) . ').*)$/mi';
             $content = file_get_contents($this->tmpIni);
-            assert($content !== false);
 
-            $content = (string) preg_replace($regex, ';$1', $content);
+            $content = preg_replace($regex, ';$1', $content);
 
             file_put_contents($this->tmpIni, $content);
         }
 
         $additional_options = [];
-        $opcache_loaded = extension_loaded('opcache') || extension_loaded('Zend OPcache');
 
         // executed in the parent process (before restart)
         // if it wasn't loaded then we apparently don't have opcache installed and there's no point trying
         // to tweak it
-        if ($opcache_loaded && !defined('PHP_WINDOWS_VERSION_MAJOR')) {
-            $additional_options = [];
-            foreach (self::REQUIRED_OPCACHE_SETTINGS as $key => $value) {
-                $additional_options []= "-dopcache.{$key}={$value}";
-            }
-        }
-
-        if ($opcache_loaded) {
-            $additional_options[] = '-dopcache.save_comments=1';
+        // If we're running on 7.4 there's no JIT available
+        if (PHP_VERSION_ID >= 8_00_00 && (extension_loaded('opcache') || extension_loaded('Zend OPcache'))) {
+            $additional_options = [
+                '-dopcache.enable_cli=true',
+                '-dopcache.jit_buffer_size=512M',
+                '-dopcache.jit=1205',
+            ];
         }
 
         array_splice(
@@ -179,7 +100,6 @@ final class PsalmRestarter extends XdebugHandler
             0,
             $additional_options,
         );
-        assert(count($command) > 0);
 
         parent::restart($command);
     }

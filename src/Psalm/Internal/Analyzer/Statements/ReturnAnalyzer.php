@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements;
 
 use PhpParser;
@@ -34,7 +32,6 @@ use Psalm\Issue\LessSpecificReturnStatement;
 use Psalm\Issue\MixedReturnStatement;
 use Psalm\Issue\MixedReturnTypeCoercion;
 use Psalm\Issue\NoValue;
-use Psalm\Issue\NonVariableReferenceReturn;
 use Psalm\Issue\NullableReturnStatement;
 use Psalm\IssueBuffer;
 use Psalm\Storage\FunctionLikeStorage;
@@ -55,12 +52,12 @@ use function strtolower;
 /**
  * @internal
  */
-final class ReturnAnalyzer
+class ReturnAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt\Return_ $stmt,
-        Context $context,
+        Context $context
     ): void {
         $doc_comment = $stmt->getDocComment();
 
@@ -230,23 +227,6 @@ final class ReturnAnalyzer
 
             $storage = $source->getFunctionLikeStorage($statements_analyzer);
 
-            if ($storage->signature_return_type
-                && $storage->signature_return_type->by_ref
-                && $stmt->expr !== null
-                && !($stmt->expr instanceof PhpParser\Node\Expr\Variable
-                    || $stmt->expr instanceof PhpParser\Node\Expr\PropertyFetch
-                    || $stmt->expr instanceof PhpParser\Node\Expr\StaticPropertyFetch
-                )
-            ) {
-                IssueBuffer::maybeAdd(
-                    new NonVariableReferenceReturn(
-                        'Only variable references should be returned by reference',
-                        new CodeLocation($source, $stmt->expr),
-                    ),
-                    $statements_analyzer->getSuppressedIssues(),
-                );
-            }
-
             $cased_method_id = $source->getCorrectlyCasedMethodId();
 
             if ($stmt->expr && $storage->location) {
@@ -277,18 +257,6 @@ final class ReturnAnalyzer
                         $statements_analyzer,
                         null,
                     );
-
-                    [, $method_name] = explode('::', $cased_method_id);
-                    if ($method_name === '__construct') {
-                        IssueBuffer::maybeAdd(
-                            new InvalidReturnStatement(
-                                'No return values are expected for ' . $cased_method_id,
-                                new CodeLocation($source, $stmt->expr),
-                            ),
-                            $statements_analyzer->getSuppressedIssues(),
-                        );
-                        return;
-                    }
                 } else {
                     $declared_return_type = $storage->return_type;
                 }
@@ -578,7 +546,7 @@ final class ReturnAnalyzer
         PhpParser\Node\Stmt\Return_ $stmt,
         string $cased_method_id,
         Union $inferred_type,
-        FunctionLikeStorage $storage,
+        FunctionLikeStorage $storage
     ): void {
         if (!$statements_analyzer->data_flow_graph instanceof TaintFlowGraph
             || !$stmt->expr
@@ -618,7 +586,7 @@ final class ReturnAnalyzer
     private static function potentiallyInferTypesOnClosureFromParentReturnType(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\FunctionLike $expr,
-        Context $context,
+        Context $context
     ): void {
         // if not returning from inside of a function, return
         if (!$context->calling_method_id && !$context->calling_function_id) {
@@ -683,7 +651,7 @@ final class ReturnAnalyzer
     private static function inferInnerClosureTypeFromParent(
         Codebase $codebase,
         ?Union $return_type,
-        ?Union $parent_return_type,
+        ?Union $parent_return_type
     ): ?Union {
         if (!$parent_return_type) {
             return $return_type;

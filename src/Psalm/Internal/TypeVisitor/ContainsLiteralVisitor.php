@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\TypeVisitor;
 
 use Psalm\Type\Atomic\TArray;
@@ -16,7 +14,7 @@ use Psalm\Type\TypeVisitor;
 /**
  * @internal
  */
-final class ContainsLiteralVisitor extends TypeVisitor
+class ContainsLiteralVisitor extends TypeVisitor
 {
     private bool $contains_literal = false;
 

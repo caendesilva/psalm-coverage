@@ -90,15 +90,6 @@ Whether or not to use types as defined in docblocks. Defaults to `true`.
 ```
 If not using all docblock types, you can still use docblock property types. Defaults to `false` (though only relevant if `useDocblockTypes` is `false`).
 
-#### docblockPropertyTypesSealProperties
-
-```xml
-<psalm
-  docblockPropertyTypesSealProperties="[bool]"
->
-```
-Whether using @property in class docblocks should imply @psalm-seal-properties. Defaults to `true`.
-
 #### usePhpDocMethodsWithoutMagicCall
 
 ```xml
@@ -213,7 +204,7 @@ When `true`, Psalm will check that the developer has caught every exception in g
   ignoreInternalFunctionFalseReturn="[bool]"
 >
 ```
-When `true`, Psalm ignores possibly-false issues stemming from return values of internal functions (like `preg_split`) that may return false, but do so rarely. Defaults to `false`.
+When `true`, Psalm ignores possibly-false issues stemming from return values of internal functions (like `preg_split`) that may return false, but do so rarely. Defaults to `true`.
 
 #### ignoreInternalFunctionNullReturn
 
@@ -222,7 +213,7 @@ When `true`, Psalm ignores possibly-false issues stemming from return values of 
   ignoreInternalFunctionNullReturn="[bool]"
 >
 ```
-When `true`, Psalm ignores possibly-null issues stemming from return values of internal array functions (like `current`) that may return null, but do so rarely. Defaults to `false`.
+When `true`, Psalm ignores possibly-null issues stemming from return values of internal array functions (like `current`) that may return null, but do so rarely. Defaults to `true`.
 
 #### inferPropertyTypesFromConstructor
 
@@ -272,14 +263,6 @@ When `true`, Psalm will complain when referencing an explicit string offset on a
 >
 ```
 When `true`, Psalm will complain when referencing an explicit integer offset on an array e.g. `$arr[7]` without a user first asserting that it exists (either via an `isset` check or via an object-like array). Defaults to `false`.
-
-#### ensureOverrideAttribute
-```xml
-<psalm
-  ensureOverrideAttribute="[bool]"
->
-```
-When `true`, Psalm will report class and interface methods that override a method on a parent, but do not have an `Override` attribute. Defaults to `false`.
 
 #### phpVersion
 ```xml
@@ -422,14 +405,6 @@ Whether or not to allow `require`/`include` calls in your PHP. Defaults to `true
 ```
 Allows you to hard-code a serializer for Psalm to use when caching data. By default, Psalm uses `ext-igbinary` *if* the version is greater than or equal to 2.0.5, otherwise it defaults to PHP's built-in serializer.
 
-#### compressor
-```xml
-<psalm
-  compressor="['lz4'|'deflate'|'off']"
->
-```
-Allows you to hard-code a compressor for Psalm's cache. By default, Psalm uses `ext-zlib` deflate, if it's enabled.
-
 #### threads
 ```xml
 <psalm
@@ -521,11 +496,6 @@ class PremiumCar extends StandardCar {
 Emits [UnusedBaselineEntry](issues/UnusedBaselineEntry.md) when a baseline entry
 is not being used to suppress an issue.
 
-#### findUnusedIssueHandlerSuppression
-
-Emits [UnusedIssueHandlerSuppression](issues/UnusedIssueHandlerSuppression.md) when a suppressed issue handler
-is not being used to suppress an issue.
-
 ## Project settings
 
 #### &lt;projectFiles&gt;
@@ -595,11 +565,10 @@ or interfaces defined in a stub file, this stub should be configured with attrib
 ```
 
 #### &lt;ignoreExceptions&gt;
-Optional. A list of exceptions to not report for `checkForThrowsDocblock` or `checkForThrowsInGlobalScope`. The `class` tag will make Psalm ignore only instances of the specified class, while `classAndDescendants` will make Psalm also ignore subclasses. If an exception has `onlyGlobalScope` set to `true`, only `checkForThrowsInGlobalScope` is ignored for that exception, e.g.
+Optional. A list of exceptions to not report for `checkForThrowsDocblock` or `checkForThrowsInGlobalScope`. If an exception has `onlyGlobalScope` set to `true`, only `checkForThrowsInGlobalScope` is ignored for that exception, e.g.
 ```xml
 <ignoreExceptions>
   <class name="fully\qualified\path\Exc" onlyGlobalScope="true" />
-  <classAndDescendants name="fully\qualified\path\OtherExc" />
 </ignoreExceptions>
 ```
 

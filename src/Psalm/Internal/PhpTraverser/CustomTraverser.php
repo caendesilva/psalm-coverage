@@ -16,7 +16,7 @@ use function is_array;
 /**
  * @internal
  */
-final class CustomTraverser extends NodeTraverser
+class CustomTraverser extends NodeTraverser
 {
     public function __construct()
     {
@@ -27,8 +27,9 @@ final class CustomTraverser extends NodeTraverser
      * Recursively traverse a node.
      *
      * @param Node $node node to traverse
+     * @return Node Result of traversal (may be original node or new one)
      */
-    protected function traverseNode(Node $node): void
+    protected function traverseNode(Node $node): Node
     {
         foreach ($node->getSubNodeNames() as $name) {
             $subNode = &$node->$name;
@@ -59,7 +60,7 @@ final class CustomTraverser extends NodeTraverser
                 }
 
                 if ($traverseChildren) {
-                    $this->traverseNode($subNode);
+                    $subNode = $this->traverseNode($subNode);
                     if ($this->stopTraversal) {
                         break;
                     }
@@ -87,6 +88,8 @@ final class CustomTraverser extends NodeTraverser
                 }
             }
         }
+
+        return $node;
     }
 
     /**
@@ -121,7 +124,7 @@ final class CustomTraverser extends NodeTraverser
                 }
 
                 if ($traverseChildren) {
-                    $this->traverseNode($node);
+                    $node = $this->traverseNode($node);
                     if ($this->stopTraversal) {
                         break;
                     }
@@ -144,7 +147,7 @@ final class CustomTraverser extends NodeTraverser
                         } elseif (false === $return) {
                             throw new LogicException(
                                 'bool(false) return from leaveNode() no longer supported. ' .
-                                'Return NodeVisitor::REMOVE_NODE instead',
+                                'Return NodeTraverser::REMOVE_NODE instead',
                             );
                         } else {
                             throw new LogicException(

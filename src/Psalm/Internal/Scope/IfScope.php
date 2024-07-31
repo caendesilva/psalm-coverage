@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Scope;
 
 use Psalm\Context;
@@ -12,7 +10,7 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class IfScope
+class IfScope
 {
     /**
      * @var array<string, Union>|null

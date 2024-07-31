@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Scanner\UnresolvedConstant;
 
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
@@ -10,10 +8,14 @@ use Psalm\Internal\Scanner\UnresolvedConstantComponent;
  * @psalm-immutable
  * @internal
  */
-final class ArrayValue extends UnresolvedConstantComponent
+class ArrayValue extends UnresolvedConstantComponent
 {
+    /** @var array<int, KeyValuePair|ArraySpread> */
+    public array $entries;
+
     /** @param list<KeyValuePair|ArraySpread> $entries */
-    public function __construct(public readonly array $entries)
+    public function __construct(array $entries)
     {
+        $this->entries = $entries;
     }
 }

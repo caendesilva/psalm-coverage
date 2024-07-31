@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
 use PhpParser;
@@ -30,7 +28,7 @@ use function spl_object_id;
 /**
  * @internal
  */
-final class LoopAnalyzer
+class LoopAnalyzer
 {
     /**
      * Checks an array of statements in a loop
@@ -48,7 +46,7 @@ final class LoopAnalyzer
         LoopScope $loop_scope,
         Context &$continue_context = null,
         bool $is_do = false,
-        bool $always_enters_loop = false,
+        bool $always_enters_loop = false
     ): ?bool {
         $traverser = new PhpParser\NodeTraverser;
 
@@ -110,6 +108,11 @@ final class LoopAnalyzer
 
         if ($assignment_depth === 0 || $does_always_break) {
             $continue_context = clone $loop_context;
+
+            foreach ($continue_context->vars_in_scope as $context_var_id => $context_type) {
+                $continue_context->vars_in_scope[$context_var_id] = $context_type;
+            }
+
             $continue_context->loop_scope = $loop_scope;
 
             foreach ($pre_conditions as $condition_offset => $pre_condition) {
@@ -139,10 +142,10 @@ final class LoopAnalyzer
                 }
             }
 
-            $loop_parent_context->vars_possibly_in_scope = [
-                ...$continue_context->vars_possibly_in_scope,
-                ...$loop_parent_context->vars_possibly_in_scope,
-            ];
+            $loop_parent_context->vars_possibly_in_scope = array_merge(
+                $continue_context->vars_possibly_in_scope,
+                $loop_parent_context->vars_possibly_in_scope,
+            );
         } else {
             $original_parent_context = clone $loop_parent_context;
 
@@ -270,10 +273,10 @@ final class LoopAnalyzer
 
                 $continue_context->has_returned = false;
 
-                $loop_parent_context->vars_possibly_in_scope = [
-                    ...$continue_context->vars_possibly_in_scope,
-                    ...$loop_parent_context->vars_possibly_in_scope,
-                ];
+                $loop_parent_context->vars_possibly_in_scope = array_merge(
+                    $continue_context->vars_possibly_in_scope,
+                    $loop_parent_context->vars_possibly_in_scope,
+                );
 
                 // if there are no changes to the types, no need to re-examine
                 if (!$has_changes) {
@@ -442,10 +445,10 @@ final class LoopAnalyzer
                     $loop_parent_context->removeVarFromConflictingClauses($var_id);
                 } else {
                     $loop_parent_context->vars_in_scope[$var_id] =
-                        $loop_parent_context->vars_in_scope[$var_id]->setParentNodes([
-                            ...$loop_parent_context->vars_in_scope[$var_id]->parent_nodes,
-                            ...$continue_context->vars_in_scope[$var_id]->parent_nodes,
-                        ])
+                        $loop_parent_context->vars_in_scope[$var_id]->setParentNodes(array_merge(
+                            $loop_parent_context->vars_in_scope[$var_id]->parent_nodes,
+                            $continue_context->vars_in_scope[$var_id]->parent_nodes,
+                        ))
                     ;
                 }
             }
@@ -457,7 +460,7 @@ final class LoopAnalyzer
 
             try {
                 $negated_pre_condition_clauses = Algebra::negateFormula(array_merge(...$pre_condition_clauses));
-            } catch (ComplicatedExpressionException) {
+            } catch (ComplicatedExpressionException $e) {
                 $negated_pre_condition_clauses = [];
             }
 
@@ -528,7 +531,7 @@ final class LoopAnalyzer
         LoopScope $loop_scope,
         Context $loop_context,
         Context $continue_context,
-        Context $pre_outer_context,
+        Context $pre_outer_context
     ): void {
         if (!in_array(ScopeAnalyzer::ACTION_CONTINUE, $loop_scope->final_actions, true)) {
             $loop_context->vars_in_scope = $pre_outer_context->vars_in_scope;
@@ -556,10 +559,10 @@ final class LoopAnalyzer
         }
 
         // merge vars possibly in scope at the end of each loop
-        $loop_context->vars_possibly_in_scope = [
-            ...$loop_context->vars_possibly_in_scope,
-            ...$loop_scope->vars_possibly_in_scope,
-        ];
+        $loop_context->vars_possibly_in_scope = array_merge(
+            $loop_context->vars_possibly_in_scope,
+            $loop_scope->vars_possibly_in_scope,
+        );
     }
 
     /**
@@ -572,7 +575,7 @@ final class LoopAnalyzer
         array $pre_condition_clauses,
         Context $loop_context,
         Context $outer_context,
-        bool $is_do,
+        bool $is_do
     ): array {
         $pre_referenced_var_ids = $loop_context->cond_referenced_var_ids;
         $loop_context->cond_referenced_var_ids = [];

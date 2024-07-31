@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Scanner\UnresolvedConstant;
 
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
@@ -10,9 +8,15 @@ use Psalm\Internal\Scanner\UnresolvedConstantComponent;
  * @psalm-immutable
  * @internal
  */
-final class ClassConstant extends UnresolvedConstantComponent
+class ClassConstant extends UnresolvedConstantComponent
 {
-    public function __construct(public readonly string $fqcln, public readonly string $name)
+    public string $fqcln;
+
+    public string $name;
+
+    public function __construct(string $fqcln, string $name)
     {
+        $this->fqcln = $fqcln;
+        $this->name = $name;
     }
 }

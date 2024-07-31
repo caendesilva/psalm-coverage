@@ -4,28 +4,29 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer;
 
-use Amp\ByteStream\WritableResourceStream;
+use Amp\ByteStream\ResourceOutputStream;
+use Amp\Promise;
 
 /**
  * @internal
  */
-final class ProtocolStreamWriter implements ProtocolWriter
+class ProtocolStreamWriter implements ProtocolWriter
 {
-    private readonly WritableResourceStream $output;
+    private ResourceOutputStream $output;
 
     /**
      * @param resource $output
      */
     public function __construct($output)
     {
-        $this->output = new WritableResourceStream($output);
+        $this->output = new ResourceOutputStream($output);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function write(Message $msg): void
+    public function write(Message $msg): Promise
     {
-        $this->output->write((string)$msg);
+        return $this->output->write((string)$msg);
     }
 }

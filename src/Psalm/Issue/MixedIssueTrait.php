@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Issue;
 
 use Psalm\CodeLocation;
@@ -9,16 +7,18 @@ use Psalm\CodeLocation;
 trait MixedIssueTrait
 {
     /**
+     * @var ?CodeLocation
      * @readonly
      */
-    public ?CodeLocation $origin_location = null;
+    public $origin_location;
 
     public function __construct(
         string $message,
         CodeLocation $code_location,
-        ?CodeLocation $origin_location = null,
+        ?CodeLocation $origin_location = null
     ) {
-        parent::__construct($message, $code_location);
+        $this->code_location = $code_location;
+        $this->message = $message;
         $this->origin_location = $origin_location;
     }
 

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Scanner;
 
 use PhpParser;
@@ -20,15 +18,24 @@ use Psalm\Storage\FileStorage;
  */
 class FileScanner implements FileSource
 {
-    public function __construct(public string $file_path, public string $file_name, public bool $will_analyze)
+    public string $file_path;
+
+    public string $file_name;
+
+    public bool $will_analyze;
+
+    public function __construct(string $file_path, string $file_name, bool $will_analyze)
     {
+        $this->file_path = $file_path;
+        $this->file_name = $file_name;
+        $this->will_analyze = $will_analyze;
     }
 
     public function scan(
         Codebase $codebase,
         FileStorage $file_storage,
         bool $storage_from_cache = false,
-        ?Progress $progress = null,
+        ?Progress $progress = null
     ): void {
         if ($progress === null) {
             $progress = new VoidProgress();

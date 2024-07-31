@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\TypeReconciliation;
 
 use Psalm\Tests\TestCase;
@@ -63,6 +61,7 @@ class AssignmentInConditionalTest extends TestCase
             'assertOnRemainderOfArray' => [
                 'code' => '<?php
                     /**
+                     * @psalm-suppress MixedInferredReturnType
                      * @psalm-suppress MixedReturnStatement
                      */
                     function foo(string $file_name) : int {
@@ -299,8 +298,6 @@ class AssignmentInConditionalTest extends TestCase
 
                         return $pos;
                     }',
-                'assertions' => [],
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
             ],
             'assignmentInIf' => [
                 'code' => '<?php
@@ -419,7 +416,7 @@ class AssignmentInConditionalTest extends TestCase
                     }
 
                     if (rand(0, 10) > 5) {
-                    } elseif (($a = rand(0, 1) ? new A : null) && is_string($a->foo)) {}',
+                    } elseif (($a = rand(0, 1) ? new A : null) && $a->foo) {}',
             ],
             'noParadoxAfterConditionalAssignment' => [
                 'code' => '<?php
@@ -488,7 +485,7 @@ class AssignmentInConditionalTest extends TestCase
                         return "b";
                     }',
                 'error_message' => 'InvalidReturnStatement',
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'ignored_issues' => [],
                 'php_version' => '8.0',
             ],
             'assignmentInBranchOfAndReferencedAfterIf' => [

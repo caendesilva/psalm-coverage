@@ -1,12 +1,15 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage;
 
 final class FunctionStorage extends FunctionLikeStorage
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     /** @var array<string, bool> */
-    public array $byref_uses = [];
+    public $byref_uses = [];
+
+    /**
+     * @var bool
+     * @todo lift this property to FunctionLikeStorage in Psalm 6
+     */
+    public $is_static = false;
 }

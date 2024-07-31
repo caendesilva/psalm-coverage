@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements;
 
 use PhpParser;
@@ -15,12 +13,12 @@ use function end;
 /**
  * @internal
  */
-final class BreakAnalyzer
+class BreakAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt\Break_ $stmt,
-        Context $context,
+        Context $context
     ): void {
         $loop_scope = $context->loop_scope;
 
@@ -29,7 +27,7 @@ final class BreakAnalyzer
         if ($loop_scope) {
             if ($context->break_types
                 && end($context->break_types) === 'switch'
-                && (!$stmt->num instanceof PhpParser\Node\Scalar\Int_ || $stmt->num->value < 2)
+                && (!$stmt->num instanceof PhpParser\Node\Scalar\LNumber || $stmt->num->value < 2)
             ) {
                 $loop_scope->final_actions[] = ScopeAnalyzer::ACTION_LEAVE_SWITCH;
             } else {

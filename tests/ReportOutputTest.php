@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use DOMDocument;
@@ -12,7 +10,6 @@ use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
-use Psalm\Internal\VersionUtils;
 use Psalm\IssueBuffer;
 use Psalm\Report;
 use Psalm\Report\JsonReport;
@@ -77,19 +74,17 @@ class ReportOutputTest extends TestCase
 
     public function analyzeTaintFlowFilesForReport(): void
     {
-        $vulnerable_file_contents = <<<'EOF'
-        <?php
+        $vulnerable_file_contents = '<?php
 
-        function addPrefixToInput($prefix, $input): string {
-            return $prefix . $input;
-        }
+function addPrefixToInput($prefix, $input): string {
+    return $prefix . $input;
+}
 
-        $prefixedData = addPrefixToInput('myprefix', $_POST['cmd']);
+$prefixedData = addPrefixToInput(\'myprefix\', $_POST[\'cmd\']);
 
-        shell_exec($prefixedData);
+shell_exec($prefixedData);
 
-        echo "Successfully executed the command: " . $prefixedData;
-        EOF;
+echo "Successfully executed the command: " . $prefixedData;';
 
         $this->addFile(
             'taintflow-test/vulnerable.php',
@@ -112,7 +107,7 @@ class ReportOutputTest extends TestCase
                         'driver' => [
                             'name' => 'Psalm',
                             'informationUri' => 'https://psalm.dev',
-                            'version' => VersionUtils::getPsalmVersion(),
+                            'version' => '4.0.0',
                             'rules' => [
                                 [
                                     'id' => '246',
@@ -679,25 +674,23 @@ class ReportOutputTest extends TestCase
 
     public function analyzeFileForReport(): void
     {
-        $file_contents = <<<'EOF'
-        <?php
-        function psalmCanVerify(int $your_code): ?string {
-          return $as_you_____type;
-        }
+        $file_contents = '<?php
+function psalmCanVerify(int $your_code): ?string {
+  return $as_you_____type;
+}
 
-        // and it supports PHP 5.4 - 7.1
-        /** @psalm-suppress MixedArgument */
-        echo CHANGE_ME;
+// and it supports PHP 5.4 - 7.1
+/** @psalm-suppress MixedArgument */
+echo CHANGE_ME;
 
-        if (rand(0, 100) > 10) {
-          $a = 5;
-        } else {
-          //$a = 2;
-        }
+if (rand(0, 100) > 10) {
+  $a = 5;
+} else {
+  //$a = 2;
+}
 
-        /** @psalm-suppress MixedArgument */
-        echo $a;
-        EOF;
+/** @psalm-suppress MixedArgument */
+echo $a;';
 
         $this->addFile(
             'somefile.php',
@@ -713,7 +706,6 @@ class ReportOutputTest extends TestCase
 
         $issue_data = [
             [
-                'link' => 'https://psalm.dev/024',
                 'severity' => 'error',
                 'line_from' => 3,
                 'line_to' => 3,
@@ -729,13 +721,13 @@ class ReportOutputTest extends TestCase
                 'snippet_to' => 83,
                 'column_from' => 10,
                 'column_to' => 26,
-                'shortcode' => 24,
                 'error_level' => -1,
+                'shortcode' => 24,
+                'link' => 'https://psalm.dev/024',
                 'taint_trace' => null,
                 'other_references' => null,
             ],
             [
-                'link' => 'https://psalm.dev/138',
                 'severity' => 'error',
                 'line_from' => 3,
                 'line_to' => 3,
@@ -751,13 +743,35 @@ class ReportOutputTest extends TestCase
                 'snippet_to' => 83,
                 'column_from' => 10,
                 'column_to' => 26,
-                'shortcode' => 138,
                 'error_level' => 1,
+                'shortcode' => 138,
+                'link' => 'https://psalm.dev/138',
                 'taint_trace' => null,
                 'other_references' => null,
             ],
             [
-                'link' => 'https://psalm.dev/020',
+                'severity' => 'error',
+                'line_from' => 2,
+                'line_to' => 2,
+                'type' => 'MixedInferredReturnType',
+                'message' => 'Could not verify return type \'null|string\' for psalmCanVerify',
+                'file_name' => 'somefile.php',
+                'file_path' => 'somefile.php',
+                'snippet' => 'function psalmCanVerify(int $your_code): ?string {',
+                'selected_text' => '?string',
+                'from' => 47,
+                'to' => 54,
+                'snippet_from' => 6,
+                'snippet_to' => 56,
+                'column_from' => 42,
+                'column_to' => 49,
+                'error_level' => 1,
+                'shortcode' => 47,
+                'link' => 'https://psalm.dev/047',
+                'taint_trace' => null,
+                'other_references' => null,
+            ],
+            [
                 'severity' => 'error',
                 'line_from' => 8,
                 'line_to' => 8,
@@ -773,13 +787,13 @@ class ReportOutputTest extends TestCase
                 'snippet_to' => 172,
                 'column_from' => 6,
                 'column_to' => 15,
-                'shortcode' => 20,
                 'error_level' => -1,
+                'shortcode' => 20,
+                'link' => 'https://psalm.dev/020',
                 'taint_trace' => null,
                 'other_references' => null,
             ],
             [
-                'link' => 'https://psalm.dev/126',
                 'severity' => 'info',
                 'line_from' => 17,
                 'line_to' => 17,
@@ -795,8 +809,9 @@ class ReportOutputTest extends TestCase
                 'snippet_to' => 277,
                 'column_from' => 6,
                 'column_to' => 8,
-                'shortcode' => 126,
                 'error_level' => 3,
+                'shortcode' => 126,
+                'link' => 'https://psalm.dev/126',
                 'taint_trace' => null,
                 'other_references' => null,
             ],
@@ -814,7 +829,7 @@ class ReportOutputTest extends TestCase
     {
         $issues_data = [
             22 => new IssueData(
-                IssueData::SEVERITY_INFO,
+                'info',
                 15,
                 15,
                 'PossiblyUndefinedGlobalVariable',
@@ -833,7 +848,7 @@ class ReportOutputTest extends TestCase
         ];
 
         $report_options = ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.json'])[0];
-        $fixable_issue_counts = [];
+        $fixable_issue_counts = ['MixedInferredReturnType' => 1];
 
         $report = new JsonReport(
             $issues_data,
@@ -876,6 +891,22 @@ class ReportOutputTest extends TestCase
                             'endLine' => 3,
                             'startColumn' => 9,
                             'endColumn' => 25,
+                        ],
+                    ],
+                    'type' => 'CODE_SMELL',
+                    'severity' => 'CRITICAL',
+                ],
+                [
+                    'engineId' => 'Psalm',
+                    'ruleId' => 'MixedInferredReturnType',
+                    'primaryLocation' => [
+                        'message' => 'Could not verify return type \'null|string\' for psalmCanVerify',
+                        'filePath' => 'somefile.php',
+                        'textRange' => [
+                            'startLine' => 2,
+                            'endLine' => 2,
+                            'startColumn' => 41,
+                            'endColumn' => 48,
                         ],
                     ],
                     'type' => 'CODE_SMELL',
@@ -932,13 +963,12 @@ class ReportOutputTest extends TestCase
         $emacs_report_options = ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.emacs'])[0];
 
         $this->assertSame(
-            <<<'EOF'
-            somefile.php:3:10:error - UndefinedVariable: Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
-            somefile.php:3:10:error - MixedReturnStatement: Could not infer a return type (see https://psalm.dev/138)
-            somefile.php:8:6:error - UndefinedConstant: Const CHANGE_ME is not defined (see https://psalm.dev/020)
-            somefile.php:17:6:warning - PossiblyUndefinedGlobalVariable: Possibly undefined global variable $a, first seen on line 11 (see https://psalm.dev/126)
-
-            EOF,
+            'somefile.php:3:10:error - Cannot find referenced variable $as_you_____type
+somefile.php:3:10:error - Could not infer a return type
+somefile.php:2:42:error - Could not verify return type \'null|string\' for psalmCanVerify
+somefile.php:8:6:error - Const CHANGE_ME is not defined
+somefile.php:17:6:warning - Possibly undefined global variable $a, first seen on line 11
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $emacs_report_options),
         );
     }
@@ -950,13 +980,12 @@ class ReportOutputTest extends TestCase
         $pylint_report_options = ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.pylint'])[0];
 
         $this->assertSame(
-            <<<'EOF'
-            somefile.php:3: [E0001] UndefinedVariable: Cannot find referenced variable $as_you_____type (column 10)
-            somefile.php:3: [E0001] MixedReturnStatement: Could not infer a return type (column 10)
-            somefile.php:8: [E0001] UndefinedConstant: Const CHANGE_ME is not defined (column 6)
-            somefile.php:17: [W0001] PossiblyUndefinedGlobalVariable: Possibly undefined global variable $a, first seen on line 11 (column 6)
-
-            EOF,
+            'somefile.php:3: [E0001] UndefinedVariable: Cannot find referenced variable $as_you_____type (column 10)
+somefile.php:3: [E0001] MixedReturnStatement: Could not infer a return type (column 10)
+somefile.php:2: [E0001] MixedInferredReturnType: Could not verify return type \'null|string\' for psalmCanVerify (column 42)
+somefile.php:8: [E0001] UndefinedConstant: Const CHANGE_ME is not defined (column 6)
+somefile.php:17: [W0001] PossiblyUndefinedGlobalVariable: Possibly undefined global variable $a, first seen on line 11 (column 6)
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $pylint_report_options),
         );
     }
@@ -969,21 +998,22 @@ class ReportOutputTest extends TestCase
         $console_report_options->use_color = false;
 
         $this->assertSame(
-            <<<'EOF'
-            ERROR: UndefinedVariable - somefile.php:3:10 - Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
-              return $as_you_____type;
+            'ERROR: UndefinedVariable - somefile.php:3:10 - Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
+  return $as_you_____type;
 
-            ERROR: MixedReturnStatement - somefile.php:3:10 - Could not infer a return type (see https://psalm.dev/138)
-              return $as_you_____type;
+ERROR: MixedReturnStatement - somefile.php:3:10 - Could not infer a return type (see https://psalm.dev/138)
+  return $as_you_____type;
 
-            ERROR: UndefinedConstant - somefile.php:8:6 - Const CHANGE_ME is not defined (see https://psalm.dev/020)
-            echo CHANGE_ME;
+ERROR: MixedInferredReturnType - somefile.php:2:42 - Could not verify return type \'null|string\' for psalmCanVerify (see https://psalm.dev/047)
+function psalmCanVerify(int $your_code): ?string {
 
-            INFO: PossiblyUndefinedGlobalVariable - somefile.php:17:6 - Possibly undefined global variable $a, first seen on line 11 (see https://psalm.dev/126)
-            echo $a
+ERROR: UndefinedConstant - somefile.php:8:6 - Const CHANGE_ME is not defined (see https://psalm.dev/020)
+echo CHANGE_ME;
 
+INFO: PossiblyUndefinedGlobalVariable - somefile.php:17:6 - Possibly undefined global variable $a, first seen on line 11 (see https://psalm.dev/126)
+echo $a
 
-            EOF,
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $console_report_options),
         );
     }
@@ -997,18 +1027,19 @@ class ReportOutputTest extends TestCase
         $console_report_options->show_info = false;
 
         $this->assertSame(
-            <<<'EOF'
-            ERROR: UndefinedVariable - somefile.php:3:10 - Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
-              return $as_you_____type;
+            'ERROR: UndefinedVariable - somefile.php:3:10 - Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
+  return $as_you_____type;
 
-            ERROR: MixedReturnStatement - somefile.php:3:10 - Could not infer a return type (see https://psalm.dev/138)
-              return $as_you_____type;
+ERROR: MixedReturnStatement - somefile.php:3:10 - Could not infer a return type (see https://psalm.dev/138)
+  return $as_you_____type;
 
-            ERROR: UndefinedConstant - somefile.php:8:6 - Const CHANGE_ME is not defined (see https://psalm.dev/020)
-            echo CHANGE_ME;
+ERROR: MixedInferredReturnType - somefile.php:2:42 - Could not verify return type \'null|string\' for psalmCanVerify (see https://psalm.dev/047)
+function psalmCanVerify(int $your_code): ?string {
 
+ERROR: UndefinedConstant - somefile.php:8:6 - Const CHANGE_ME is not defined (see https://psalm.dev/020)
+echo CHANGE_ME;
 
-            EOF,
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $console_report_options),
         );
     }
@@ -1022,21 +1053,22 @@ class ReportOutputTest extends TestCase
         $console_report_options->use_color = false;
 
         $this->assertSame(
-            <<<'EOF'
-            ERROR: UndefinedVariable - somefile.php:3:10 - Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
+            'ERROR: UndefinedVariable - somefile.php:3:10 - Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
 
 
-            ERROR: MixedReturnStatement - somefile.php:3:10 - Could not infer a return type (see https://psalm.dev/138)
+ERROR: MixedReturnStatement - somefile.php:3:10 - Could not infer a return type (see https://psalm.dev/138)
 
 
-            ERROR: UndefinedConstant - somefile.php:8:6 - Const CHANGE_ME is not defined (see https://psalm.dev/020)
+ERROR: MixedInferredReturnType - somefile.php:2:42 - Could not verify return type \'null|string\' for psalmCanVerify (see https://psalm.dev/047)
 
 
-            INFO: PossiblyUndefinedGlobalVariable - somefile.php:17:6 - Possibly undefined global variable $a, first seen on line 11 (see https://psalm.dev/126)
+ERROR: UndefinedConstant - somefile.php:8:6 - Const CHANGE_ME is not defined (see https://psalm.dev/020)
 
 
+INFO: PossiblyUndefinedGlobalVariable - somefile.php:17:6 - Possibly undefined global variable $a, first seen on line 11 (see https://psalm.dev/126)
 
-            EOF,
+
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $console_report_options),
         );
     }
@@ -1084,19 +1116,17 @@ class ReportOutputTest extends TestCase
         $compact_report_options->use_color = false;
 
         $this->assertSame(
-            <<<'EOF'
-            FILE: somefile.php
-
-            +----------+------+---------------------------------+--------------------------------------------------------------+
-            | SEVERITY | LINE | ISSUE                           | DESCRIPTION                                                  |
-            +----------+------+---------------------------------+--------------------------------------------------------------+
-            | ERROR    | 3    | UndefinedVariable               | Cannot find referenced variable $as_you_____type             |
-            | ERROR    | 3    | MixedReturnStatement            | Could not infer a return type                                |
-            | ERROR    | 8    | UndefinedConstant               | Const CHANGE_ME is not defined                               |
-            | INFO     | 17   | PossiblyUndefinedGlobalVariable | Possibly undefined global variable $a, first seen on line 11 |
-            +----------+------+---------------------------------+--------------------------------------------------------------+
-
-            EOF,
+            'FILE: somefile.php' . "\n" .
+            "\n" .
+            '+----------+------+---------------------------------+---------------------------------------------------------------+' . "\n" .
+            '| SEVERITY | LINE | ISSUE                           | DESCRIPTION                                                   |' . "\n" .
+            '+----------+------+---------------------------------+---------------------------------------------------------------+' . "\n" .
+            '| ERROR    | 3    | UndefinedVariable               | Cannot find referenced variable $as_you_____type              |' . "\n" .
+            '| ERROR    | 3    | MixedReturnStatement            | Could not infer a return type                                 |' . "\n" .
+            '| ERROR    | 2    | MixedInferredReturnType         | Could not verify return type \'null|string\' for psalmCanVerify |' . "\n" .
+            '| ERROR    | 8    | UndefinedConstant               | Const CHANGE_ME is not defined                                |' . "\n" .
+            '| INFO     | 17   | PossiblyUndefinedGlobalVariable | Possibly undefined global variable $a, first seen on line 11  |' . "\n" .
+            '+----------+------+---------------------------------+---------------------------------------------------------------+' . "\n",
             $this->toUnixLineEndings(IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $compact_report_options)),
         );
     }
@@ -1108,24 +1138,25 @@ class ReportOutputTest extends TestCase
         $checkstyle_report_options = ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.checkstyle.xml'])[0];
 
         $this->assertSame(
-            <<<'EOF'
-            <?xml version="1.0" encoding="UTF-8"?>
-            <checkstyle>
-            <file name="somefile.php">
-             <error line="3" column="10" severity="error" message="UndefinedVariable: Cannot find referenced variable $as_you_____type"/>
-            </file>
-            <file name="somefile.php">
-             <error line="3" column="10" severity="error" message="MixedReturnStatement: Could not infer a return type"/>
-            </file>
-            <file name="somefile.php">
-             <error line="8" column="6" severity="error" message="UndefinedConstant: Const CHANGE_ME is not defined"/>
-            </file>
-            <file name="somefile.php">
-             <error line="17" column="6" severity="info" message="PossiblyUndefinedGlobalVariable: Possibly undefined global variable $a, first seen on line 11"/>
-            </file>
-            </checkstyle>
-
-            EOF,
+            '<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle>
+<file name="somefile.php">
+ <error line="3" column="10" severity="error" message="UndefinedVariable: Cannot find referenced variable $as_you_____type"/>
+</file>
+<file name="somefile.php">
+ <error line="3" column="10" severity="error" message="MixedReturnStatement: Could not infer a return type"/>
+</file>
+<file name="somefile.php">
+ <error line="2" column="42" severity="error" message="MixedInferredReturnType: Could not verify return type &apos;null|string&apos; for psalmCanVerify"/>
+</file>
+<file name="somefile.php">
+ <error line="8" column="6" severity="error" message="UndefinedConstant: Const CHANGE_ME is not defined"/>
+</file>
+<file name="somefile.php">
+ <error line="17" column="6" severity="info" message="PossiblyUndefinedGlobalVariable: Possibly undefined global variable $a, first seen on line 11"/>
+</file>
+</checkstyle>
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $checkstyle_report_options),
         );
 
@@ -1145,54 +1176,62 @@ class ReportOutputTest extends TestCase
         $xml = IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $checkstyle_report_options);
 
         $this->assertSame(
-            <<<'EOF'
-            <?xml version="1.0" encoding="UTF-8"?>
-            <testsuites failures="3" errors="0" name="psalm" tests="4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/junit-team/junit5/r5.5.1/platform-tests/src/test/resources/jenkins-junit.xsd">
-              <testsuite name="somefile.php" failures="3" errors="0" tests="4">
-                <testcase name="somefile.php:3" classname="UndefinedVariable" assertions="1">
-                  <failure type="UndefinedVariable">message: Cannot find referenced variable $as_you_____type
-            type: UndefinedVariable
-            snippet: return $as_you_____type;
-            selected_text: $as_you_____type
-            line: 3
-            column_from: 10
-            column_to: 26
-            </failure>
-                </testcase>
-                <testcase name="somefile.php:3" classname="MixedReturnStatement" assertions="1">
-                  <failure type="MixedReturnStatement">message: Could not infer a return type
-            type: MixedReturnStatement
-            snippet: return $as_you_____type;
-            selected_text: $as_you_____type
-            line: 3
-            column_from: 10
-            column_to: 26
-            </failure>
-                </testcase>
-                <testcase name="somefile.php:8" classname="UndefinedConstant" assertions="1">
-                  <failure type="UndefinedConstant">message: Const CHANGE_ME is not defined
-            type: UndefinedConstant
-            snippet: echo CHANGE_ME;
-            selected_text: CHANGE_ME
-            line: 8
-            column_from: 6
-            column_to: 15
-            </failure>
-                </testcase>
-                <testcase name="somefile.php:17" classname="PossiblyUndefinedGlobalVariable" assertions="1">
-                  <skipped>message: Possibly undefined global variable $a, first seen on line 11
-            type: PossiblyUndefinedGlobalVariable
-            snippet: echo $a
-            selected_text: $a
-            line: 17
-            column_from: 6
-            column_to: 8
-            </skipped>
-                </testcase>
-              </testsuite>
-            </testsuites>
-
-            EOF,
+            '<?xml version="1.0" encoding="UTF-8"?>
+<testsuites failures="4" errors="0" name="psalm" tests="5" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/junit-team/junit5/r5.5.1/platform-tests/src/test/resources/jenkins-junit.xsd">
+  <testsuite name="somefile.php" failures="4" errors="0" tests="5">
+    <testcase name="somefile.php:3" classname="UndefinedVariable" assertions="1">
+      <failure type="UndefinedVariable">message: Cannot find referenced variable $as_you_____type
+type: UndefinedVariable
+snippet: return $as_you_____type;
+selected_text: $as_you_____type
+line: 3
+column_from: 10
+column_to: 26
+</failure>
+    </testcase>
+    <testcase name="somefile.php:3" classname="MixedReturnStatement" assertions="1">
+      <failure type="MixedReturnStatement">message: Could not infer a return type
+type: MixedReturnStatement
+snippet: return $as_you_____type;
+selected_text: $as_you_____type
+line: 3
+column_from: 10
+column_to: 26
+</failure>
+    </testcase>
+    <testcase name="somefile.php:2" classname="MixedInferredReturnType" assertions="1">
+      <failure type="MixedInferredReturnType">message: Could not verify return type \'null|string\' for psalmCanVerify
+type: MixedInferredReturnType
+snippet: function psalmCanVerify(int $your_code): ?string {
+selected_text: ?string
+line: 2
+column_from: 42
+column_to: 49
+</failure>
+    </testcase>
+    <testcase name="somefile.php:8" classname="UndefinedConstant" assertions="1">
+      <failure type="UndefinedConstant">message: Const CHANGE_ME is not defined
+type: UndefinedConstant
+snippet: echo CHANGE_ME;
+selected_text: CHANGE_ME
+line: 8
+column_from: 6
+column_to: 15
+</failure>
+    </testcase>
+    <testcase name="somefile.php:17" classname="PossiblyUndefinedGlobalVariable" assertions="1">
+      <skipped>message: Possibly undefined global variable $a, first seen on line 11
+type: PossiblyUndefinedGlobalVariable
+snippet: echo $a
+selected_text: $a
+line: 17
+column_from: 6
+column_to: 8
+</skipped>
+    </testcase>
+  </testsuite>
+</testsuites>
+',
             $xml,
         );
 
@@ -1219,12 +1258,13 @@ class ReportOutputTest extends TestCase
         $github_report_options = new ReportOptions();
         $github_report_options->format = Report::TYPE_GITHUB_ACTIONS;
         $expected_output = <<<'EOF'
-        ::error file=somefile.php,line=3,col=10,title=UndefinedVariable::somefile.php:3:10: UndefinedVariable: Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
-        ::error file=somefile.php,line=3,col=10,title=MixedReturnStatement::somefile.php:3:10: MixedReturnStatement: Could not infer a return type (see https://psalm.dev/138)
-        ::error file=somefile.php,line=8,col=6,title=UndefinedConstant::somefile.php:8:6: UndefinedConstant: Const CHANGE_ME is not defined (see https://psalm.dev/020)
-        ::warning file=somefile.php,line=17,col=6,title=PossiblyUndefinedGlobalVariable::somefile.php:17:6: PossiblyUndefinedGlobalVariable: Possibly undefined global variable $a, first seen on line 11 (see https://psalm.dev/126)
+::error file=somefile.php,line=3,col=10,title=UndefinedVariable::somefile.php:3:10: UndefinedVariable: Cannot find referenced variable $as_you_____type (see https://psalm.dev/024)
+::error file=somefile.php,line=3,col=10,title=MixedReturnStatement::somefile.php:3:10: MixedReturnStatement: Could not infer a return type (see https://psalm.dev/138)
+::error file=somefile.php,line=2,col=42,title=MixedInferredReturnType::somefile.php:2:42: MixedInferredReturnType: Could not verify return type 'null|string' for psalmCanVerify (see https://psalm.dev/047)
+::error file=somefile.php,line=8,col=6,title=UndefinedConstant::somefile.php:8:6: UndefinedConstant: Const CHANGE_ME is not defined (see https://psalm.dev/020)
+::warning file=somefile.php,line=17,col=6,title=PossiblyUndefinedGlobalVariable::somefile.php:17:6: PossiblyUndefinedGlobalVariable: Possibly undefined global variable $a, first seen on line 11 (see https://psalm.dev/126)
 
-        EOF;
+EOF;
         $this->assertSame(
             $expected_output,
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $github_report_options),
@@ -1238,12 +1278,13 @@ class ReportOutputTest extends TestCase
         $report_options = new ReportOptions();
         $report_options->format = Report::TYPE_COUNT;
         $expected_output = <<<'EOF'
-        MixedReturnStatement: 1
-        PossiblyUndefinedGlobalVariable: 1
-        UndefinedConstant: 1
-        UndefinedVariable: 1
+MixedInferredReturnType: 1
+MixedReturnStatement: 1
+PossiblyUndefinedGlobalVariable: 1
+UndefinedConstant: 1
+UndefinedVariable: 1
 
-        EOF;
+EOF;
         $this->assertSame(
             $expected_output,
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), $report_options),
@@ -1259,7 +1300,8 @@ class ReportOutputTest extends TestCase
 
         $this->analyzeFile('somefile.php', new Context());
         $this->assertSame(
-            "[]\n",
+            '[]
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.json'])[0]),
         );
         $this->assertSame(
@@ -1267,23 +1309,19 @@ class ReportOutputTest extends TestCase
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.emacs'])[0]),
         );
         $this->assertSame(
-            <<<'EOF'
-            <?xml version="1.0" encoding="UTF-8"?>
-            <report>
-              <item/>
-            </report>
-
-            EOF,
+            '<?xml version="1.0" encoding="UTF-8"?>
+<report>
+  <item/>
+</report>
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.xml'])[0]),
         );
 
         $this->assertSame(
-            <<<'EOF'
-            <?xml version="1.0" encoding="UTF-8"?>
-            <checkstyle>
-            </checkstyle>
-
-            EOF,
+            '<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle>
+</checkstyle>
+',
             IssueBuffer::getOutput(IssueBuffer::getIssuesData(), ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.checkstyle.xml'])[0]),
         );
 
@@ -1291,10 +1329,8 @@ class ReportOutputTest extends TestCase
         IssueBuffer::finish($this->project_analyzer, true, 0);
         ob_end_clean();
         $this->assertFileExists(__DIR__ . '/test-report.json');
-        $this->assertSame(
-            "[]\n",
-            file_get_contents(__DIR__ . '/test-report.json'),
-        );
+        $this->assertSame('[]
+', file_get_contents(__DIR__ . '/test-report.json'));
         unlink(__DIR__ . '/test-report.json');
     }
 
@@ -1305,6 +1341,6 @@ class ReportOutputTest extends TestCase
      */
     private function toUnixLineEndings(string $output): string
     {
-        return (string) preg_replace('~\r\n?~', "\n", $output);
+        return preg_replace('~\r\n?~', "\n", $output);
     }
 }

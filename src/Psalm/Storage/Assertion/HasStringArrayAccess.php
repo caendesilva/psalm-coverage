@@ -1,11 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage\Assertion;
 
 use Psalm\Storage\Assertion;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use UnexpectedValueException;
 
 /**
@@ -13,7 +10,6 @@ use UnexpectedValueException;
  */
 final class HasStringArrayAccess extends Assertion
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     public function getNegation(): Assertion
     {
         throw new UnexpectedValueException('This should never be called');

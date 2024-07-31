@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -19,35 +17,6 @@ class CheckTypeTest extends TestCase
                 /** @psalm-check-type $foo = int */
                 $foo = 1;
             ',
-        ];
-        yield 'allowNamespace' => [
-            'code' => '<?php
-
-                namespace X;
-
-                final class A {}
-
-                $_a = new A();
-                /** @psalm-check-type-exact $_a = A */',
-        ];
-        yield 'allowImport' => [
-            'code' => '<?php
-
-                namespace X;
-
-                use \stdClass;
-
-                $_a = new stdClass();
-                /** @psalm-check-type-exact $_a = \stdClass */',
-        ];
-        yield 'allowType' => [
-            'code' => '<?php
-                namespace X;
-
-                /** @psalm-type A = int|string */
-
-                $_a = 1;
-                /** @psalm-check-type $_a = A */',
         ];
     }
 

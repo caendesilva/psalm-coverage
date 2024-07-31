@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Config;
 
 use Psalm\Config;
@@ -10,7 +8,6 @@ use SimpleXMLElement;
 
 use function array_filter;
 use function array_map;
-use function assert;
 use function dirname;
 use function in_array;
 use function scandir;
@@ -25,11 +22,11 @@ final class IssueHandler
     private string $error_level = Config::REPORT_ERROR;
 
     /**
-     * @var list<ErrorLevelFileFilter>
+     * @var array<ErrorLevelFileFilter>
      */
     private array $custom_levels = [];
 
-    public static function loadFromXMLElement(SimpleXMLElement $e, string $base_dir): self
+    public static function loadFromXMLElement(SimpleXMLElement $e, string $base_dir): IssueHandler
     {
         $handler = new self();
 
@@ -41,19 +38,12 @@ final class IssueHandler
             }
         }
 
-        if (isset($e->errorLevel)) {
-            foreach ($e->errorLevel as $error_level) {
-                $handler->custom_levels[] = ErrorLevelFileFilter::loadFromXMLElement($error_level, $base_dir, true);
-            }
+        /** @var SimpleXMLElement $error_level */
+        foreach ($e->errorLevel as $error_level) {
+            $handler->custom_levels[] = ErrorLevelFileFilter::loadFromXMLElement($error_level, $base_dir, true);
         }
 
         return $handler;
-    }
-
-    /** @return list<ErrorLevelFileFilter> */
-    public function getFilters(): array
-    {
-        return $this->custom_levels;
     }
 
     public function setCustomLevels(array $customLevels, string $base_dir): void
@@ -77,7 +67,6 @@ final class IssueHandler
     {
         foreach ($this->custom_levels as $custom_level) {
             if ($custom_level->allows($file_path)) {
-                $custom_level->suppressions++;
                 return $custom_level->getErrorLevel();
             }
         }
@@ -89,7 +78,6 @@ final class IssueHandler
     {
         foreach ($this->custom_levels as $custom_level) {
             if ($custom_level->allowsClass($fq_classlike_name)) {
-                $custom_level->suppressions++;
                 return $custom_level->getErrorLevel();
             }
         }
@@ -101,7 +89,6 @@ final class IssueHandler
     {
         foreach ($this->custom_levels as $custom_level) {
             if ($custom_level->allowsMethod(strtolower($method_id))) {
-                $custom_level->suppressions++;
                 return $custom_level->getErrorLevel();
             }
         }
@@ -124,7 +111,6 @@ final class IssueHandler
     {
         foreach ($this->custom_levels as $custom_level) {
             if ($custom_level->allowsMethod(strtolower($function_id))) {
-                $custom_level->suppressions++;
                 return $custom_level->getErrorLevel();
             }
         }
@@ -136,7 +122,6 @@ final class IssueHandler
     {
         foreach ($this->custom_levels as $custom_level) {
             if ($custom_level->allowsProperty($property_id)) {
-                $custom_level->suppressions++;
                 return $custom_level->getErrorLevel();
             }
         }
@@ -148,7 +133,6 @@ final class IssueHandler
     {
         foreach ($this->custom_levels as $custom_level) {
             if ($custom_level->allowsClassConstant($constant_id)) {
-                $custom_level->suppressions++;
                 return $custom_level->getErrorLevel();
             }
         }
@@ -160,7 +144,6 @@ final class IssueHandler
     {
         foreach ($this->custom_levels as $custom_level) {
             if ($custom_level->allowsVariable($var_name)) {
-                $custom_level->suppressions++;
                 return $custom_level->getErrorLevel();
             }
         }
@@ -173,12 +156,10 @@ final class IssueHandler
      */
     public static function getAllIssueTypes(): array
     {
-        $scan = scandir(dirname(__DIR__) . '/Issue', SCANDIR_SORT_NONE);
-        assert($scan !== false);
         return array_filter(
             array_map(
                 static fn(string $file_name): string => substr($file_name, 0, -4),
-                $scan,
+                scandir(dirname(__DIR__) . '/Issue', SCANDIR_SORT_NONE),
             ),
             static fn(string $issue_name): bool => $issue_name !== ''
                 && $issue_name !== 'MethodIssue'

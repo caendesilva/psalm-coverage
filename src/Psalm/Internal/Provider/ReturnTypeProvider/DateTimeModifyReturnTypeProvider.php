@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use DateTime;
@@ -10,12 +8,13 @@ use Psalm\Plugin\EventHandler\Event\MethodReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\MethodReturnTypeProviderInterface;
 use Psalm\Type;
 use Psalm\Type\Atomic\TLiteralString;
+use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Union;
 
 /**
  * @internal
  */
-final class DateTimeModifyReturnTypeProvider implements MethodReturnTypeProviderInterface
+class DateTimeModifyReturnTypeProvider implements MethodReturnTypeProviderInterface
 {
     public static function getClassLikeNames(): array
     {
@@ -58,7 +57,11 @@ final class DateTimeModifyReturnTypeProvider implements MethodReturnTypeProvider
             return Type::getFalse();
         }
         if ($has_date_time && !$has_false) {
-            return Type::parseString($event->getCalledFqClasslikeName() ?? $event->getFqClasslikeName());
+            return Type::intersectUnionTypes(
+                Type::parseString($event->getCalledFqClasslikeName() ?? $event->getFqClasslikeName()),
+                new Union([new TNamedObject('static')]),
+                $statements_source->getCodebase(),
+            );
         }
 
         return null;

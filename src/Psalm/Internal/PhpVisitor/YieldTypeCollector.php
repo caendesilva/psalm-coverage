@@ -1,13 +1,12 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\PhpVisitor;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr\YieldFrom;
 use PhpParser\Node\Expr\Yield_;
 use PhpParser\Node\FunctionLike;
+use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Type;
@@ -17,14 +16,16 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class YieldTypeCollector extends NodeVisitorAbstract
+class YieldTypeCollector extends NodeVisitorAbstract
 {
     /** @var list<Union> */
     private array $yield_types = [];
 
-    public function __construct(
-        private readonly NodeDataProvider $nodes,
-    ) {
+    private NodeDataProvider $nodes;
+
+    public function __construct(NodeDataProvider $nodes)
+    {
+        $this->nodes = $nodes;
     }
 
     public function enterNode(Node $node): ?int
@@ -42,7 +43,7 @@ final class YieldTypeCollector extends NodeVisitorAbstract
                 $generator_type = new TGenericObject(
                     'Generator',
                     [
-                        $key_type ?: Type::getInt(),
+                        $key_type ? $key_type : Type::getInt(),
                         $value_type,
                         Type::getMixed(),
                         Type::getMixed(),
@@ -62,7 +63,7 @@ final class YieldTypeCollector extends NodeVisitorAbstract
 
             $this->yield_types []= Type::getMixed();
         } elseif ($node instanceof FunctionLike) {
-            return self::DONT_TRAVERSE_CHILDREN;
+            return NodeTraverser::DONT_TRAVERSE_CHILDREN;
         }
 
         return null;

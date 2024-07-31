@@ -1,20 +1,19 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage\Assertion;
 
 use Psalm\Storage\Assertion;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
  */
 final class IsLessThanOrEqualTo extends Assertion
 {
-    use UnserializeMemoryUsageSuppressionTrait;
-    public function __construct(public readonly int $value)
+    public int $value;
+
+    public function __construct(int $value)
     {
+        $this->value = $value;
     }
 
     public function getNegation(): Assertion

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
@@ -19,12 +17,12 @@ use function strtolower;
 /**
  * @internal
  */
-final class YieldFromAnalyzer
+class YieldFromAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\YieldFrom $stmt,
-        Context $context,
+        Context $context
     ): bool {
         $was_inside_call = $context->inside_call;
 

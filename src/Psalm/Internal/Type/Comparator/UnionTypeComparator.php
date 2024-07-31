@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
@@ -31,7 +29,7 @@ use const PHP_INT_MAX;
 /**
  * @internal
  */
-final class UnionTypeComparator
+class UnionTypeComparator
 {
     /**
      * Does the input param type match the given param type
@@ -44,9 +42,9 @@ final class UnionTypeComparator
         bool $ignore_false = false,
         ?TypeComparisonResult $union_comparison_result = null,
         bool $allow_interface_equality = false,
-        bool $allow_float_int_equality = true,
+        bool $allow_float_int_equality = true
     ): bool {
-        if ($container_type->isVanillaMixed()) {
+        if ($container_type->isMixed()) {
             return true;
         }
 
@@ -65,6 +63,9 @@ final class UnionTypeComparator
             return false;
         }
 
+        if ($container_type->hasMixed() && !$container_type->isEmptyMixed()) {
+            return true;
+        }
 
         $container_has_template = $container_type->hasTemplateOrStatic();
 
@@ -147,7 +148,7 @@ final class UnionTypeComparator
                     $container_all_param_count = count($container_type_part->params);
                     $container_required_param_count = 0;
                     foreach ($container_type_part->params as $index => $container_param) {
-                        if (!$container_param->is_optional) {
+                        if ($container_param->is_optional === false) {
                             $container_required_param_count = $index + 1;
                         }
 
@@ -163,8 +164,7 @@ final class UnionTypeComparator
                     } else {
                         $input_all_param_count = count($input_type_part->params);
                         foreach ($input_type_part->params as $index => $input_param) {
-                            // can be false or not set at all
-                            if (!$input_param->is_optional) {
+                            if ($input_param->is_optional === false) {
                                 $input_required_param_count = $index + 1;
                             }
 
@@ -175,12 +175,10 @@ final class UnionTypeComparator
                     }
 
                     // too few or too many non-optional params provided in callback
-                    if ($container_all_param_count > $input_all_param_count
-                        || $container_required_param_count > $input_all_param_count
-                        || $input_required_param_count > $container_all_param_count
-                        || $input_required_param_count > $container_required_param_count
+                    if ($container_required_param_count > $input_all_param_count
+                        || $container_all_param_count < $input_required_param_count
                     ) {
-                        continue;
+                        return false;
                     }
                 }
 
@@ -357,7 +355,7 @@ final class UnionTypeComparator
      */
     public static function isContainedByInPhp(
         ?Union $input_type,
-        Union $container_type,
+        Union $container_type
     ): bool {
         if ($container_type->isMixed()) {
             return true;
@@ -405,7 +403,7 @@ final class UnionTypeComparator
         Union $container_type,
         bool $ignore_null = false,
         bool $ignore_false = false,
-        array &$matching_input_keys = [],
+        array &$matching_input_keys = []
     ): bool {
         if ($container_type->hasMixed()) {
             return true;
@@ -457,7 +455,7 @@ final class UnionTypeComparator
         Codebase $codebase,
         Union $type1,
         Union $type2,
-        bool $allow_interface_equality = true,
+        bool $allow_interface_equality = true
     ): bool {
         if ($type1->hasMixed() || $type2->hasMixed()) {
             return true;
@@ -500,7 +498,7 @@ final class UnionTypeComparator
      */
     private static function getTypeParts(
         Codebase $codebase,
-        Union $union_type,
+        Union $union_type
     ): array {
         $atomic_types = [];
         foreach ($union_type->getAtomicTypes() as $atomic_type) {

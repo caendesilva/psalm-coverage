@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider;
 
 use Psalm\CodeLocation;
@@ -16,15 +14,16 @@ use function array_keys;
 use function array_merge;
 use function array_unique;
 use function explode;
+use function file_exists;
 
 /**
+ * @psalm-import-type FileMapType from Analyzer
+ *
  * Used to determine which files reference other files, necessary for using the --diff
  * option from the command line.
- *
- * @psalm-import-type FileMapType from Analyzer
  * @internal
  */
-final class FileReferenceProvider
+class FileReferenceProvider
 {
     private bool $loaded_from_cache = false;
 
@@ -165,10 +164,11 @@ final class FileReferenceProvider
      */
     private static array $method_param_uses = [];
 
-    public function __construct(
-        private readonly FileProvider $file_provider,
-        public ?FileReferenceCacheProvider $cache = null,
-    ) {
+    public ?FileReferenceCacheProvider $cache = null;
+
+    public function __construct(?FileReferenceCacheProvider $cache = null)
+    {
+        $this->cache = $cache;
     }
 
     /**
@@ -179,7 +179,7 @@ final class FileReferenceProvider
         if (self::$deleted_files === null) {
             self::$deleted_files = array_filter(
                 array_keys(self::$file_references),
-                fn(string $file_name): bool => !$this->file_provider->fileExists($file_name),
+                static fn(string $file_name): bool => !file_exists($file_name)
             );
         }
 
@@ -230,7 +230,7 @@ final class FileReferenceProvider
     public function addFileReferenceToClassMember(
         string $source_file,
         string $referenced_member_id,
-        bool $inside_return,
+        bool $inside_return
     ): void {
         self::$file_references_to_class_members[$referenced_member_id][$source_file] = true;
 
@@ -383,7 +383,7 @@ final class FileReferenceProvider
 
                     try {
                         $referenced_files[] = $codebase->scanner->getClassLikeFilePath($fq_class_name_lc);
-                    } catch (UnexpectedValueException) {
+                    } catch (UnexpectedValueException $e) {
                         if (isset(self::$classlike_files[$fq_class_name_lc])) {
                             $referenced_files[] = self::$classlike_files[$fq_class_name_lc];
                         }
@@ -735,7 +735,7 @@ final class FileReferenceProvider
     public function addMethodReferenceToClassMember(
         string $calling_function_id,
         string $referenced_member_id,
-        bool $inside_return,
+        bool $inside_return
     ): void {
         if (!isset(self::$method_references_to_class_members[$referenced_member_id])) {
             self::$method_references_to_class_members[$referenced_member_id] = [$calling_function_id => true];
@@ -754,7 +754,7 @@ final class FileReferenceProvider
 
     public function addMethodDependencyToClassMember(
         string $calling_function_id,
-        string $referenced_member_id,
+        string $referenced_member_id
     ): void {
         if (!isset(self::$method_dependencies[$referenced_member_id])) {
             self::$method_dependencies[$referenced_member_id] = [$calling_function_id => true];
@@ -774,7 +774,7 @@ final class FileReferenceProvider
 
     public function addMethodReferenceToMissingClassMember(
         string $calling_function_id,
-        string $referenced_member_id,
+        string $referenced_member_id
     ): void {
         if (!isset(self::$method_references_to_missing_class_members[$referenced_member_id])) {
             self::$method_references_to_missing_class_members[$referenced_member_id] = [$calling_function_id => true];
@@ -794,7 +794,7 @@ final class FileReferenceProvider
 
     public function addCallingLocationForClassProperty(
         CodeLocation $code_location,
-        string $referenced_property_id,
+        string $referenced_property_id
     ): void {
         if (!isset(self::$class_property_locations[$referenced_property_id])) {
             self::$class_property_locations[$referenced_property_id] = [$code_location];
@@ -1230,7 +1230,7 @@ final class FileReferenceProvider
      */
     public function setTypeCoverage(array $mixed_counts): void
     {
-        self::$mixed_counts = [...self::$mixed_counts, ...$mixed_counts];
+        self::$mixed_counts = array_merge(self::$mixed_counts, $mixed_counts);
     }
 
     /**

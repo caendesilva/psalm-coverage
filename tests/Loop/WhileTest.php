@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\Loop;
 
 use Psalm\Tests\TestCase;
@@ -157,7 +155,7 @@ class WhileTest extends TestCase
                     }
 
                     while ($a = foo()) {
-                      if ($a->bar !== null) {}
+                      if ($a->bar) {}
                     }',
             ],
             'whileTrueWithBreak' => [
@@ -273,7 +271,7 @@ class WhileTest extends TestCase
                     $c = null;
 
                     while (rand(0, 1)) {
-                        if ($c === null || $c === "" || $c === "0") {
+                        if (!$c) {
                             foo($c);
                         } else {
                             bar($c);

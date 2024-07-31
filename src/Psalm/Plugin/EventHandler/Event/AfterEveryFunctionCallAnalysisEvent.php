@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Plugin\EventHandler\Event;
 
 use PhpParser\Node\Expr\FuncCall;
@@ -11,14 +9,25 @@ use Psalm\StatementsSource;
 
 final class AfterEveryFunctionCallAnalysisEvent
 {
+    private FuncCall $expr;
+    private string $function_id;
+    private Context $context;
+    private StatementsSource $statements_source;
+    private Codebase $codebase;
+
     /** @internal */
     public function __construct(
-        private readonly FuncCall $expr,
-        private readonly string $function_id,
-        private readonly Context $context,
-        private readonly StatementsSource $statements_source,
-        private readonly Codebase $codebase,
+        FuncCall $expr,
+        string $function_id,
+        Context $context,
+        StatementsSource $statements_source,
+        Codebase $codebase
     ) {
+        $this->expr = $expr;
+        $this->function_id = $function_id;
+        $this->context = $context;
+        $this->statements_source = $statements_source;
+        $this->codebase = $codebase;
     }
 
     public function getExpr(): FuncCall

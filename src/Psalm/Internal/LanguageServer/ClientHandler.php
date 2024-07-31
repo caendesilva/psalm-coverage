@@ -8,17 +8,28 @@ use AdvancedJsonRpc\Notification;
 use AdvancedJsonRpc\Request;
 use AdvancedJsonRpc\Response;
 use AdvancedJsonRpc\SuccessResponse;
-use Amp\DeferredFuture;
+use Amp\Deferred;
+use Amp\Promise;
+use Generator;
+
+use function Amp\call;
+use function error_log;
 
 /**
  * @internal
  */
-final class ClientHandler
+class ClientHandler
 {
+    public ProtocolReader $protocolReader;
+
+    public ProtocolWriter $protocolWriter;
+
     public IdGenerator $idGenerator;
 
-    public function __construct(public ProtocolReader $protocolReader, public ProtocolWriter $protocolWriter)
+    public function __construct(ProtocolReader $protocolReader, ProtocolWriter $protocolWriter)
     {
+        $this->protocolReader = $protocolReader;
+        $this->protocolWriter = $protocolWriter;
         $this->idGenerator = new IdGenerator;
     }
 
@@ -27,22 +38,28 @@ final class ClientHandler
      *
      * @param string $method The method to call
      * @param array|object $params The method parameters
-     * @return mixed Resolved with the result of the request or rejected with an error
+     * @return Promise<mixed> Resolved with the result of the request or rejected with an error
      */
-    public function request(string $method, array|object $params): mixed
+    public function request(string $method, $params): Promise
     {
         $id = $this->idGenerator->generate();
 
-                $this->protocolWriter->write(
+        return call(
+            /**
+             * @return Generator<int, Promise, mixed, Promise<mixed>>
+             */
+            function () use ($id, $method, $params): Generator {
+                yield $this->protocolWriter->write(
                     new Message(
                         new Request($id, $method, (object) $params),
                     ),
                 );
 
-                $deferred = new DeferredFuture();
+                $deferred = new Deferred();
 
                 $listener =
                     function (Message $msg) use ($id, $deferred, &$listener): void {
+                        error_log('request handler');
                         /**
                          * @psalm-suppress UndefinedPropertyFetch
                          * @psalm-suppress MixedArgument
@@ -54,15 +71,17 @@ final class ClientHandler
                             // Received a response
                             $this->protocolReader->removeListener('message', $listener);
                             if (SuccessResponse::isSuccessResponse($msg->body)) {
-                                $deferred->complete($msg->body->result);
+                                $deferred->resolve($msg->body->result);
                             } else {
-                                $deferred->error($msg->body->error);
+                                $deferred->fail($msg->body->error);
                             }
                         }
                     };
                 $this->protocolReader->on('message', $listener);
 
-                return $deferred->getFuture()->await();
+                return $deferred->promise();
+            },
+        );
     }
 
     /**
@@ -71,7 +90,7 @@ final class ClientHandler
      * @param string $method The method to call
      * @param array|object $params The method parameters
      */
-    public function notify(string $method, array|object $params): void
+    public function notify(string $method, $params): void
     {
         $this->protocolWriter->write(
             new Message(

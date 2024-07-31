@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Assignment;
 
 use PhpParser;
@@ -35,7 +33,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class StaticPropertyAssignmentAnalyzer
+class StaticPropertyAssignmentAnalyzer
 {
     /**
      * @return  false|null
@@ -45,7 +43,7 @@ final class StaticPropertyAssignmentAnalyzer
         PhpParser\Node\Expr\StaticPropertyFetch $stmt,
         ?PhpParser\Node\Expr $assignment_value,
         Union $assignment_value_type,
-        Context $context,
+        Context $context
     ): ?bool {
         $var_id = ExpressionIdentifier::getExtendedVarId(
             $stmt,

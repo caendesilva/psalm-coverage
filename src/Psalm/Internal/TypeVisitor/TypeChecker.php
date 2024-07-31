@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\TypeVisitor;
 
 use InvalidArgumentException;
@@ -11,9 +9,6 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\MethodAnalyzer;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
-use Psalm\Internal\Type\TemplateBound;
-use Psalm\Internal\Type\TemplateInferredTypeReplacer;
-use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\DeprecatedClass;
 use Psalm\Issue\DeprecatedInterface;
@@ -41,31 +36,60 @@ use function array_keys;
 use function array_search;
 use function count;
 use function md5;
-use function str_contains;
-use function str_starts_with;
+use function strpos;
 use function strtolower;
 
 /**
  * @internal
  */
-final class TypeChecker extends TypeVisitor
+class TypeChecker extends TypeVisitor
 {
+    private StatementsSource $source;
+
+    private CodeLocation $code_location;
+
+    /**
+     * @var array<string>
+     */
+    private array $suppressed_issues;
+
+    /**
+     * @var array<string, bool>
+     */
+    private array $phantom_classes;
+
+    private bool $inferred;
+
+    private bool $inherited;
+
+    private bool $prevent_template_covariance;
+
     private bool $has_errors = false;
+
+    private ?string $calling_method_id = null;
 
     /**
      * @param  array<string>    $suppressed_issues
      * @param  array<string, bool> $phantom_classes
      */
     public function __construct(
-        private readonly StatementsSource $source,
-        private readonly CodeLocation $code_location,
-        private readonly array $suppressed_issues,
-        private array $phantom_classes = [],
-        private readonly bool $inferred = true,
-        private readonly bool $inherited = false,
-        private bool $prevent_template_covariance = false,
-        private readonly ?string $calling_method_id = null,
+        StatementsSource $source,
+        CodeLocation $code_location,
+        array $suppressed_issues,
+        array $phantom_classes = [],
+        bool $inferred = true,
+        bool $inherited = false,
+        bool $prevent_template_covariance = false,
+        ?string $calling_method_id = null
     ) {
+        $this->source = $source;
+        $this->code_location = $code_location;
+        $this->suppressed_issues = $suppressed_issues;
+        $this->phantom_classes = $phantom_classes;
+        $this->inferred = $inferred;
+        $this->inherited = $inherited;
+        $this->prevent_template_covariance = $prevent_template_covariance;
+        $this->calling_method_id = $calling_method_id;
     }
 
     /**
@@ -186,7 +210,7 @@ final class TypeChecker extends TypeVisitor
 
         try {
             $class_storage = $codebase->classlike_storage_provider->get(strtolower($atomic->value));
-        } catch (InvalidArgumentException) {
+        } catch (InvalidArgumentException $e) {
             return;
         }
 
@@ -217,7 +241,6 @@ final class TypeChecker extends TypeVisitor
         }
 
         $expected_type_param_keys = array_keys($expected_type_params);
-        $template_result = new TemplateResult($expected_type_params, []);
 
         foreach ($atomic->type_params as $i => $type_param) {
             $this->prevent_template_covariance = $this->source instanceof MethodAnalyzer
@@ -228,16 +251,12 @@ final class TypeChecker extends TypeVisitor
                 $expected_template_name = $expected_type_param_keys[$i];
 
                 foreach ($expected_type_params[$expected_template_name] as $defining_class => $expected_type_param) {
-                    $expected_type_param = TemplateInferredTypeReplacer::replace(
-                        TypeExpander::expandUnion(
-                            $codebase,
-                            $expected_type_param,
-                            $defining_class,
-                            null,
-                            null,
-                        ),
-                        $template_result,
+                    $expected_type_param = TypeExpander::expandUnion(
                         $codebase,
+                        $expected_type_param,
+                        $defining_class,
+                        null,
+                        null,
                     );
 
                     $type_param = TypeExpander::expandUnion(
@@ -260,9 +279,6 @@ final class TypeChecker extends TypeVisitor
                             ),
                             $this->suppressed_issues,
                         );
-                    } else {
-                        $template_result->lower_bounds[$expected_template_name][$defining_class][]
-                            = new TemplateBound($type_param);
                     }
                 }
             }
@@ -294,7 +310,7 @@ final class TypeChecker extends TypeVisitor
         }
 
         $const_name = $atomic->const_name;
-        if (str_contains($const_name, '*')) {
+        if (strpos($const_name, '*') !== false) {
             TypeExpander::expandAtomic(
                 $this->source->getCodebase(),
                 $atomic,
@@ -331,8 +347,7 @@ final class TypeChecker extends TypeVisitor
     public function checkTemplateParam(TTemplateParam $atomic): void
     {
         if ($this->prevent_template_covariance
-            && !str_starts_with($atomic->defining_class, 'fn-')
-            && $atomic->defining_class !== 'class-string-map'
+            && strpos($atomic->defining_class, 'fn-') !== 0
         ) {
             $codebase = $this->source->getCodebase();
 

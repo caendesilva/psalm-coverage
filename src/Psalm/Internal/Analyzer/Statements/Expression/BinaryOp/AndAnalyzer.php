@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\BinaryOp;
 
 use PhpParser;
@@ -30,13 +28,13 @@ use function spl_object_id;
 /**
  * @internal
  */
-final class AndAnalyzer
+class AndAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\BinaryOp $stmt,
         Context $context,
-        bool $from_stmt = false,
+        bool $from_stmt = false
     ): bool {
         if ($from_stmt) {
             $fake_if_stmt = new VirtualIf(
@@ -107,7 +105,7 @@ final class AndAnalyzer
             $context_clauses = array_values(
                 array_filter(
                     $context_clauses,
-                    static fn(Clause $c): bool => !in_array($c->hash, $reconciled_expression_clauses, true),
+                    static fn(Clause $c): bool => !in_array($c->hash, $reconciled_expression_clauses, true)
                 ),
             );
 
@@ -188,20 +186,20 @@ final class AndAnalyzer
         if ($context->if_body_context && !$context->inside_negation) {
             $if_body_context = $context->if_body_context;
             $context->vars_in_scope = $right_context->vars_in_scope;
-            $if_body_context->vars_in_scope = [
-                ...$if_body_context->vars_in_scope,
-                ...$context->vars_in_scope,
-            ];
+            $if_body_context->vars_in_scope = array_merge(
+                $if_body_context->vars_in_scope,
+                $context->vars_in_scope,
+            );
 
-            $if_body_context->cond_referenced_var_ids = [
-                ...$if_body_context->cond_referenced_var_ids,
-                ...$context->cond_referenced_var_ids,
-            ];
+            $if_body_context->cond_referenced_var_ids = array_merge(
+                $if_body_context->cond_referenced_var_ids,
+                $context->cond_referenced_var_ids,
+            );
 
-            $if_body_context->assigned_var_ids = [
-                ...$if_body_context->assigned_var_ids,
-                ...$context->assigned_var_ids,
-            ];
+            $if_body_context->assigned_var_ids = array_merge(
+                $if_body_context->assigned_var_ids,
+                $context->assigned_var_ids,
+            );
 
             $if_body_context->reconciled_expression_clauses = [
                 ...$if_body_context->reconciled_expression_clauses,
@@ -212,10 +210,10 @@ final class AndAnalyzer
                 ),
             ];
 
-            $if_body_context->vars_possibly_in_scope = [
-                ...$if_body_context->vars_possibly_in_scope,
-                ...$context->vars_possibly_in_scope,
-            ];
+            $if_body_context->vars_possibly_in_scope = array_merge(
+                $if_body_context->vars_possibly_in_scope,
+                $context->vars_possibly_in_scope,
+            );
 
             $if_body_context->updateChecks($context);
         } else {

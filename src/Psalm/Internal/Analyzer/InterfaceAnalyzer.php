@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use InvalidArgumentException;
@@ -13,13 +11,9 @@ use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\Statements\Expression\ClassConstAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Provider\NodeDataProvider;
-use Psalm\Internal\Type\Comparator\UnionTypeComparator;
-use Psalm\Issue\InheritorViolation;
 use Psalm\Issue\ParseError;
 use Psalm\Issue\UndefinedInterface;
 use Psalm\IssueBuffer;
-use Psalm\Type\Atomic\TNamedObject;
-use Psalm\Type\Union;
 use UnexpectedValueException;
 
 use function strtolower;
@@ -27,12 +21,12 @@ use function strtolower;
 /**
  * @internal
  */
-final class InterfaceAnalyzer extends ClassLikeAnalyzer
+class InterfaceAnalyzer extends ClassLikeAnalyzer
 {
     public function __construct(
         PhpParser\Node\Stmt\Interface_ $interface,
         SourceAnalyzer $source,
-        string $fq_interface_name,
+        string $fq_interface_name
     ) {
         parent::__construct($interface, $source, $fq_interface_name);
     }
@@ -74,7 +68,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
 
                 try {
                     $extended_interface_storage = $codebase->classlike_storage_provider->get($extended_interface_name);
-                } catch (InvalidArgumentException) {
+                } catch (InvalidArgumentException $e) {
                     continue;
                 }
 
@@ -115,23 +109,6 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
             }
         }
 
-        $class_union = new Union([new TNamedObject($fq_interface_name)]);
-        foreach ($class_storage->direct_interface_parents as $parent_interface) {
-            $parent_storage = $codebase->classlikes->getStorageFor($parent_interface);
-            if ($parent_storage && $parent_storage->inheritors) {
-                if (!UnionTypeComparator::isContainedBy($codebase, $class_union, $parent_storage->inheritors)) {
-                    IssueBuffer::maybeAdd(
-                        new InheritorViolation(
-                            'Interface ' . $fq_interface_name . '
-                             is not an allowed inheritor of parent interface ' . $parent_interface,
-                            new CodeLocation($this, $this->class),
-                        ),
-                        $this->getSuppressedIssues(),
-                    );
-                }
-            }
-        }
-
         $fq_interface_name = $this->getFQCLN();
 
         if (!$fq_interface_name) {
@@ -149,10 +126,6 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
             AttributesAnalyzer::TARGET_CLASS,
             $class_storage->suppressed_issues + $this->getSuppressedIssues(),
         );
-
-        foreach ($class_storage->docblock_issues as $docblock_issue) {
-            IssueBuffer::maybeAdd($docblock_issue);
-        }
 
         $member_stmts = [];
         foreach ($this->class->stmts as $stmt) {
@@ -216,10 +189,6 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                 }
             }
         }
-
-        $pseudo_methods = $class_storage->pseudo_methods + $class_storage->pseudo_static_methods;
-
-        MethodComparator::comparePseudoMethods($pseudo_methods, $this->fq_class_name, $codebase, $class_storage);
 
         $statements_analyzer = new StatementsAnalyzer($this, new NodeDataProvider());
         $statements_analyzer->analyze($member_stmts, $interface_context, null, true);

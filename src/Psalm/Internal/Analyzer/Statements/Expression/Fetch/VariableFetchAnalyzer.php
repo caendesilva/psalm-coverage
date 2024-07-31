@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
 use PhpParser;
@@ -43,7 +41,7 @@ use function time;
 /**
  * @internal
  */
-final class VariableFetchAnalyzer
+class VariableFetchAnalyzer
 {
     public const SUPER_GLOBALS = [
         '$GLOBALS',
@@ -71,7 +69,7 @@ final class VariableFetchAnalyzer
         ?Union $by_ref_type = null,
         bool $array_assignment = false,
         bool $from_global = false,
-        bool $assigned_to_reference = false,
+        bool $assigned_to_reference = false
     ): bool {
         $project_analyzer = $statements_analyzer->getFileAnalyzer()->project_analyzer;
         $codebase = $statements_analyzer->getCodebase();
@@ -323,9 +321,11 @@ final class VariableFetchAnalyzer
                         (bool) $statements_analyzer->getBranchPoint($var_name),
                     );
                 } else {
-                    if ($codebase->alter_code
-                        && isset($project_analyzer->getIssuesToFix()['PossiblyUndefinedVariable'])
-                    ) {
+                    if ($codebase->alter_code) {
+                        if (!isset($project_analyzer->getIssuesToFix()['PossiblyUndefinedVariable'])) {
+                            return true;
+                        }
+
                         $branch_point = $statements_analyzer->getBranchPoint($var_name);
 
                         if ($branch_point) {
@@ -433,7 +433,7 @@ final class VariableFetchAnalyzer
         PhpParser\Node\Expr\Variable $stmt,
         string $var_name,
         Union &$stmt_type,
-        Context $context,
+        Context $context
     ): void {
         $codebase = $statements_analyzer->getCodebase();
 
@@ -507,7 +507,7 @@ final class VariableFetchAnalyzer
         StatementsAnalyzer $statements_analyzer,
         string $var_name,
         Union &$type,
-        PhpParser\Node\Expr\Variable $stmt,
+        PhpParser\Node\Expr\Variable $stmt
     ): void {
         if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph
             && !in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
@@ -575,7 +575,11 @@ final class VariableFetchAnalyzer
             $var_id = '$_FILES full path';
         }
 
-        return self::$globalCache[$var_id] ?? Type::getMixed();
+        if (isset(self::$globalCache[$var_id])) {
+            return self::$globalCache[$var_id];
+        }
+
+        return Type::getMixed();
     }
 
     /**
@@ -636,7 +640,7 @@ final class VariableFetchAnalyzer
             return new Union([$type]);
         }
 
-        if (in_array($var_id, ['$_GET', '$_POST', '$_REQUEST'], true)) {
+        if (in_array($var_id, array('$_GET', '$_POST', '$_REQUEST'), true)) {
             $array_key = new Union([new TNonEmptyString(), new TInt()]);
             $array = new TNonEmptyArray(
                 [
@@ -781,7 +785,7 @@ final class VariableFetchAnalyzer
                 'type' => $str,
                 'tmp_name' => $str,
                 'size' => Type::getListKey(),
-                'error' => Type::getIntRange(0, 8),
+                'error' => new Union([new TIntRange(0, 8)]),
             ];
 
             if ($files_full_path) {

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
@@ -11,10 +9,12 @@ use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TTemplateParamClass;
 
+use function get_class;
+
 /**
  * @internal
  */
-final class ClassLikeStringComparator
+class ClassLikeStringComparator
 {
     /**
      * @param TClassString|TLiteralClassString $input_type_part
@@ -25,7 +25,7 @@ final class ClassLikeStringComparator
         Scalar $input_type_part,
         Scalar $container_type_part,
         bool $allow_interface_equality,
-        ?TypeComparisonResult $atomic_comparison_result = null,
+        ?TypeComparisonResult $atomic_comparison_result = null
     ): bool {
         if ($container_type_part instanceof TLiteralClassString
             && $input_type_part instanceof TLiteralClassString
@@ -34,7 +34,7 @@ final class ClassLikeStringComparator
         }
 
         if ($container_type_part instanceof TTemplateParamClass
-            && $input_type_part::class === TClassString::class
+            && get_class($input_type_part) === TClassString::class
         ) {
             if ($atomic_comparison_result) {
                 $atomic_comparison_result->type_coerced = true;
@@ -80,7 +80,7 @@ final class ClassLikeStringComparator
                     : $input_type_part->value,
             );
 
-        $isContainedBy = AtomicTypeComparator::isContainedBy(
+        return AtomicTypeComparator::isContainedBy(
             $codebase,
             $fake_input_object,
             $fake_container_object,
@@ -88,16 +88,5 @@ final class ClassLikeStringComparator
             false,
             $atomic_comparison_result,
         );
-
-        if ($atomic_comparison_result
-            && $atomic_comparison_result->replacement_atomic_type instanceof TNamedObject
-        ) {
-            $atomic_comparison_result->replacement_atomic_type = new TClassString(
-                'object',
-                $atomic_comparison_result->replacement_atomic_type,
-            );
-        }
-
-        return $isContainedBy;
     }
 }

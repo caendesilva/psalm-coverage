@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -16,7 +14,7 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class ClosureFromCallableReturnTypeProvider implements MethodReturnTypeProviderInterface
+class ClosureFromCallableReturnTypeProvider implements MethodReturnTypeProviderInterface
 {
     public static function getClassLikeNames(): array
     {

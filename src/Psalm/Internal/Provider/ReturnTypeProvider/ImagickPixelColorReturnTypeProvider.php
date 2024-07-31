@@ -1,13 +1,12 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Plugin\EventHandler\Event\MethodReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\MethodReturnTypeProviderInterface;
 use Psalm\Type;
+use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Union;
@@ -18,7 +17,7 @@ use function in_array;
 /**
  * @internal
  */
-final class ImagickPixelColorReturnTypeProvider implements MethodReturnTypeProviderInterface
+class ImagickPixelColorReturnTypeProvider implements MethodReturnTypeProviderInterface
 {
     public static function getClassLikeNames(): array
     {
@@ -58,10 +57,10 @@ final class ImagickPixelColorReturnTypeProvider implements MethodReturnTypeProvi
         if (isset($formats[0])) {
             $types []= new Union([
                 new TKeyedArray([
-                    'r' => Type::getIntRange(0, 255),
-                    'g' => Type::getIntRange(0, 255),
-                    'b' => Type::getIntRange(0, 255),
-                    'a' => Type::getIntRange(0, 1),
+                    'r' => new Union([new TIntRange(0, 255)]),
+                    'g' => new Union([new TIntRange(0, 255)]),
+                    'b' => new Union([new TIntRange(0, 255)]),
+                    'a' => new Union([new TIntRange(0, 1)]),
                 ]),
             ]);
         }
@@ -78,10 +77,10 @@ final class ImagickPixelColorReturnTypeProvider implements MethodReturnTypeProvi
         if (isset($formats[2])) {
             $types []= new Union([
                 new TKeyedArray([
-                    'r' => Type::getIntRange(0, 255),
-                    'g' => Type::getIntRange(0, 255),
-                    'b' => Type::getIntRange(0, 255),
-                    'a' => Type::getIntRange(0, 255),
+                    'r' => new Union([new TIntRange(0, 255)]),
+                    'g' => new Union([new TIntRange(0, 255)]),
+                    'b' => new Union([new TIntRange(0, 255)]),
+                    'a' => new Union([new TIntRange(0, 255)]),
                 ]),
             ]);
         }

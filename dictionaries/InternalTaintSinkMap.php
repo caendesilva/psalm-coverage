@@ -5,7 +5,7 @@ use Psalm\Type\TaintKind;
 // This maps internal function names to sink types that we don’t want to end up there
 
 /**
- * @var non-empty-array<string, non-empty-list<list<TaintKind::*>>>
+ * @var array<string, list<list<TaintKind::*>>>
  */
 return [
 'exec' => [['shell']],

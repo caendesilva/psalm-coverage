@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Progress;
 
 use function error_reporting;
@@ -43,10 +41,6 @@ abstract class Progress
     }
 
     public function start(int $number_of_tasks): void
-    {
-    }
-
-    public function expand(int $number_of_tasks): void
     {
     }
 

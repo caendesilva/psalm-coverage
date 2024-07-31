@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Codebase;
 
 use InvalidArgumentException;
@@ -49,7 +47,6 @@ use ReflectionProperty;
 use UnexpectedValueException;
 
 use function array_filter;
-use function array_keys;
 use function array_merge;
 use function array_pop;
 use function count;
@@ -73,8 +70,12 @@ use const PHP_EOL;
  *
  * Handles information about classes, interfaces and traits
  */
-final class ClassLikes
+class ClassLikes
 {
+    private ClassLikeStorageProvider $classlike_storage_provider;
+
+    public FileReferenceProvider $file_reference_provider;
+
     /**
      * @var array<lowercase-string, bool>
      */
@@ -139,13 +140,25 @@ final class ClassLikes
 
     public bool $collect_locations = false;
 
+    private StatementsProvider $statements_provider;
+
+    private Config $config;
+
+    private Scanner $scanner;
+
     public function __construct(
-        private readonly Config $config,
-        private readonly ClassLikeStorageProvider $classlike_storage_provider,
-        public FileReferenceProvider $file_reference_provider,
-        private readonly StatementsProvider $statements_provider,
-        private readonly Scanner $scanner,
+        Config $config,
+        ClassLikeStorageProvider $storage_provider,
+        FileReferenceProvider $file_reference_provider,
+        StatementsProvider $statements_provider,
+        Scanner $scanner
     ) {
+        $this->config = $config;
+        $this->classlike_storage_provider = $storage_provider;
+        $this->file_reference_provider = $file_reference_provider;
+        $this->statements_provider = $statements_provider;
+        $this->scanner = $scanner;
+
         $this->collectPredefinedClassLikes();
     }
 
@@ -155,7 +168,7 @@ final class ClassLikes
         $predefined_classes = get_declared_classes();
 
         foreach ($predefined_classes as $predefined_class) {
-            $predefined_class = (string) preg_replace('/^\\\/', '', $predefined_class, 1);
+            $predefined_class = preg_replace('/^\\\/', '', $predefined_class, 1);
             /** @psalm-suppress ArgumentTypeCoercion */
             $reflection_class = new ReflectionClass($predefined_class);
 
@@ -171,7 +184,7 @@ final class ClassLikes
         $predefined_interfaces = get_declared_interfaces();
 
         foreach ($predefined_interfaces as $predefined_interface) {
-            $predefined_interface = (string) preg_replace('/^\\\/', '', $predefined_interface, 1);
+            $predefined_interface = preg_replace('/^\\\/', '', $predefined_interface, 1);
             /** @psalm-suppress ArgumentTypeCoercion */
             $reflection_class = new ReflectionClass($predefined_interface);
 
@@ -311,7 +324,7 @@ final class ClassLikes
         string $fq_class_name,
         ?CodeLocation $code_location = null,
         ?string $calling_fq_class_name = null,
-        ?string $calling_method_id = null,
+        ?string $calling_method_id = null
     ): bool {
         $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
 
@@ -342,7 +355,6 @@ final class ClassLikes
             }
         }
 
-        // fixme: this looks like a crazy caching hack
         if (!isset($this->existing_classes_lc[$fq_class_name_lc])
             || !$this->existing_classes_lc[$fq_class_name_lc]
             || !$this->classlike_storage_provider->has($fq_class_name_lc)
@@ -379,18 +391,17 @@ final class ClassLikes
         string $fq_class_name,
         ?CodeLocation $code_location = null,
         ?string $calling_fq_class_name = null,
-        ?string $calling_method_id = null,
+        ?string $calling_method_id = null
     ): bool {
         $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
 
-        // fixme: this looks like a crazy caching hack
         if (!isset($this->existing_interfaces_lc[$fq_class_name_lc])
             || !$this->existing_interfaces_lc[$fq_class_name_lc]
             || !$this->classlike_storage_provider->has($fq_class_name_lc)
         ) {
             if ((
-                !isset($this->existing_interfaces_lc[$fq_class_name_lc])
-                    || $this->existing_interfaces_lc[$fq_class_name_lc]
+                !isset($this->existing_classes_lc[$fq_class_name_lc])
+                    || $this->existing_classes_lc[$fq_class_name_lc]
                 )
                 && !$this->classlike_storage_provider->has($fq_class_name_lc)
             ) {
@@ -447,18 +458,17 @@ final class ClassLikes
         string $fq_class_name,
         ?CodeLocation $code_location = null,
         ?string $calling_fq_class_name = null,
-        ?string $calling_method_id = null,
+        ?string $calling_method_id = null
     ): bool {
         $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
 
-        // fixme: this looks like a crazy caching hack
         if (!isset($this->existing_enums_lc[$fq_class_name_lc])
             || !$this->existing_enums_lc[$fq_class_name_lc]
             || !$this->classlike_storage_provider->has($fq_class_name_lc)
         ) {
             if ((
-                !isset($this->existing_enums_lc[$fq_class_name_lc])
-                    || $this->existing_enums_lc[$fq_class_name_lc]
+                !isset($this->existing_classes_lc[$fq_class_name_lc])
+                    || $this->existing_classes_lc[$fq_class_name_lc]
                 )
                 && !$this->classlike_storage_provider->has($fq_class_name_lc)
             ) {
@@ -538,7 +548,7 @@ final class ClassLikes
         string $fq_class_name,
         ?CodeLocation $code_location = null,
         ?string $calling_fq_class_name = null,
-        ?string $calling_method_id = null,
+        ?string $calling_method_id = null
     ): bool {
         return $this->classExists($fq_class_name, $code_location, $calling_fq_class_name, $calling_method_id)
             || $this->interfaceExists($fq_class_name, $code_location, $calling_fq_class_name, $calling_method_id);
@@ -551,7 +561,7 @@ final class ClassLikes
         string $fq_class_name,
         ?CodeLocation $code_location = null,
         ?string $calling_fq_class_name = null,
-        ?string $calling_method_id = null,
+        ?string $calling_method_id = null
     ): bool {
         return $this->classExists($fq_class_name, $code_location, $calling_fq_class_name, $calling_method_id)
             || $this->interfaceExists($fq_class_name, $code_location, $calling_fq_class_name, $calling_method_id)
@@ -565,7 +575,7 @@ final class ClassLikes
         string $fq_class_name,
         ?CodeLocation $code_location = null,
         ?string $calling_fq_class_name = null,
-        ?string $calling_method_id = null,
+        ?string $calling_method_id = null
     ): bool {
         if (isset(ClassLikeAnalyzer::SPECIAL_TYPES[$fq_class_name])) {
             return false;
@@ -586,7 +596,6 @@ final class ClassLikes
     /**
      * Determine whether or not a class extends a parent
      *
-     * @psalm-mutation-free
      * @throws UnpopulatedClasslikeException when called on unpopulated class
      * @throws InvalidArgumentException when class does not exist
      */
@@ -610,8 +619,6 @@ final class ClassLikes
 
     /**
      * Check whether a class implements an interface
-     *
-     * @psalm-mutation-free
      */
     public function classImplements(string $fq_class_name, string $interface): bool
     {
@@ -665,7 +672,7 @@ final class ClassLikes
         string $fq_interface_name,
         ?CodeLocation $code_location = null,
         ?string $calling_fq_class_name = null,
-        ?string $calling_method_id = null,
+        ?string $calling_method_id = null
     ): bool {
         if (isset(ClassLikeAnalyzer::SPECIAL_TYPES[strtolower($fq_interface_name)])) {
             return false;
@@ -683,7 +690,7 @@ final class ClassLikes
         string $fq_enum_name,
         ?CodeLocation $code_location = null,
         ?string $calling_fq_class_name = null,
-        ?string $calling_method_id = null,
+        ?string $calling_method_id = null
     ): bool {
         if (isset(ClassLikeAnalyzer::SPECIAL_TYPES[strtolower($fq_enum_name)])) {
             return false;
@@ -835,7 +842,7 @@ final class ClassLikes
         foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
             try {
                 $classlike_storage = $this->classlike_storage_provider->get($fq_class_name_lc);
-            } catch (InvalidArgumentException) {
+            } catch (InvalidArgumentException $e) {
                 continue;
             }
 
@@ -907,7 +914,7 @@ final class ClassLikes
     public static function makeImmutable(
         PhpParser\Node\Stmt\Class_ $class_stmt,
         ProjectAnalyzer $project_analyzer,
-        string $file_path,
+        string $file_path
     ): void {
         $manipulator = ClassDocblockManipulator::getForClass(
             $project_analyzer,
@@ -942,7 +949,7 @@ final class ClassLikes
                 $source_method_storage = $methods->getStorage(
                     new MethodIdentifier(...$source_parts),
                 );
-            } catch (InvalidArgumentException) {
+            } catch (InvalidArgumentException $e) {
                 continue;
             }
 
@@ -950,7 +957,7 @@ final class ClassLikes
 
             try {
                 $classlike_storage = $this->classlike_storage_provider->get($destination_fq_class_name);
-            } catch (InvalidArgumentException) {
+            } catch (InvalidArgumentException $e) {
                 continue;
             }
 
@@ -1019,7 +1026,7 @@ final class ClassLikes
         foreach ($codebase->properties_to_move as $source => $destination) {
             try {
                 $source_property_storage = $properties->getStorage($source);
-            } catch (InvalidArgumentException) {
+            } catch (InvalidArgumentException $e) {
                 continue;
             }
 
@@ -1183,7 +1190,7 @@ final class ClassLikes
         string $fq_class_name,
         ?string $calling_method_id,
         bool $force_change = false,
-        bool $was_self = false,
+        bool $was_self = false
     ): bool {
         if ($class_name_node instanceof VirtualNode) {
             return false;
@@ -1365,7 +1372,7 @@ final class ClassLikes
         StatementsSource $source,
         Union $type,
         CodeLocation $type_location,
-        ?string $calling_method_id,
+        ?string $calling_method_id
     ): void {
         $calling_fq_class_name = $source->getFQCLN();
         $fq_class_name_lc = strtolower($calling_fq_class_name ?? '');
@@ -1495,7 +1502,7 @@ final class ClassLikes
         int $source_start,
         int $source_end,
         bool $add_class_constant = false,
-        bool $allow_self = false,
+        bool $allow_self = false
     ): void {
         $project_analyzer = ProjectAnalyzer::getInstance();
         $codebase = $project_analyzer->getCodebase();
@@ -1531,7 +1538,7 @@ final class ClassLikes
         string $destination_fq_class_name,
         string $source_file_path,
         int $source_start,
-        int $source_end,
+        int $source_end
     ): void {
         $project_analyzer = ProjectAnalyzer::getInstance();
         $codebase = $project_analyzer->getCodebase();
@@ -1585,7 +1592,7 @@ final class ClassLikes
                 $storage->constants,
                 static fn(ClassConstantStorage $constant): bool => $constant->type
                     && ($constant->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC
-                        || $constant->visibility === ClassLikeAnalyzer::VISIBILITY_PROTECTED),
+                        || $constant->visibility === ClassLikeAnalyzer::VISIBILITY_PROTECTED)
             );
         }
 
@@ -1596,7 +1603,8 @@ final class ClassLikes
     }
 
     /**
-     * @param ReflectionProperty::IS_PUBLIC|ReflectionProperty::IS_PROTECTED|ReflectionProperty::IS_PRIVATE $visibility
+     * @param ReflectionProperty::IS_PUBLIC|ReflectionProperty::IS_PROTECTED|ReflectionProperty::IS_PRIVATE
+     *  $visibility
      */
     public function getClassConstantType(
         string $class_name,
@@ -1604,8 +1612,7 @@ final class ClassLikes
         int $visibility,
         ?StatementsAnalyzer $statements_analyzer = null,
         array $visited_constant_ids = [],
-        bool $late_static_binding = false,
-        bool $in_value_of_context = false,
+        bool $late_static_binding = false
     ): ?Union {
         $class_name = strtolower($class_name);
 
@@ -1615,42 +1622,41 @@ final class ClassLikes
 
         $storage = $this->classlike_storage_provider->get($class_name);
 
-        $enum_types = null;
+        if (isset($storage->constants[$constant_name])) {
+            $constant_storage = $storage->constants[$constant_name];
 
-        if ($storage->is_enum) {
-            $enum_types = $this->getEnumType(
-                $storage,
-                $constant_name,
-            );
-
-            if ($in_value_of_context) {
-                return $enum_types;
+            if ($visibility === ReflectionProperty::IS_PUBLIC
+                && $constant_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
+            ) {
+                return null;
             }
+
+            if ($visibility === ReflectionProperty::IS_PROTECTED
+                && $constant_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
+                && $constant_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PROTECTED
+            ) {
+                return null;
+            }
+
+            if ($constant_storage->unresolved_node) {
+                /** @psalm-suppress InaccessibleProperty Lazy resolution */
+                $constant_storage->inferred_type = new Union([ConstantTypeResolver::resolve(
+                    $this,
+                    $constant_storage->unresolved_node,
+                    $statements_analyzer,
+                    $visited_constant_ids,
+                )]);
+                if ($constant_storage->type === null || !$constant_storage->type->from_docblock) {
+                    /** @psalm-suppress InaccessibleProperty Lazy resolution */
+                    $constant_storage->type = $constant_storage->inferred_type;
+                }
+            }
+
+            return $late_static_binding ? $constant_storage->type : ($constant_storage->inferred_type ?? null);
+        } elseif (isset($storage->enum_cases[$constant_name])) {
+            return new Union([new TEnumCase($storage->name, $constant_name)]);
         }
-
-        $constant_types = $this->getConstantType(
-            $storage,
-            $constant_name,
-            $visibility,
-            $statements_analyzer,
-            $visited_constant_ids,
-            $late_static_binding,
-        );
-
-        $types = [];
-        if ($enum_types !== null) {
-            $types = array_merge($types, $enum_types->getAtomicTypes());
-        }
-
-        if ($constant_types !== null) {
-            $types = array_merge($types, $constant_types->getAtomicTypes());
-        }
-
-        if ($types === []) {
-            return null;
-        }
-
-        return new Union($types);
+        return null;
     }
 
     private function checkMethodReferences(ClassLikeStorage $classlike_storage, Methods $methods): void
@@ -1679,7 +1685,7 @@ final class ClassLikes
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);
-                } catch (InvalidArgumentException) {
+                } catch (InvalidArgumentException $e) {
                     continue;
                 }
 
@@ -1694,10 +1700,6 @@ final class ClassLikes
                     )
                 )
             ) {
-                continue;
-            }
-
-            if ($method_storage->public_api) {
                 continue;
             }
 
@@ -1779,7 +1781,7 @@ final class ClassLikes
                         foreach ($classlike_storage->class_implements as $fq_interface_name_lc => $_) {
                             try {
                                 $interface_storage = $this->classlike_storage_provider->get($fq_interface_name_lc);
-                            } catch (InvalidArgumentException) {
+                            } catch (InvalidArgumentException $e) {
                                 continue;
                             }
 
@@ -1937,7 +1939,7 @@ final class ClassLikes
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);
-                } catch (InvalidArgumentException) {
+                } catch (InvalidArgumentException $e) {
                     continue;
                 }
 
@@ -2006,7 +2008,7 @@ final class ClassLikes
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);
-                } catch (InvalidArgumentException) {
+                } catch (InvalidArgumentException $e) {
                     continue;
                 }
 
@@ -2339,31 +2341,15 @@ final class ClassLikes
             $existing_classes,
         ] = $thread_data;
 
-        $this->existing_classlikes_lc = self::mergeThreadData($existing_classlikes_lc, $this->existing_classlikes_lc);
-        $this->existing_classes_lc = self::mergeThreadData($existing_classes_lc, $this->existing_classes_lc);
-        $this->existing_traits_lc = self::mergeThreadData($existing_traits_lc, $this->existing_traits_lc);
-        $this->existing_traits = self::mergeThreadData($existing_traits, $this->existing_traits);
-        $this->existing_enums_lc = self::mergeThreadData($existing_enums_lc, $this->existing_enums_lc);
-        $this->existing_enums = self::mergeThreadData($existing_enums, $this->existing_enums);
-        $this->existing_interfaces_lc = self::mergeThreadData($existing_interfaces_lc, $this->existing_interfaces_lc);
-        $this->existing_interfaces = self::mergeThreadData($existing_interfaces, $this->existing_interfaces);
-        $this->existing_classes = self::mergeThreadData($existing_classes, $this->existing_classes);
-    }
-
-    /**
-     * @template T as string|lowercase-string
-     * @param array<T, bool> $old
-     * @param array<T, bool> $new
-     * @return array<T, bool>
-     */
-    private static function mergeThreadData(array $old, array $new): array
-    {
-        foreach ($new as $name => $value) {
-            if (!isset($old[$name]) || (!$old[$name] && $value)) {
-                $old[$name] = $value;
-            }
-        }
-        return $old;
+        $this->existing_classlikes_lc = array_merge($existing_classlikes_lc, $this->existing_classlikes_lc);
+        $this->existing_classes_lc = array_merge($existing_classes_lc, $this->existing_classes_lc);
+        $this->existing_traits_lc = array_merge($existing_traits_lc, $this->existing_traits_lc);
+        $this->existing_traits = array_merge($existing_traits, $this->existing_traits);
+        $this->existing_enums_lc = array_merge($existing_enums_lc, $this->existing_enums_lc);
+        $this->existing_enums = array_merge($existing_enums, $this->existing_enums);
+        $this->existing_interfaces_lc = array_merge($existing_interfaces_lc, $this->existing_interfaces_lc);
+        $this->existing_interfaces = array_merge($existing_interfaces, $this->existing_interfaces);
+        $this->existing_classes = array_merge($existing_classes, $this->existing_classes);
     }
 
     public function getStorageFor(string $fq_class_name): ?ClassLikeStorage
@@ -2372,117 +2358,8 @@ final class ClassLikes
 
         try {
             return $this->classlike_storage_provider->get($fq_class_name);
-        } catch (InvalidArgumentException) {
+        } catch (InvalidArgumentException $e) {
             return null;
         }
-    }
-
-    private function getConstantType(
-        ClassLikeStorage $class_like_storage,
-        string $constant_name,
-        int $visibility,
-        ?StatementsAnalyzer $statements_analyzer,
-        array $visited_constant_ids,
-        bool $late_static_binding,
-    ): ?Union {
-        $constant_resolver = new StorageByPatternResolver();
-        $resolved_constants = $constant_resolver->resolveConstants(
-            $class_like_storage,
-            $constant_name,
-        );
-
-        $filtered_constants_by_visibility = array_filter(
-            $resolved_constants,
-            fn(ClassConstantStorage $resolved_constant) => $this->filterConstantNameByVisibility(
-                $resolved_constant,
-                $visibility,
-            ),
-        );
-
-        if ($filtered_constants_by_visibility === []) {
-            return null;
-        }
-
-        $new_atomic_types = [];
-
-        foreach ($filtered_constants_by_visibility as $filtered_constant_name => $constant_storage) {
-            if (!isset($class_like_storage->constants[$filtered_constant_name])) {
-                continue;
-            }
-
-            if ($constant_storage->unresolved_node) {
-                /** @psalm-suppress InaccessibleProperty Lazy resolution */
-                $constant_storage->inferred_type = new Union([ConstantTypeResolver::resolve(
-                    $this,
-                    $constant_storage->unresolved_node,
-                    $statements_analyzer,
-                    $visited_constant_ids,
-                )]);
-
-                if ($constant_storage->type === null || !$constant_storage->type->from_docblock) {
-                    /** @psalm-suppress InaccessibleProperty Lazy resolution */
-                    $constant_storage->type = $constant_storage->inferred_type;
-                }
-            }
-
-            $constant_type = $late_static_binding
-                ? $constant_storage->type
-                : ($constant_storage->inferred_type ?? null);
-
-            if ($constant_type === null) {
-                continue;
-            }
-
-            $new_atomic_types[] = $constant_type->getAtomicTypes();
-        }
-
-        if ($new_atomic_types === []) {
-            return null;
-        }
-
-        return new Union(array_merge([], ...$new_atomic_types));
-    }
-
-    private function getEnumType(
-        ClassLikeStorage $class_like_storage,
-        string $constant_name,
-    ): ?Union {
-        $constant_resolver = new StorageByPatternResolver();
-        $resolved_enums = $constant_resolver->resolveEnums(
-            $class_like_storage,
-            $constant_name,
-        );
-
-        if ($resolved_enums === []) {
-            return null;
-        }
-
-        $types = [];
-        foreach (array_keys($resolved_enums) as $enum_case_name) {
-            $types[$enum_case_name] = new TEnumCase($class_like_storage->name, $enum_case_name);
-        }
-
-        return new Union($types);
-    }
-
-    private function filterConstantNameByVisibility(
-        ClassConstantStorage $constant_storage,
-        int $visibility,
-    ): bool {
-
-        if ($visibility === ReflectionProperty::IS_PUBLIC
-            && $constant_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
-        ) {
-            return false;
-        }
-
-        if ($visibility === ReflectionProperty::IS_PROTECTED
-            && $constant_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
-            && $constant_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PROTECTED
-        ) {
-            return false;
-        }
-
-        return true;
     }
 }

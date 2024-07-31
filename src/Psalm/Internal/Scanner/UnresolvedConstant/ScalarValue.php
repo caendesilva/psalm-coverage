@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Scanner\UnresolvedConstant;
 
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
@@ -10,9 +8,14 @@ use Psalm\Internal\Scanner\UnresolvedConstantComponent;
  * @psalm-immutable
  * @internal
  */
-final class ScalarValue extends UnresolvedConstantComponent
+class ScalarValue extends UnresolvedConstantComponent
 {
-    public function __construct(public readonly string|int|float|bool|null $value)
+    /** @var string|int|float|bool|null */
+    public $value;
+
+    /** @param string|int|float|bool|null $value */
+    public function __construct($value)
     {
+        $this->value = $value;
     }
 }

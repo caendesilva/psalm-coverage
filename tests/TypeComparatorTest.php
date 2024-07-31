@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -90,13 +88,13 @@ class TypeComparatorTest extends TestCase
         $basic_types['list{123}'] = true;
 
         return array_map(
-            static fn($type) => [$type],
+            fn($type) => [$type],
             array_keys($basic_types),
         );
     }
 
     /**
-     * @dataProvider getSuccessfulComparisons
+     * @dataProvider getAllowedChildTypes
      */
     public function testTypeAcceptsType(string $parent_type_string, string $child_type_string): void
     {
@@ -109,32 +107,13 @@ class TypeComparatorTest extends TestCase
                 $child_type,
                 $parent_type,
             ),
-            'Type ' . $parent_type_string . ' should contain ' . $child_type_string,
-        );
-    }
-
-    /**
-     * @dataProvider getUnsuccessfulComparisons
-     */
-    public function testTypeDoesNotAcceptType(string $parent_type_string, string $child_type_string): void
-    {
-        $parent_type = Type::parseString($parent_type_string);
-        $child_type = Type::parseString($child_type_string);
-
-        $this->assertFalse(
-            UnionTypeComparator::isContainedBy(
-                $this->project_analyzer->getCodebase(),
-                $child_type,
-                $parent_type,
-            ),
-            'Type ' . $parent_type_string . ' should not contain ' . $child_type_string,
         );
     }
 
     /**
      * @return array<array{string, string}>
      */
-    public function getSuccessfulComparisons(): array
+    public function getAllowedChildTypes(): array
     {
         return [
             'iterableAcceptsArray' => [
@@ -161,27 +140,6 @@ class TypeComparatorTest extends TestCase
                 'lowercase-string',
                 'callable-string',
             ],
-            'callableUnionAcceptsCallableUnion' => [
-                '(callable(int,string[]): void)|(callable(int): void)',
-                '(callable(int): void)|(callable(int,string[]): void)',
-            ],
-        ];
-    }
-
-    /** @return iterable<string, list{string,string}> */
-    public function getUnsuccessfulComparisons(): iterable
-    {
-        yield 'genericListDoesNotAcceptListTupleWithMismatchedTypes' => [
-            'list<int>',
-            'list{int, string}',
-        ];
-        yield 'genericListDoesNotAcceptArrayTupleWithMismatchedTypes' => [
-            'list<int>',
-            'array{int, string}',
-        ];
-        yield 'nonEmptyMixedDoesNotAcceptMixed' => [
-            'non-empty-mixed',
-            'mixed',
         ];
     }
 }

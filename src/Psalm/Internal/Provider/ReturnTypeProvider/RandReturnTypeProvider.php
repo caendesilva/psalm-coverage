@@ -16,7 +16,7 @@ use function count;
 /**
  * @internal
  */
-final class RandReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class RandReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>
@@ -63,6 +63,6 @@ final class RandReturnTypeProvider implements FunctionReturnTypeProviderInterfac
             }
         }
 
-        return Type::getIntRange($min_value, $max_value);
+        return new Union([new TIntRange($min_value, $max_value)]);
     }
 }

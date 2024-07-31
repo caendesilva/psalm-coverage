@@ -1,53 +1,107 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage;
 
 use Psalm\Type\Union;
 
 final class MethodStorage extends FunctionLikeStorage
 {
-    use UnserializeMemoryUsageSuppressionTrait;
-    public bool $is_static = false;
+    /**
+     * @var bool
+     */
+    public $is_static = false;
 
-    public int $visibility = 0;
+    /**
+     * @var int
+     */
+    public $visibility = 0;
 
-    public bool $final = false;
+    /**
+     * @var bool
+     */
+    public $final = false;
 
-    public bool $final_from_docblock = false;
+    /**
+     * @var bool
+     */
+    public $final_from_docblock = false;
 
-    public bool $abstract = false;
+    /**
+     * @var bool
+     */
+    public $abstract = false;
 
-    public bool $overridden_downstream = false;
+    /**
+     * @var bool
+     */
+    public $overridden_downstream = false;
 
-    public bool $overridden_somewhere = false;
+    /**
+     * @var bool
+     */
+    public $overridden_somewhere = false;
 
-    public bool $inheritdoc = false;
+    /**
+     * @var bool
+     */
+    public $inheritdoc = false;
 
-    public ?bool $inherited_return_type = false;
+    /**
+     * @var ?bool
+     */
+    public $inherited_return_type = false;
 
-    public ?string $defining_fqcln = null;
+    /**
+     * @var ?string
+     */
+    public $defining_fqcln;
 
-    public bool $has_docblock_param_types = false;
+    /**
+     * @var bool
+     */
+    public $has_docblock_param_types = false;
 
-    public bool $has_docblock_return_type = false;
+    /**
+     * @var bool
+     */
+    public $has_docblock_return_type = false;
 
-    public bool $external_mutation_free = false;
+    /**
+     * @var bool
+     */
+    public $external_mutation_free = false;
 
-    public bool $immutable = false;
+    /**
+     * @var bool
+     */
+    public $immutable = false;
 
-    public bool $mutation_free_inferred = false;
+    /**
+     * @var bool
+     */
+    public $mutation_free_inferred = false;
 
     /**
      * @var ?array<string, bool>
      */
-    public ?array $this_property_mutations = null;
+    public $this_property_mutations;
 
-    public ?Union $self_out_type = null;
+    /**
+     * @var Union|null
+     */
+    public $self_out_type;
 
-    public ?Union $if_this_is_type = null;
-    public bool $stubbed = false;
+    /**
+     * @var Union|null
+     */
+    public $if_this_is_type = null;
+    /**
+     * @var bool
+     */
+    public $stubbed = false;
 
-    public bool $probably_fluent = false;
+    /**
+     * @var bool
+     */
+    public $probably_fluent = false;
 }

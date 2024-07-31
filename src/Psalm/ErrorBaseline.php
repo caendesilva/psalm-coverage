@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm;
 
 use DOMDocument;
@@ -18,6 +16,7 @@ use function array_merge;
 use function array_reduce;
 use function array_values;
 use function get_loaded_extensions;
+use function htmlspecialchars;
 use function implode;
 use function ksort;
 use function min;
@@ -63,7 +62,7 @@ final class ErrorBaseline
         FileProvider $fileProvider,
         string $baselineFile,
         array $issues,
-        bool $include_php_versions,
+        bool $include_php_versions
     ): void {
         $groupedIssues = self::countIssueTypesByFile($issues);
 
@@ -119,7 +118,13 @@ final class ErrorBaseline
 
                 foreach ($codeSamples as $codeSample) {
                     $files[$fileName][$issueType]['o'] += 1;
-                    $files[$fileName][$issueType]['s'][] = str_replace("\r\n", "\n", trim($codeSample->textContent));
+                    $files[$fileName][$issueType]['s'][] = trim($codeSample->textContent);
+                }
+
+                // TODO: Remove in Psalm 6
+                $occurrencesAttr = $issue->getAttribute('occurrences');
+                if ($occurrencesAttr !== '') {
+                    $files[$fileName][$issueType]['o'] = (int) $occurrencesAttr;
                 }
             }
         }
@@ -136,7 +141,7 @@ final class ErrorBaseline
         FileProvider $fileProvider,
         string $baselineFile,
         array $issues,
-        bool $include_php_versions,
+        bool $include_php_versions
     ): array {
         $existingIssues = self::read($fileProvider, $baselineFile);
         $newIssues = self::countIssueTypesByFile($issues);
@@ -231,7 +236,7 @@ final class ErrorBaseline
         FileProvider $fileProvider,
         string $baselineFile,
         array $groupedIssues,
-        bool $include_php_versions,
+        bool $include_php_versions
     ): void {
         $baselineDoc = new DOMDocument('1.0', 'UTF-8');
         $filesNode = $baselineDoc->createElement('files');
@@ -245,7 +250,7 @@ final class ErrorBaseline
             $filesNode->setAttribute('php-version', implode(';' . "\n\t", [...[
                 ('php:' . PHP_VERSION),
             ], ...array_map(
-                static fn(string $extension): string => $extension . ':' . (string) phpversion($extension),
+                static fn(string $extension): string => $extension . ':' . phpversion($extension),
                 $extensions,
             )]));
         }
@@ -263,7 +268,11 @@ final class ErrorBaseline
                 foreach ($existingIssueType['s'] as $selection) {
                     $codeNode = $baselineDoc->createElement('code');
                     $textContent = trim($selection);
-                    $codeNode->appendChild($baselineDoc->createCDATASection($textContent));
+                    if ($textContent !== htmlspecialchars($textContent)) {
+                        $codeNode->append($baselineDoc->createCDATASection($textContent));
+                    } else {
+                        $codeNode->textContent = trim($textContent);
+                    }
                     $issueNode->appendChild($codeNode);
                 }
                 $fileNode->appendChild($issueNode);

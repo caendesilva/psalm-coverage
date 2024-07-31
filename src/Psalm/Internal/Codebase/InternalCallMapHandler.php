@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Codebase;
 
 use PhpParser;
@@ -24,8 +22,6 @@ use function assert;
 use function count;
 use function dirname;
 use function file_exists;
-use function str_ends_with;
-use function str_starts_with;
 use function strlen;
 use function strpos;
 use function strtolower;
@@ -37,29 +33,29 @@ use function version_compare;
  *
  * Gets values from the call map array, which stores data about native functions and methods
  */
-final class InternalCallMapHandler
+class InternalCallMapHandler
 {
     private const PHP_MAJOR_VERSION = 8;
-    private const PHP_MINOR_VERSION = 3;
+    private const PHP_MINOR_VERSION = 2;
     private const LOWEST_AVAILABLE_DELTA = 71;
 
     private static ?int $loaded_php_major_version = null;
     private static ?int $loaded_php_minor_version = null;
 
     /**
-     * @var non-empty-array<lowercase-string, array<int|string,string>>|null
+     * @var array<lowercase-string, array<int|string,string>>|null
      */
     private static ?array $call_map = null;
 
     /**
-     * @var array<string, non-empty-list<TCallable>>|null
+     * @var array<list<TCallable>>|null
      */
     private static ?array $call_map_callables = [];
 
     /**
-     * @var non-empty-array<string, non-empty-list<list<TaintKind::*>>>|null
+     * @var array<string, list<list<TaintKind::*>>>
      */
-    private static ?array $taint_sink_map = null;
+    private static array $taint_sink_map = [];
 
     /**
      * @param  list<PhpParser\Node\Arg>   $args
@@ -68,7 +64,7 @@ final class InternalCallMapHandler
         Codebase $codebase,
         string $method_id,
         array $args,
-        ?NodeDataProvider $nodes,
+        ?NodeDataProvider $nodes
     ): TCallable {
         $possible_callables = self::getCallablesFromCallMap($method_id);
 
@@ -88,7 +84,7 @@ final class InternalCallMapHandler
     }
 
     /**
-     * @param  non-empty-list<TCallable>  $callables
+     * @param  array<int, TCallable>  $callables
      * @param  list<PhpParser\Node\Arg>                 $args
      */
     public static function getMatchingCallableFromCallMapOptions(
@@ -96,7 +92,7 @@ final class InternalCallMapHandler
         array $callables,
         array $args,
         ?NodeTypeProvider $nodes,
-        string $method_id,
+        string $method_id
     ): TCallable {
         if (count($callables) === 1) {
             return $callables[0];
@@ -220,7 +216,7 @@ final class InternalCallMapHandler
     }
 
     /**
-     * @return non-empty-list<TCallable>|null
+     * @return list<TCallable>|null
      */
     public static function getCallablesFromCallMap(string $function_id): ?array
     {
@@ -273,12 +269,12 @@ final class InternalCallMapHandler
                     $by_reference = true;
                 }
 
-                if (str_ends_with($arg_name, '=')) {
+                if (substr($arg_name, -1) === '=') {
                     $arg_name = substr($arg_name, 0, -1);
                     $optional = true;
                 }
 
-                if (str_starts_with($arg_name, '...')) {
+                if (strpos($arg_name, '...') === 0) {
                     $arg_name = substr($arg_name, 3);
                     $variadic = true;
                 }
@@ -289,18 +285,9 @@ final class InternalCallMapHandler
 
                 $out_type = null;
 
-                if ($by_reference && strlen($arg_name) > 2 && $arg_name[0] === 'w' && $arg_name[1] === '_') {
-                    // strip prefix that is not actually a part of the parameter name
-                    $arg_name = substr($arg_name, 2);
+                if (strlen($arg_name) > 2 && $arg_name[0] === 'w' && $arg_name[1] === '_') {
                     $out_type = $param_type;
                     $param_type = Type::getMixed();
-                }
-
-                // removes `rw_` leftover from `&rw_haystack` or `&rw_needle` or `&rw_actual_name`
-                // it doesn't have any specific meaning apart from `&` signifying that
-                // the parameter is passed by reference (handled above)
-                if ($by_reference && strlen($arg_name) > 3 && strpos($arg_name, 'rw_') === 0) {
-                    $arg_name = substr($arg_name, 3);
                 }
 
                 $function_param = new FunctionLikeParameter(
@@ -345,9 +332,7 @@ final class InternalCallMapHandler
     /**
      * Gets the method/function call map
      *
-     * @return non-empty-array<string, array<int|string, string>>
-     * @psalm-assert !null self::$taint_sink_map
-     * @psalm-assert !null self::$call_map
+     * @return array<string, array<int|string, string>>
      */
     public static function getCallMap(): array
     {
@@ -368,30 +353,25 @@ final class InternalCallMapHandler
             return self::$call_map;
         }
 
-        /** @var non-empty-array<string, array<int|string, string>> */
-        $call_map_data = require(dirname(__DIR__, 4) . '/dictionaries/CallMap.php');
+        /** @var array<string, array<int|string, string>> */
+        $call_map = require(dirname(__DIR__, 4) . '/dictionaries/CallMap.php');
 
-        $call_map = [];
+        self::$call_map = [];
 
-        foreach ($call_map_data as $key => $value) {
+        foreach ($call_map as $key => $value) {
             $cased_key = strtolower($key);
-            $call_map[$cased_key] = $value;
+            self::$call_map[$cased_key] = $value;
         }
-
-        self::$call_map = $call_map;
 
         /**
-         * @var non-empty-array<string, non-empty-list<list<TaintKind::*>>>
+         * @var array<string, list<list<TaintKind::*>>>
          */
-        $taint_map_data = require(dirname(__DIR__, 4) . '/dictionaries/InternalTaintSinkMap.php');
+        $taint_map = require(dirname(__DIR__, 4) . '/dictionaries/InternalTaintSinkMap.php');
 
-        $taint_map = [];
-        foreach ($taint_map_data as $key => $value) {
+        foreach ($taint_map as $key => $value) {
             $cased_key = strtolower($key);
-            $taint_map[$cased_key] = $value;
+            self::$taint_sink_map[$cased_key] = $value;
         }
-
-        self::$taint_sink_map = $taint_map;
 
         if (version_compare($analyzer_version, $current_version, '<')) {
             // the following assumes both minor and major versions a single digits
@@ -428,7 +408,6 @@ final class InternalCallMapHandler
                 }
             }
         }
-        assert(!empty(self::$call_map));
 
         self::$loaded_php_major_version = $analyzer_major_version;
         self::$loaded_php_minor_version = $analyzer_minor_version;

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements;
 
 use PhpParser;
@@ -23,12 +21,12 @@ use Psalm\Type\TaintKind;
 /**
  * @internal
  */
-final class EchoAnalyzer
+class EchoAnalyzer
 {
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt\Echo_ $stmt,
-        Context $context,
+        Context $context
     ): bool {
         $echo_param = new FunctionLikeParameter(
             'var',

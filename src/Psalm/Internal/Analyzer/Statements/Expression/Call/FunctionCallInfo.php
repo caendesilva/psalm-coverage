@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
 use PhpParser;
@@ -12,7 +10,7 @@ use Psalm\Type\Union;
 /**
  * @internal
  */
-final class FunctionCallInfo
+class FunctionCallInfo
 {
     public ?string $function_id = null;
 

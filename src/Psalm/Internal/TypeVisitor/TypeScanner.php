@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\TypeVisitor;
 
 use Psalm\Internal\Codebase\Scanner;
@@ -17,16 +15,28 @@ use function strtolower;
 /**
  * @internal
  */
-final class TypeScanner extends TypeVisitor
+class TypeScanner extends TypeVisitor
 {
+    private Scanner $scanner;
+
+    private ?FileStorage $file_storage = null;
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $phantom_classes;
+
     /**
      * @param  array<string, mixed> $phantom_classes
      */
     public function __construct(
-        private readonly Scanner $scanner,
-        private readonly ?FileStorage $file_storage,
-        private array $phantom_classes,
+        Scanner $scanner,
+        ?FileStorage $file_storage,
+        array $phantom_classes
     ) {
+        $this->scanner = $scanner;
+        $this->file_storage = $file_storage;
+        $this->phantom_classes = $phantom_classes;
     }
 
     protected function enterNode(TypeNode $type): ?int

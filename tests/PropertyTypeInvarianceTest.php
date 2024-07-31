@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -231,23 +229,6 @@ class PropertyTypeInvarianceTest extends TestCase
 
                         /** @var C|null */
                         public $d;
-                    }',
-            ],
-            'allowReadonly' => [
-                'code' => '<?php
-                    class ParentClass
-                    {
-                        /**
-                         * @readonly
-                         * @var null|string
-                         */
-                        protected $mightExist;
-                    }
-
-                    class ChildClass extends ParentClass
-                    {
-                        /** @var string */
-                        protected $mightExist = "";
                     }',
             ],
         ];

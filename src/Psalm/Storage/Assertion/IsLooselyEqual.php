@@ -1,11 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage\Assertion;
 
 use Psalm\Storage\Assertion;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 
 /**
@@ -13,9 +10,11 @@ use Psalm\Type\Atomic;
  */
 final class IsLooselyEqual extends Assertion
 {
-    use UnserializeMemoryUsageSuppressionTrait;
-    public function __construct(public readonly Atomic $type)
+    public Atomic $type;
+
+    public function __construct(Atomic $type)
     {
+        $this->type = $type;
     }
 
     public function getNegation(): Assertion

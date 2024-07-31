@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Psalm\CodeLocation;
@@ -23,7 +21,7 @@ use function count;
 /**
  * @internal
  */
-final class ArrayColumnReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class ArrayColumnReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>
@@ -238,7 +236,7 @@ final class ArrayColumnReturnTypeProvider implements FunctionReturnTypeProviderI
         ?Union $row_type,
         SourceAnalyzer $statements_source,
         Context $context,
-        CodeLocation $code_location,
+        CodeLocation $code_location
     ): ?Atomic {
         if ($row_type && $row_type->isSingle()) {
             if ($row_type->hasArray()) {

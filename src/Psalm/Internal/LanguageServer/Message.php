@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\LanguageServer;
 
 use AdvancedJsonRpc\Message as MessageBody;
-use Stringable;
 
 use function array_pop;
 use function explode;
@@ -14,8 +13,10 @@ use function strlen;
 /**
  * @internal
  */
-final class Message implements Stringable
+class Message
 {
+    public ?MessageBody $body = null;
+
     /**
      * @var string[]
      */
@@ -23,6 +24,8 @@ final class Message implements Stringable
 
     /**
      * Parses a message
+     *
+     * @psalm-suppress UnusedMethod
      */
     public static function parse(string $msg): Message
     {
@@ -32,9 +35,7 @@ final class Message implements Stringable
         foreach ($parts as $line) {
             if ($line) {
                 $pair = explode(': ', $line);
-                if (isset($pair[1])) {
-                    $obj->headers[$pair[0]] = $pair[1];
-                }
+                $obj->headers[$pair[0]] = $pair[1];
             }
         }
 
@@ -44,8 +45,9 @@ final class Message implements Stringable
     /**
      * @param string[] $headers
      */
-    public function __construct(public ?MessageBody $body = null, array $headers = [])
+    public function __construct(?MessageBody $body = null, array $headers = [])
     {
+        $this->body = $body;
         if (!isset($headers['Content-Type'])) {
             $headers['Content-Type'] = 'application/vscode-jsonrpc; charset=utf8';
         }
@@ -54,7 +56,6 @@ final class Message implements Stringable
 
     public function __toString(): string
     {
-
         $body = (string)$this->body;
         $contentLength = strlen($body);
         $this->headers['Content-Length'] = (string) $contentLength;

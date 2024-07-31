@@ -23,7 +23,7 @@ use function substr;
  *
  * @internal
  */
-final class FileDiffer
+class FileDiffer
 {
     /**
      * @param list<string>    $a
@@ -33,7 +33,7 @@ final class FileDiffer
      */
     private static function calculateTrace(
         array $a,
-        array $b,
+        array $b
     ): array {
         $n = count($a);
         $m = count($b);

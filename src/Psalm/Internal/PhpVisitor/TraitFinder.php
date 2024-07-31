@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\PhpVisitor;
 
 use PhpParser;
@@ -19,14 +17,16 @@ use function trait_exists;
  *
  * @internal
  */
-final class TraitFinder extends PhpParser\NodeVisitorAbstract
+class TraitFinder extends PhpParser\NodeVisitorAbstract
 {
     /** @var list<PhpParser\Node\Stmt\Trait_> */
     private array $matching_trait_nodes = [];
 
-    public function __construct(
-        private readonly string $fq_trait_name,
-    ) {
+    private string $fq_trait_name;
+
+    public function __construct(string $fq_trait_name)
+    {
+        $this->fq_trait_name = $fq_trait_name;
     }
 
     public function enterNode(PhpParser\Node $node, bool &$traverseChildren = true): ?int
@@ -53,7 +53,7 @@ final class TraitFinder extends PhpParser\NodeVisitorAbstract
         if ($node instanceof PhpParser\Node\Stmt\ClassLike
             || $node instanceof PhpParser\Node\FunctionLike
         ) {
-            return PhpParser\NodeVisitor::DONT_TRAVERSE_CHILDREN;
+            return PhpParser\NodeTraverser::DONT_TRAVERSE_CHILDREN;
         }
 
         return null;
@@ -71,7 +71,7 @@ final class TraitFinder extends PhpParser\NodeVisitorAbstract
 
         try {
             $reflection_trait = new ReflectionClass($this->fq_trait_name);
-        } catch (Throwable) {
+        } catch (Throwable $t) {
             return null;
         }
 

@@ -15,14 +15,14 @@ class SplDoublyLinkedList implements Iterator, Countable, ArrayAccess, Serializa
     /**
      * Add/insert a new value at the specified index
      *
-     * @param int $offset The index where the new value is to be inserted.
-     * @param TValue $value The new value for the index.
+     * @param int $index The index where the new value is to be inserted.
+     * @param TValue $newval The new value for the index.
      * @return void
      *
      * @link https://php.net/spldoublylinkedlist.add
      * @since 5.5.0
      */
-    public function add($offset, $value) {}
+    public function add($index, $newval) {}
 
     /**
      * Pops a node from the end of the doubly linked list
@@ -107,49 +107,49 @@ class SplDoublyLinkedList implements Iterator, Countable, ArrayAccess, Serializa
     public function isEmpty() {}
 
     /**
-     * Returns whether the requested $offset exists
+     * Returns whether the requested $index exists
      * @link https://php.net/manual/en/spldoublylinkedlist.offsetexists.php
      *
-     * @param int $offset The index being checked.
+     * @param int $index The index being checked.
      * @return bool true if the requested index exists, otherwise false
      *
      * @since 5.3.0
      */
-    public function offsetExists($offset) {}
+    public function offsetExists($index) {}
 
     /**
-     * Returns the value at the specified $offset
+     * Returns the value at the specified $index
      * @link https://php.net/manual/en/spldoublylinkedlist.offsetget.php
      *
-     * @param int $offset The index with the value.
+     * @param int $index The index with the value.
      * @return TValue The value at the specified index.
      *
      * @since 5.3.0
      */
-    public function offsetGet($offset) {}
+    public function offsetGet($index) {}
 
     /**
-     * Sets the value at the specified $offset to $value
+     * Sets the value at the specified $index to $newval
      * @link https://php.net/manual/en/spldoublylinkedlist.offsetset.php
      *
-     * @param int $offset The index being set.
-     * @param TValue $value The new value for the index.
+     * @param int $index The index being set.
+     * @param TValue $newval The new value for the index.
      * @return void
      *
      * @since 5.3.0
      */
-    public function offsetSet($offset, $value) {}
+    public function offsetSet($index, $newval) {}
 
     /**
-     * Unsets the value at the specified $offset
+     * Unsets the value at the specified $index
      * @link https://php.net/manual/en/spldoublylinkedlist.offsetunset.php
      *
-     * @param int $offset The index being unset.
+     * @param int $index The index being unset.
      * @return void
      *
      * @since 5.3.0
      */
-    public function offsetUnset($offset) {}
+    public function offsetUnset($index) {}
 
     /**
      * Return current array entry
@@ -297,46 +297,46 @@ class SplFixedArray implements Iterator, ArrayAccess, Countable {
      * Returns whether the specified index exists
      * @link https://php.net/manual/en/splfixedarray.offsetexists.php
      *
-     * @param int $offset The index being checked.
+     * @param int $index The index being checked.
      * @return bool true if the requested index exists, and false otherwise.
      *
      * @since 5.3.0
      */
-    public function offsetExists(int $offset): bool {}
+    public function offsetExists(int $index): bool {}
 
     /**
      * Sets a new value at a specified index
      * @link https://php.net/manual/en/splfixedarray.offsetset.php
      *
-     * @param int $offset The index being sent.
-     * @param TValue $value The new value for the index
+     * @param int $index The index being sent.
+     * @param TValue $newval The new value for the index
      * @return void
      *
      * @since 5.3.0
      */
-    public function offsetSet(int $offset, $value): void {}
+    public function offsetSet(int $index, $newval): void {}
 
     /**
-     * Unsets the value at the specified $offset
+     * Unsets the value at the specified $index
      * @link https://php.net/manual/en/splfixedarray.offsetunset.php
      *
-     * @param int $offset The index being unset
+     * @param int $index The index being unset
      * @return void
      *
      * @since 5.3.0
      */
-    public function offsetUnset(int $offset): void {}
+    public function offsetUnset(int $index): void {}
 
     /**
      * Returns the value at the specified index
      * @link https://php.net/manual/en/splfixedarray.offsetget.php
      *
-     * @param int $offset The index with the value
+     * @param int $index The index with the value
      * @return TValue The value at the specified index
      *
      * @since 5.3.0
      */
-    public function offsetGet(int $offset) {}
+    public function offsetGet(int $index) {}
 }
 
 

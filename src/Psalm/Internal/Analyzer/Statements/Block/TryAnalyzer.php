@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
 use PhpParser;
@@ -27,11 +25,14 @@ use function array_merge;
 use function in_array;
 use function is_string;
 use function strtolower;
+use function version_compare;
+
+use const PHP_VERSION;
 
 /**
  * @internal
  */
-final class TryAnalyzer
+class TryAnalyzer
 {
     /**
      * @return  false|null
@@ -39,7 +40,7 @@ final class TryAnalyzer
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt\TryCatch $stmt,
-        Context $context,
+        Context $context
     ): ?bool {
         $catch_actions = [];
         $all_catches_leave = true;
@@ -266,7 +267,8 @@ final class TryAnalyzer
                             $fq_catch_class,
                             false,
                             false,
-                            strtolower($fq_catch_class) !== 'throwable'
+                            version_compare(PHP_VERSION, '7.0.0dev', '>=')
+                                && strtolower($fq_catch_class) !== 'throwable'
                                 && $codebase->interfaceExists($fq_catch_class)
                                 && !$codebase->interfaceExtends($fq_catch_class, 'Throwable')
                                     ? ['Throwable' => new TNamedObject('Throwable')]

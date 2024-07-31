@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Type;
 
 use Psalm\Exception\TypeParseTreeException;
@@ -31,28 +29,30 @@ use function count;
 use function in_array;
 use function preg_match;
 use function strlen;
-use function strpos;
 use function strtolower;
-use function substr;
 
 /**
  * @internal
  */
-final class ParseTreeCreator
+class ParseTreeCreator
 {
     private ParseTree $parse_tree;
 
     private ParseTree $current_leaf;
 
-    private readonly int $type_token_count;
+    /** @var array<int, array{0: string, 1: int, 2?: string}> */
+    private array $type_tokens;
+
+    private int $type_token_count;
 
     private int $t = 0;
 
     /**
      * @param list<array{0: string, 1: int, 2?: string}> $type_tokens
      */
-    public function __construct(private array $type_tokens)
+    public function __construct(array $type_tokens)
     {
+        $this->type_tokens = $type_tokens;
         $this->type_token_count = count($type_tokens);
         $this->parse_tree = new Root();
         $this->current_leaf = $this->parse_tree;
@@ -64,13 +64,10 @@ final class ParseTreeCreator
             $type_token = $this->type_tokens[$this->t];
 
             switch ($type_token[0]) {
+                case '<':
                 case '{':
                 case ']':
                     throw new TypeParseTreeException('Unexpected token ' . $type_token[0]);
-
-                case '<':
-                    $this->handleLessThan();
-                    break;
 
                 case '[':
                     $this->handleOpenSquareBracket();
@@ -141,7 +138,6 @@ final class ParseTreeCreator
 
                 case 'is':
                 case 'as':
-                case 'of':
                     $this->handleIsOrAs($type_token);
                     break;
 
@@ -234,73 +230,6 @@ final class ParseTreeCreator
         $current_parent->children[] = $new_parent_leaf;
 
         $this->current_leaf = $new_parent_leaf;
-    }
-
-    /**
-     * @param  array{0: string, 1: int, 2?: string} $current_token
-     */
-    private function parseCallableParam(array $current_token, ParseTree $current_parent): void
-    {
-        $variadic = false;
-        $has_default = false;
-
-        if ($current_token[0] === '&') {
-            ++$this->t;
-            $current_token = $this->t < $this->type_token_count ? $this->type_tokens[$this->t] : null;
-        } elseif ($current_token[0] === '...') {
-            $variadic = true;
-
-            ++$this->t;
-            $current_token = $this->t < $this->type_token_count ? $this->type_tokens[$this->t] : null;
-        } elseif ($current_token[0] === '=') {
-            $has_default = true;
-
-            ++$this->t;
-            $current_token = $this->t < $this->type_token_count ? $this->type_tokens[$this->t] : null;
-        }
-
-        if (!$current_token || $current_token[0][0] !== '$' || strlen($current_token[0]) < 2) {
-            throw new TypeParseTreeException('Unexpected token after space');
-        }
-
-        $new_leaf = new CallableParamTree($current_parent);
-        $new_leaf->has_default = $has_default;
-        $new_leaf->variadic = $variadic;
-        $potential_name = substr($current_token[0], 1);
-        if ($potential_name !== '') {
-            $new_leaf->name = $potential_name;
-        }
-
-        if ($current_parent !== $this->current_leaf) {
-            $new_leaf->children = [$this->current_leaf];
-            array_pop($current_parent->children);
-        }
-        $current_parent->children[] = $new_leaf;
-
-        $this->current_leaf = $new_leaf;
-    }
-
-    private function handleLessThan(): void
-    {
-        if (!$this->current_leaf instanceof FieldEllipsis) {
-            throw new TypeParseTreeException('Unexpected token <');
-        }
-
-        $current_parent = $this->current_leaf->parent;
-
-        if (!$current_parent instanceof KeyedArrayTree) {
-            throw new TypeParseTreeException('Unexpected token <');
-        }
-
-        array_pop($current_parent->children);
-
-        $generic_leaf = new GenericTree(
-            '',
-            $current_parent,
-        );
-        $current_parent->children []= $generic_leaf;
-
-        $this->current_leaf = $generic_leaf;
     }
 
     private function handleOpenSquareBracket(): void
@@ -598,27 +527,24 @@ final class ParseTreeCreator
 
         $current_parent = $this->current_leaf->parent;
 
-        //while ($current_parent && !$method_or_callable_parent) {
-        while ($current_parent && !$current_parent instanceof MethodTree && !$current_parent instanceof CallableTree) {
+        if ($current_parent instanceof CallableTree) {
+            return;
+        }
+
+        while ($current_parent && !$current_parent instanceof MethodTree) {
             $this->current_leaf = $current_parent;
             $current_parent = $current_parent->parent;
         }
 
         $next_token = $this->t + 1 < $this->type_token_count ? $this->type_tokens[$this->t + 1] : null;
 
-        if (!($current_parent instanceof MethodTree || $current_parent instanceof CallableTree) || !$next_token) {
+        if (!$current_parent instanceof MethodTree || !$next_token) {
             throw new TypeParseTreeException('Unexpected space');
         }
 
+        ++$this->t;
 
-        if ($current_parent instanceof MethodTree) {
-            ++$this->t;
-            $this->createMethodParam($next_token, $current_parent);
-        }
-        if ($current_parent instanceof CallableTree) {
-            ++$this->t;
-            $this->parseCallableParam($next_token, $current_parent);
-        }
+        $this->createMethodParam($next_token, $current_parent);
     }
 
     private function handleQuestionMark(): void
@@ -774,7 +700,7 @@ final class ParseTreeCreator
                 array_pop($current_parent->children);
             }
 
-            if ($type_token[0] === 'as' || $type_token[0] == 'of') {
+            if ($type_token[0] === 'as') {
                 $next_token = $this->t + 1 < $this->type_token_count ? $this->type_tokens[$this->t + 1] : null;
 
                 if (!$this->current_leaf instanceof Value
@@ -827,34 +753,13 @@ final class ParseTreeCreator
                 break;
 
             case '{':
-                ++$this->t;
-
-                $nexter_token = $this->t + 1 < $this->type_token_count ? $this->type_tokens[$this->t + 1] : null;
-
-                if ($nexter_token
-                    && strpos($nexter_token[0], '@') !== false
-                    && $type_token[0] !== 'list'
-                    && $type_token[0] !== 'array'
-                ) {
-                    $this->t = $this->type_token_count;
-                    if ($type_token[0] === '$this') {
-                        $type_token[0] = 'static';
-                    }
-
-                    $new_leaf = new Value(
-                        $type_token[0],
-                        $type_token[1],
-                        $type_token[1] + strlen($type_token[0]),
-                        $type_token[2] ?? null,
-                        $new_parent,
-                    );
-                    break;
-                }
-
                 $new_leaf = new KeyedArrayTree(
                     $type_token[0],
                     $new_parent,
                 );
+                ++$this->t;
+
+                $nexter_token = $this->t + 1 < $this->type_token_count ? $this->type_tokens[$this->t + 1] : null;
 
                 if ($nexter_token !== null && $nexter_token[0] === '}') {
                     $new_leaf->terminated = true;
@@ -875,7 +780,8 @@ final class ParseTreeCreator
                         $type_token[0],
                         $new_parent,
                     );
-                } elseif ($type_token[0][0] !== '\\'
+                } elseif ($type_token[0] !== 'array'
+                    && $type_token[0][0] !== '\\'
                     && $this->current_leaf instanceof Root
                 ) {
                     $new_leaf = new MethodTree(
@@ -894,6 +800,15 @@ final class ParseTreeCreator
 
             case '::':
                 $nexter_token = $this->t + 2 < $this->type_token_count ? $this->type_tokens[$this->t + 2] : null;
+
+                if ($this->current_leaf instanceof ParseTree\KeyedArrayTree
+                    && $nexter_token
+                    && strtolower($nexter_token[0]) !== 'class'
+                ) {
+                    throw new TypeParseTreeException(
+                        ':: in array key is only allowed for ::class',
+                    );
+                }
 
                 if (!$nexter_token
                     || (!preg_match('/^([a-zA-Z_][a-zA-Z_0-9]*\*?|\*)$/', $nexter_token[0])

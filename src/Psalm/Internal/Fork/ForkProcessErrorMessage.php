@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Fork;
 
 use Psalm\Storage\ImmutableNonCloneableTrait;
@@ -10,11 +8,14 @@ use Psalm\Storage\ImmutableNonCloneableTrait;
  * @psalm-immutable
  * @internal
  */
-final class ForkProcessErrorMessage implements ForkMessage
+class ForkProcessErrorMessage implements ForkMessage
 {
     use ImmutableNonCloneableTrait;
 
-    public function __construct(public readonly string $message)
+    public string $message;
+
+    public function __construct(string $message)
     {
+        $this->message = $message;
     }
 }

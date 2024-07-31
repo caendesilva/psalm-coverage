@@ -12,7 +12,7 @@ use function implode;
 use function strpos;
 use function strtolower;
 
-final class ClassUnqualifier implements AfterClassLikeExistenceCheckInterface
+class ClassUnqualifier implements AfterClassLikeExistenceCheckInterface
 {
     public static function afterClassLikeExistenceCheck(
         AfterClassLikeExistenceCheckEvent $event
@@ -29,7 +29,7 @@ final class ClassUnqualifier implements AfterClassLikeExistenceCheckInterface
             return;
         }
 
-        if (str_contains($candidate_type, '\\' . $fq_class_name)) {
+        if (strpos($candidate_type, '\\' . $fq_class_name) !== false) {
             $type_tokens = TypeTokenizer::tokenize($candidate_type, false);
 
             foreach ($type_tokens as &$type_token) {
@@ -44,7 +44,7 @@ final class ClassUnqualifier implements AfterClassLikeExistenceCheckInterface
             $new_candidate_type = implode(
                 '',
                 array_map(
-                    static fn($f) => $f[0],
+                    fn($f) => $f[0],
                     $type_tokens,
                 ),
             );

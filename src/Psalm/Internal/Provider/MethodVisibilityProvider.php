@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Provider;
 
 use Closure;
@@ -17,7 +15,7 @@ use function strtolower;
 /**
  * @internal
  */
-final class MethodVisibilityProvider
+class MethodVisibilityProvider
 {
     /**
      * @var array<
@@ -39,7 +37,7 @@ final class MethodVisibilityProvider
     public function registerClass(string $class): void
     {
         if (is_subclass_of($class, MethodVisibilityProviderInterface::class, true)) {
-            $callable = $class::isMethodVisible(...);
+            $callable = Closure::fromCallable([$class, 'isMethodVisible']);
 
             foreach ($class::getClassLikeNames() as $fq_classlike_name) {
                 $this->registerClosure($fq_classlike_name, $callable);
@@ -65,7 +63,7 @@ final class MethodVisibilityProvider
         string $fq_classlike_name,
         string $method_name,
         Context $context,
-        ?CodeLocation $code_location = null,
+        ?CodeLocation $code_location = null
     ): ?bool {
         foreach (self::$handlers[strtolower($fq_classlike_name)] ?? [] as $method_handler) {
             $event = new MethodVisibilityProviderEvent(

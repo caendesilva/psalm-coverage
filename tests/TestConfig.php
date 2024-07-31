@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Config;
@@ -10,6 +8,8 @@ use Psalm\Internal\IncludeCollector;
 use SimpleXMLElement;
 
 use function getcwd;
+
+use const DIRECTORY_SEPARATOR;
 
 class TestConfig extends Config
 {
@@ -27,10 +27,8 @@ class TestConfig extends Config
         $this->use_docblock_types = true;
         $this->level = 1;
         $this->cache_directory = null;
-        $this->ignore_internal_falsable_issues = true;
-        $this->ignore_internal_nullable_issues = true;
 
-        $this->base_dir = (string) getcwd();
+        $this->base_dir = getcwd() . DIRECTORY_SEPARATOR;
 
         if (!self::$cached_project_files) {
             self::$cached_project_files = ProjectFileFilter::loadFromXMLElement(
@@ -59,7 +57,9 @@ class TestConfig extends Config
                 </projectFiles>';
     }
 
-    /** @return false */
+    /**
+     * @return false
+     */
     public function getComposerFilePathForClassLike(string $fq_classlike_name): bool
     {
         return false;

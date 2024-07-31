@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Type\ParseTree;
 
 use Psalm\Internal\Type\ParseTree;
@@ -9,17 +7,26 @@ use Psalm\Internal\Type\ParseTree;
 /**
  * @internal
  */
-final class Value extends ParseTree
+class Value extends ParseTree
 {
+    public string $value;
+
+    public int $offset_start;
+
+    public int $offset_end;
+
     public ?string $text = null;
 
     public function __construct(
-        public string $value,
-        public int $offset_start,
-        public int $offset_end,
+        string $value,
+        int $offset_start,
+        int $offset_end,
         ?string $text,
-        ParseTree $parent = null,
+        ParseTree $parent = null
     ) {
+        $this->offset_start = $offset_start;
+        $this->offset_end = $offset_end;
+        $this->value = $value;
         $this->parent = $parent;
         $this->text = $text === $value ? null : $text;
     }

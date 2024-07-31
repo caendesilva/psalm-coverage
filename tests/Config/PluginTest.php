@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\Config;
 
 use InvalidArgumentException;
@@ -14,7 +12,6 @@ use Psalm\Internal\IncludeCollector;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
-use Psalm\Internal\VersionUtils;
 use Psalm\IssueBuffer;
 use Psalm\Plugin\EventHandler\AfterCodebasePopulatedInterface;
 use Psalm\Plugin\EventHandler\AfterEveryFunctionCallAnalysisInterface;
@@ -49,11 +46,11 @@ class PluginTest extends TestCase
         self::$config = new TestConfig();
 
         if (!defined('PSALM_VERSION')) {
-            define('PSALM_VERSION', VersionUtils::getPsalmVersion());
+            define('PSALM_VERSION', '4.0.0');
         }
 
         if (!defined('PHP_PARSER_VERSION')) {
-            define('PHP_PARSER_VERSION', VersionUtils::getPhpParserVersion());
+            define('PHP_PARSER_VERSION', '4.0.0');
         }
     }
 
@@ -99,7 +96,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -133,7 +130,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -171,7 +168,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -209,7 +206,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -247,7 +244,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -284,7 +281,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -322,7 +319,7 @@ class PluginTest extends TestCase
         $this->assertCount(1, $codebase->config->eventDispatcher->before_file_checks);
         $this->assertCount(1, $codebase->config->eventDispatcher->after_file_checks);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -365,7 +362,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -403,7 +400,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -436,7 +433,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -538,7 +535,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -577,7 +574,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -638,7 +635,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -674,7 +671,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -715,7 +712,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -758,7 +755,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -891,7 +888,7 @@ class PluginTest extends TestCase
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
         $this->project_analyzer->getCodebase()->config->eventDispatcher->after_every_function_checks[] = get_class($plugin);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -931,7 +928,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,
@@ -1003,7 +1000,7 @@ class PluginTest extends TestCase
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
 
-        $file_path = (string) getcwd() . '/src/somefile.php';
+        $file_path = getcwd() . '/src/somefile.php';
 
         $this->addFile(
             $file_path,

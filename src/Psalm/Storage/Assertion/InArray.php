@@ -1,11 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Storage\Assertion;
 
 use Psalm\Storage\Assertion;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Union;
 
 /**
@@ -13,9 +10,11 @@ use Psalm\Type\Union;
  */
 final class InArray extends Assertion
 {
-    use UnserializeMemoryUsageSuppressionTrait;
-    public function __construct(public readonly Union $type)
+    public Union $type;
+
+    public function __construct(Union $type)
     {
+        $this->type = $type;
     }
 
     public function getNegation(): Assertion

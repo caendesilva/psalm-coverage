@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\FileManipulation;
 
 use Psalm\Context;
@@ -33,7 +31,7 @@ class NamespaceMoveTest extends TestCase
     public function testValidCode(
         string $input_code,
         string $output_code,
-        array $namespaces_to_move,
+        array $namespaces_to_move
     ): void {
         $test_name = $this->getTestName();
         if (strpos($test_name, 'SKIPPED-') !== false) {

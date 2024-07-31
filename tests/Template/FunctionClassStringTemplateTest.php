@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests\Template;
 
 use Psalm\Tests\TestCase;
@@ -406,9 +404,10 @@ class FunctionClassStringTemplateTest extends TestCase
                      * @psalm-template RequestedType
                      * @psalm-param class-string<RequestedType> $className
                      * @psalm-return RequestedType&MockObject
+                     * @psalm-suppress MixedInferredReturnType
                      * @psalm-suppress MixedReturnStatement
                      */
-                    function mockHelper(string $className)
+                    function mock(string $className)
                     {
                         eval(\'"there be dragons"\');
 
@@ -425,10 +424,10 @@ class FunctionClassStringTemplateTest extends TestCase
                      */
                     function useMockTemplated(string $className) : void
                     {
-                        mockHelper($className)->checkExpectations();
+                        mock($className)->checkExpectations();
                     }
 
-                    mockHelper(A::class)->foo();',
+                    mock(A::class)->foo();',
             ],
             'allowTemplatedIntersectionFirstTemplatedMock' => [
                 'code' => '<?php
@@ -443,9 +442,10 @@ class FunctionClassStringTemplateTest extends TestCase
                      * @psalm-template RequestedType
                      * @psalm-param class-string<RequestedType> $className
                      * @psalm-return RequestedType&MockObject
+                     * @psalm-suppress MixedInferredReturnType
                      * @psalm-suppress MixedReturnStatement
                      */
-                    function mockHelper(string $className)
+                    function mock(string $className)
                     {
                         eval(\'"there be dragons"\');
 
@@ -462,10 +462,10 @@ class FunctionClassStringTemplateTest extends TestCase
                      */
                     function useMockTemplated(string $className) : void
                     {
-                        mockHelper($className)->checkExpectations();
+                        mock($className)->checkExpectations();
                     }
 
-                    mockHelper(A::class)->foo();',
+                    mock(A::class)->foo();',
             ],
             'allowTemplatedIntersectionSecond' => [
                 'code' => '<?php
@@ -480,9 +480,10 @@ class FunctionClassStringTemplateTest extends TestCase
                      * @psalm-template RequestedType
                      * @psalm-param class-string<RequestedType> $className
                      * @psalm-return MockObject&RequestedType
+                     * @psalm-suppress MixedInferredReturnType
                      * @psalm-suppress MixedReturnStatement
                      */
-                    function mockHelper(string $className)
+                    function mock(string $className)
                     {
                         eval(\'"there be dragons"\');
 
@@ -497,7 +498,7 @@ class FunctionClassStringTemplateTest extends TestCase
                      * @psalm-param class-string $className
                      */
                     function useMock(string $className) : void {
-                        mockHelper($className)->checkExpectations();
+                        mock($className)->checkExpectations();
                     }
 
                     /**
@@ -506,10 +507,10 @@ class FunctionClassStringTemplateTest extends TestCase
                      */
                     function useMockTemplated(string $className) : void
                     {
-                        mockHelper($className)->checkExpectations();
+                        mock($className)->checkExpectations();
                     }
 
-                    mockHelper(A::class)->foo();',
+                    mock(A::class)->foo();',
             ],
             'returnClassString' => [
                 'code' => '<?php

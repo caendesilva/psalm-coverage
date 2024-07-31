@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\Analyzer;
 
 use PhpParser;
@@ -10,6 +8,7 @@ use Psalm\CodeLocation;
 use Psalm\FileManipulation;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 
+use function implode;
 use function strtolower;
 
 /**
@@ -52,7 +51,7 @@ trait CanAlias
         $codebase = $this->getCodebase();
 
         foreach ($stmt->uses as $use) {
-            $use_path = $use->name->toString();
+            $use_path = implode('\\', $use->name->parts);
             $use_path_lc = strtolower($use_path);
             $use_alias = $use->alias->name ?? $use->name->getLast();
             $use_alias_lc = strtolower($use_alias);
@@ -107,12 +106,12 @@ trait CanAlias
 
     public function visitGroupUse(PhpParser\Node\Stmt\GroupUse $stmt): void
     {
-        $use_prefix = $stmt->prefix->toString();
+        $use_prefix = implode('\\', $stmt->prefix->parts);
 
         $codebase = $this->getCodebase();
 
         foreach ($stmt->uses as $use) {
-            $use_path = $use_prefix . '\\' . $use->name->toString();
+            $use_path = $use_prefix . '\\' . implode('\\', $use->name->parts);
             $use_alias = $use->alias->name ?? $use->name->getLast();
 
             switch ($use->type !== PhpParser\Node\Stmt\Use_::TYPE_UNKNOWN ? $use->type : $stmt->type) {

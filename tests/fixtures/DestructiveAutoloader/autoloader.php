@@ -9,7 +9,7 @@ foreach ($GLOBALS as $key => $_) {
     $GLOBALS[$key] = new Exception;
 }
 
-spl_autoload_register(static function () {
+spl_autoload_register(function() {
     // and destroy vars again
     // this will run during scanning (?)
     foreach ($GLOBALS as $key => $_) {

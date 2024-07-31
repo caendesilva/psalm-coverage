@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal;
 
 use Psalm\Plugin\EventHandler\AddTaintsInterface;
@@ -18,7 +16,6 @@ use Psalm\Plugin\EventHandler\AfterFunctionLikeAnalysisInterface;
 use Psalm\Plugin\EventHandler\AfterMethodCallAnalysisInterface;
 use Psalm\Plugin\EventHandler\AfterStatementAnalysisInterface;
 use Psalm\Plugin\EventHandler\BeforeAddIssueInterface;
-use Psalm\Plugin\EventHandler\BeforeExpressionAnalysisInterface;
 use Psalm\Plugin\EventHandler\BeforeFileAnalysisInterface;
 use Psalm\Plugin\EventHandler\BeforeStatementAnalysisInterface;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
@@ -35,7 +32,6 @@ use Psalm\Plugin\EventHandler\Event\AfterFunctionLikeAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\AfterMethodCallAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\AfterStatementAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\BeforeAddIssueEvent;
-use Psalm\Plugin\EventHandler\Event\BeforeExpressionAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\BeforeFileAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\BeforeStatementAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\StringInterpreterEvent;
@@ -50,7 +46,7 @@ use function is_subclass_of;
 /**
  * @internal
  */
-final class EventDispatcher
+class EventDispatcher
 {
     /**
      * Static methods to be called after method checks have completed
@@ -80,13 +76,6 @@ final class EventDispatcher
      * @var list<class-string<AfterEveryFunctionCallAnalysisInterface>>
      */
     public array $after_every_function_checks = [];
-
-    /**
-     * Static methods to be called before expression checks are completed
-     *
-     * @var list<class-string<BeforeExpressionAnalysisInterface>>
-     */
-    public array $before_expression_checks = [];
 
     /**
      * Static methods to be called after expression checks have completed
@@ -208,10 +197,6 @@ final class EventDispatcher
             $this->after_every_function_checks[] = $class;
         }
 
-        if (is_subclass_of($class, BeforeExpressionAnalysisInterface::class)) {
-            $this->before_expression_checks[] = $class;
-        }
-
         if (is_subclass_of($class, AfterExpressionAnalysisInterface::class)) {
             $this->after_expression_checks[] = $class;
         }
@@ -297,17 +282,6 @@ final class EventDispatcher
         foreach ($this->after_every_function_checks as $handler) {
             $handler::afterEveryFunctionCallAnalysis($event);
         }
-    }
-
-    public function dispatchBeforeExpressionAnalysis(BeforeExpressionAnalysisEvent $event): ?bool
-    {
-        foreach ($this->before_expression_checks as $handler) {
-            if ($handler::beforeExpressionAnalysis($event) === false) {
-                return false;
-            }
-        }
-
-        return null;
     }
 
     public function dispatchAfterExpressionAnalysis(AfterExpressionAnalysisEvent $event): ?bool

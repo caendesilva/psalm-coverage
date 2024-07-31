@@ -20,7 +20,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5.3.1
+        uses: fkirc/skip-duplicate-actions@v5.3.0
         with:
           concurrent_skipping: always
           cancel_others: true
@@ -38,13 +38,11 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: '7.4'
           tools: composer:v2
           coverage: none
-        env:
-          fail-fast: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # required for composer to automatically detect root package version
 
@@ -54,12 +52,8 @@ jobs:
           echo "files_cache=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
           echo "vcs_cache=$(composer config cache-vcs-dir)" >> $GITHUB_OUTPUT
 
-      - name: Generate composer.lock
-        run: |
-          composer update --no-install
-
       - name: Cache composer cache
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: |
             ${{ steps.composer-cache.outputs.files_cache }}

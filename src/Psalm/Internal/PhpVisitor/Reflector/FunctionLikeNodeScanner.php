@@ -1,16 +1,14 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
 use LogicException;
 use PhpParser;
-use PhpParser\Modifiers;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\IntersectionType;
 use PhpParser\Node\Name;
 use PhpParser\Node\NullableType;
+use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\UnionType;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
@@ -36,7 +34,6 @@ use Psalm\Issue\DuplicateParam;
 use Psalm\Issue\InvalidDocblock;
 use Psalm\Issue\MissingDocblockType;
 use Psalm\Issue\ParseError;
-use Psalm\Issue\PrivateFinalMethod;
 use Psalm\IssueBuffer;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FileStorage;
@@ -59,21 +56,41 @@ use function array_search;
 use function count;
 use function end;
 use function explode;
+use function implode;
 use function in_array;
 use function is_string;
 use function spl_object_id;
-use function str_contains;
-use function str_starts_with;
+use function strpos;
 use function strtolower;
 
 /**
  * @internal
  */
-final class FunctionLikeNodeScanner
+class FunctionLikeNodeScanner
 {
-    private readonly string $file_path;
+    private FileScanner $file_scanner;
 
-    private readonly Config $config;
+    private Codebase $codebase;
+
+    private string $file_path;
+
+    private Config $config;
+
+    private FileStorage $file_storage;
+
+    private ?ClassLikeStorage $classlike_storage = null;
+
+    /**
+     * @var array<string, non-empty-array<string, Union>>
+     */
+    private array $existing_function_template_types;
+
+    private Aliases $aliases;
+
+    /**
+     * @var array<string, TypeAlias>
+     */
+    private array $type_aliases;
 
     public ?FunctionLikeStorage $storage = null;
 
@@ -82,26 +99,31 @@ final class FunctionLikeNodeScanner
      * @param array<string, TypeAlias> $type_aliases
      */
     public function __construct(
-        private readonly Codebase $codebase,
-        private readonly FileScanner $file_scanner,
-        private readonly FileStorage $file_storage,
-        private readonly Aliases $aliases,
-        private readonly array $type_aliases,
-        private ?ClassLikeStorage $classlike_storage,
-        private readonly array $existing_function_template_types,
+        Codebase $codebase,
+        FileScanner $file_scanner,
+        FileStorage $file_storage,
+        Aliases $aliases,
+        array $type_aliases,
+        ?ClassLikeStorage $classlike_storage,
+        array $existing_function_template_types
     ) {
+        $this->codebase = $codebase;
+        $this->file_storage = $file_storage;
+        $this->file_scanner = $file_scanner;
         $this->file_path = $file_storage->file_path;
+        $this->aliases = $aliases;
+        $this->type_aliases = $type_aliases;
         $this->config = Config::getInstance();
+        $this->classlike_storage = $classlike_storage;
+        $this->existing_function_template_types = $existing_function_template_types;
     }
 
     /**
      * @param  bool $fake_method in the case of @method annotations we do something a little strange
+     * @return FunctionStorage|MethodStorage|false
      */
-    public function start(
-        PhpParser\Node\FunctionLike $stmt,
-        bool $fake_method = false,
-        PhpParser\Comment\Doc $doc_comment = null,
-    ): FunctionStorage|MethodStorage|false {
+    public function start(PhpParser\Node\FunctionLike $stmt, bool $fake_method = false)
+    {
         if ($stmt instanceof PhpParser\Node\Expr\Closure
             || $stmt instanceof PhpParser\Node\Expr\ArrowFunction
         ) {
@@ -221,7 +243,6 @@ final class FunctionLikeNodeScanner
         if ($stmt instanceof PhpParser\Node\Stmt\Function_
             || $stmt instanceof PhpParser\Node\Stmt\ClassMethod
         ) {
-            /** @psalm-suppress RedundantCondition See https://github.com/vimeo/psalm/issues/10296 */
             if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod
                 && $storage instanceof MethodStorage
                 && $classlike_storage
@@ -246,7 +267,7 @@ final class FunctionLikeNodeScanner
 
                     $classlike_storage->properties[$property_name]->getter_method = strtolower($stmt->name->name);
                 }
-            } elseif (str_starts_with($stmt->name->name, 'assert')
+            } elseif (strpos($stmt->name->name, 'assert') === 0
                 && $stmt->stmts
             ) {
                 $var_assertions = [];
@@ -278,7 +299,7 @@ final class FunctionLikeNodeScanner
 
                         try {
                             $negated_formula = Algebra::negateFormula($if_clauses);
-                        } catch (ComplicatedExpressionException) {
+                        } catch (ComplicatedExpressionException $e) {
                             $var_assertions = [];
                             break;
                         }
@@ -304,7 +325,7 @@ final class FunctionLikeNodeScanner
                                         $param_offset,
                                         $rule_part,
                                     );
-                                } elseif (str_starts_with($var_id, '$this->')) {
+                                } elseif (strpos($var_id, '$this->') === 0) {
                                     $var_assertions[] = new Possibilities(
                                         $var_id,
                                         $rule_part,
@@ -349,7 +370,7 @@ final class FunctionLikeNodeScanner
                     && $function_stmt->expr->expr instanceof PhpParser\Node\Expr\FuncCall
                     && $function_stmt->expr->expr->name instanceof PhpParser\Node\Name
                 ) {
-                    $inner_function_id = $function_stmt->expr->expr->name->toString();
+                    $inner_function_id = implode('\\', $function_stmt->expr->expr->name->parts);
 
                     if ($inner_function_id === 'func_get_arg'
                         || $inner_function_id === 'func_get_args'
@@ -363,7 +384,7 @@ final class FunctionLikeNodeScanner
                     && $function_stmt->cond->left->left instanceof PhpParser\Node\Expr\FuncCall
                     && $function_stmt->cond->left->left->name instanceof PhpParser\Node\Name
                 ) {
-                    $inner_function_id = $function_stmt->cond->left->left->name->toString();
+                    $inner_function_id = implode('\\', $function_stmt->cond->left->left->name->parts);
 
                     if ($inner_function_id === 'func_get_arg'
                         || $inner_function_id === 'func_get_args'
@@ -412,7 +433,7 @@ final class FunctionLikeNodeScanner
             $storage->returns_by_ref = true;
         }
 
-        $doc_comment = $stmt->getDocComment() ?? $doc_comment;
+        $doc_comment = $stmt->getDocComment();
 
 
         if ($classlike_storage && !$classlike_storage->is_trait) {
@@ -442,7 +463,7 @@ final class FunctionLikeNodeScanner
             if ($docblock_info) {
                 if ($docblock_info->since_php_major_version && !$this->aliases->namespace) {
                     $analysis_major_php_version = $this->codebase->getMajorAnalysisPhpVersion();
-                    $analysis_minor_php_version = $this->codebase->getMinorAnalysisPhpVersion();
+                    $analysis_minor_php_version = $this->codebase->getMajorAnalysisPhpVersion();
                     if ($docblock_info->since_php_major_version > $analysis_major_php_version) {
                         return false;
                     }
@@ -619,7 +640,7 @@ final class FunctionLikeNodeScanner
                 $property_storage->location = $param_storage->location;
                 $property_storage->stmt_location = new CodeLocation($this->file_scanner, $param);
                 $property_storage->has_default = (bool)$param->default;
-                $param_type_readonly = (bool)($param->flags & PhpParser\Modifiers::READONLY);
+                $param_type_readonly = (bool)($param->flags & PhpParser\Node\Stmt\Class_::MODIFIER_READONLY);
                 $property_storage->readonly = $param_type_readonly ?: $var_comment_readonly;
                 $property_storage->allow_private_mutation = $var_comment_allow_private_mutation;
                 $param_storage->promoted_property = true;
@@ -627,18 +648,18 @@ final class FunctionLikeNodeScanner
 
                 $property_id = $fq_classlike_name . '::$' . $param_storage->name;
 
-                switch ($param->flags & Modifiers::VISIBILITY_MASK) {
-                    case Modifiers::PUBLIC:
+                switch ($param->flags & Class_::VISIBILITY_MODIFIER_MASK) {
+                    case Class_::MODIFIER_PUBLIC:
                         $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
                         $classlike_storage->inheritable_property_ids[$param_storage->name] = $property_id;
                         break;
 
-                    case Modifiers::PROTECTED:
+                    case Class_::MODIFIER_PROTECTED:
                         $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PROTECTED;
                         $classlike_storage->inheritable_property_ids[$param_storage->name] = $property_id;
                         break;
 
-                    case Modifiers::PRIVATE:
+                    case Class_::MODIFIER_PRIVATE:
                         $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PRIVATE;
                         break;
                 }
@@ -712,7 +733,7 @@ final class FunctionLikeNodeScanner
     private function inferPropertyTypeFromConstructor(
         PhpParser\Node\Stmt\ClassMethod $stmt,
         MethodStorage $storage,
-        ClassLikeStorage $classlike_storage,
+        ClassLikeStorage $classlike_storage
     ): void {
         if (!$stmt->stmts) {
             return;
@@ -779,12 +800,12 @@ final class FunctionLikeNodeScanner
         PhpParser\Node\Param $param,
         PhpParser\Node\FunctionLike $stmt,
         bool $fake_method,
-        ?string $fq_classlike_name,
+        ?string $fq_classlike_name
     ): FunctionLikeParameter {
         $param_type = null;
 
         $is_nullable = $param->default instanceof PhpParser\Node\Expr\ConstFetch &&
-            strtolower($param->default->name->getFirst()) === 'null';
+            strtolower($param->default->name->parts[0]) === 'null';
 
         $param_typehint = $param->type;
 
@@ -804,9 +825,7 @@ final class FunctionLikeNodeScanner
                 $this->codebase->analysis_php_version_id,
             );
 
-            if ($param_type->isMixed()) {
-                $is_nullable = false;
-            } elseif ($is_nullable) {
+            if ($is_nullable) {
                 $param_type = $param_type->getBuilder()->addType(new TNull)->freeze();
             } else {
                 $is_nullable = $param_type->isNullable();
@@ -906,7 +925,6 @@ final class FunctionLikeNodeScanner
             $storage->is_static = $stmt->isStatic();
             $storage->final = $this->classlike_storage && $this->classlike_storage->final;
             $storage->final_from_docblock = $this->classlike_storage && $this->classlike_storage->final_from_docblock;
-            $storage->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Function_) {
             $cased_function_id =
                 ($this->aliases->namespace ? $this->aliases->namespace . '\\' : '') . $stmt->name->name;
@@ -1022,12 +1040,12 @@ final class FunctionLikeNodeScanner
                             $code_location,
                             $cased_function_id,
                         );
-                    } catch (IncorrectDocblockException|DocblockParseException) {
+                    } catch (IncorrectDocblockException|DocblockParseException $e) {
                     }
                     if ($docblock_info) {
                         if ($docblock_info->since_php_major_version && !$this->aliases->namespace) {
                             $analysis_major_php_version = $this->codebase->getMajorAnalysisPhpVersion();
-                            $analysis_minor_php_version = $this->codebase->getMinorAnalysisPhpVersion();
+                            $analysis_minor_php_version = $this->codebase->getMajorAnalysisPhpVersion();
                             if ($docblock_info->since_php_major_version > $analysis_major_php_version) {
                                 return false;
                             }
@@ -1057,7 +1075,7 @@ final class FunctionLikeNodeScanner
 
             if ($method_name_lc === strtolower($class_name)
                 && !isset($classlike_storage->methods['__construct'])
-                && !str_contains($fq_classlike_name, '\\')
+                && strpos($fq_classlike_name, '\\') === false
                 && $this->codebase->analysis_php_version_id <= 7_04_00
             ) {
                 $this->codebase->methods->setDeclaringMethodId(
@@ -1083,24 +1101,7 @@ final class FunctionLikeNodeScanner
             $storage->is_static = $stmt->isStatic();
             $storage->abstract = $stmt->isAbstract();
 
-            if ($stmt->isPrivate() && $stmt->isFinal() && $method_name_lc !== '__construct') {
-                IssueBuffer::maybeAdd(
-                    new PrivateFinalMethod(
-                        'Private methods cannot be final',
-                        new CodeLocation($this->file_scanner, $stmt, null, true),
-                        (string) $method_id,
-                    ),
-                );
-                if ($this->codebase->analysis_php_version_id >= 8_00_00) {
-                    // ignore `final` on the method as that's what PHP does
-                    $storage->final = $classlike_storage->final;
-                } else {
-                    $storage->final = true;
-                }
-            } else {
-                $storage->final = $classlike_storage->final || $stmt->isFinal();
-            }
-
+            $storage->final = $classlike_storage->final || $stmt->isFinal();
             $storage->final_from_docblock = $classlike_storage->final_from_docblock;
 
             if ($stmt->isPrivate()) {

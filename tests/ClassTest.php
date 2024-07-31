@@ -1,13 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
-
-use const DIRECTORY_SEPARATOR;
 
 class ClassTest extends TestCase
 {
@@ -341,6 +337,7 @@ class ClassTest extends TestCase
                 'assertions' => [],
                 'ignored_issues' => [
                     'UndefinedClass',
+                    'MixedInferredReturnType',
                     'InvalidArgument',
                 ],
             ],
@@ -355,6 +352,7 @@ class ClassTest extends TestCase
                 'assertions' => [],
                 'ignored_issues' => [
                     'UndefinedClass',
+                    'MixedInferredReturnType',
                     'InvalidArgument',
                 ],
             ],
@@ -464,9 +462,7 @@ class ClassTest extends TestCase
             ],
             'classAliasNoException' => [
                 'code' => '<?php
-                    namespace {
-                        class_alias("Bar\F1", "Bar\F2");
-                    }
+                    class_alias("Bar\F1", "Bar\F2");
 
                     namespace Bar {
                         class F1 {
@@ -642,7 +638,7 @@ class ClassTest extends TestCase
                 'code' => '<?php
 
                     /**
-                     * @template TTKey of array-key
+                     * @template TTKey
                      * @template TTValue
                      *
                      * @extends ArrayObject<TTKey, TTValue>
@@ -677,7 +673,7 @@ class ClassTest extends TestCase
             'preventDoubleStaticResolution2' => [
                 'code' => '<?php
                     /**
-                     * @template TTKey of array-key
+                     * @template TTKey
                      * @template TTValue
                      *
                      * @extends ArrayObject<TTKey, TTValue>
@@ -714,7 +710,7 @@ class ClassTest extends TestCase
             'preventDoubleStaticResolution3' => [
                 'code' => '<?php
                     /**
-                     * @template TTKey of array-key
+                     * @template TTKey
                      * @template TTValue
                      *
                      * @extends ArrayObject<TTKey, TTValue>
@@ -843,103 +839,6 @@ class ClassTest extends TestCase
                     throw new $test();
                 ',
             ],
-            'privateFinalConstructorsAreAllowed' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        private final function __construct() {}
-                    }
-                    PHP,
-            ],
-            'singleInheritorIsAllowed' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass
-                     */
-                    class BaseClass {}
-                    class FooClass extends BaseClass {}
-                    PHP,
-            ],
-            'unionInheritorIsAllowed' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass|BarClass
-                     */
-                    class BaseClass {}
-                    class FooClass extends BaseClass {}
-                    class BarClass extends FooClass {}
-                    PHP,
-            ],
-            'multiInheritorIsAllowed' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass|arClass
-                     */
-                    class BaseClass {}
-                    class FooClass extends BaseClass {}
-                    class BarClass extends FooClass {}
-                    PHP,
-            ],
-            'skippedInheritorIsAllowed' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass|BarClass
-                     */
-                    class BaseClass {}
-                    class FooClass extends BaseClass {}
-                    class BarClass extends FooClass {}
-                    PHP,
-            ],
-            'CompositeInheritorIsAllowed' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors BarClass&FooInterface
-                     */
-                    class BaseClass {}
-                    interface FooInterface {}
-                    class BarClass extends BaseClass implements FooInterface {}
-                    PHP,
-            ],
-            'InterfaceInheritorIsAllowed' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass|BarClass
-                     */
-                    interface BaseInterface {}
-                    class FooClass implements BaseInterface {}
-                    class BarClass implements BaseInterface {}
-                    PHP,
-            ],
-            'MultiInterfaceInheritorIsAllowed' => [
-                    'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass|BarClass
-                     */
-                    interface InterfaceA {}
-                    /**
-                     * @psalm-inheritors FooClass|BarClass
-                     */
-                    interface InterfaceB {}
-                    class FooClass implements InterfaceA, InterfaceB {}
-                    PHP,
-                ],
-            'InterfaceOfInterfaceInheritorIsAllowed' => [
-                        'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors InterfaceB
-                     */
-                    interface InterfaceA {}
-                    interface InterfaceB extends InterfaceA {}
-                    PHP,
-            ],
         ];
     }
 
@@ -1029,7 +928,7 @@ class ClassTest extends TestCase
                         /** @var string|null */
                         private $foo;
                     }',
-                'error_message' => 'OverriddenPropertyAccess - src'  . DIRECTORY_SEPARATOR . 'somefile.php:9:33 - Property B::$foo has different access level than A::$foo',
+                'error_message' => 'OverriddenPropertyAccess',
             ],
             'overridePublicPropertyAccessLevelToProtected' => [
                 'code' => '<?php
@@ -1310,177 +1209,6 @@ class ClassTest extends TestCase
                 'error_message' => 'InvalidInterfaceImplementation',
                 'ignored_issues' => [],
                 'php_version' => '7.0',
-            ],
-            'directConstructorCall' => [
-                'code' => '<?php
-                    class A {
-                        public function __construct() {}
-                    }
-                    $a = new A;
-                    $a->__construct();
-                ',
-                'error_message' => 'DirectConstructorCall',
-            ],
-            'directConstructorCallOnThis' => [
-                'code' => '<?php
-                    class A {
-                        public function __construct() {}
-                        public function f(): void { $this->__construct(); }
-                    }
-                    $a = new A;
-                    $a->f();
-                ',
-                'error_message' => 'DirectConstructorCall',
-            ],
-            'privateFinalMethodsAreForbidden' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        final private function baz(): void {}
-                    }
-                    PHP,
-                'error_message' => 'PrivateFinalMethod',
-            ],
-            'readonlyClass' => [
-                'code' => <<<'PHP'
-                    <?php
-                    readonly class Foo {
-                        public int $a = 22;
-                    }
-                    $foo = new Foo;
-                    $foo->a = 33;
-                    PHP,
-                'error_message' => 'InaccessibleProperty',
-                'ignored_issues' => [],
-                'php_version' => '8.2',
-            ],
-            'readonlyClassRequiresTypedProperties' => [
-                'code' => <<<'PHP'
-                    <?php
-                    readonly class Foo {
-                        /** @var int */
-                        public $a = 22;
-                    }
-                    PHP,
-                'error_message' => 'MissingPropertyType',
-                'ignored_issues' => [],
-                'php_version' => '8.2',
-            ],
-            'readonlyClassCannotHaveDynamicProperties' => [
-                'code' => <<<'PHP'
-                    <?php
-                    #[AllowDynamicProperties]
-                    readonly class Foo {}
-                    PHP,
-                'error_message' => 'InvalidAttribute',
-                'ignored_issues' => [],
-                'php_version' => '8.2',
-            ],
-            'readonlyClassesCannotBeExtendedByNonReadonlyOnes' => [
-                'code' => <<<'PHP'
-                    <?php
-                    readonly class Foo {}
-                    class Bar extends Foo {}
-                    PHP,
-                'error_message' => 'InvalidExtendClass',
-                'ignored_issues' => [],
-                'php_version' => '8.2',
-            ],
-            'classCannotExtendIfNotInInheritors' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass|BarClass
-                     */
-                    class BaseClass {}
-                    class BazClass extends BaseClass {} // this is an error
-                    PHP,
-                'error_message' => 'InheritorViolation',
-                'ignored_issues' => [],
-            ],
-            'classCannotImplementIfNotInInheritors' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass|BarClass
-                     */
-                    interface BaseInterface {}
-                    class BazClass implements BaseInterface {}
-                    PHP,
-                'error_message' => 'InheritorViolation',
-                'ignored_issues' => [],
-            ],
-            'interfaceCannotImplementIfNotInInheritors' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass|BarClass
-                     */
-                    interface BaseInterface {}
-                    interface BazInterface extends BaseInterface {}
-                    PHP,
-                'error_message' => 'InheritorViolation',
-                'ignored_issues' => [],
-            ],
-            'UnfulfilledInterfaceInheritors' => [
-                'code' => <<<'PHP'
-                    <?php
-                    /**
-                     * @psalm-inheritors FooClass
-                     */
-                    interface InterfaceA {}
-                    /**
-                     * @psalm-inheritors BarClass
-                     */
-                    interface InterfaceB {}
-                    class BazClass implements InterFaceA, InterFaceB {}
-                    PHP,
-                'error_message' => 'InheritorViolation',
-                'ignored_issues' => [],
-            ],
-            'duplicateInstanceProperties' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        public mixed $bar;
-                        public int $bar;
-                    }
-                    PHP,
-                'error_message' => 'DuplicateProperty',
-                'ignored_issues' => [],
-            ],
-            'duplicateStaticProperties' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        public static mixed $bar = null;
-                        public static string $bar = 'bar';
-                    }
-                    PHP,
-                'error_message' => 'DuplicateProperty',
-                'ignored_issues' => [],
-            ],
-            'duplicateMixedProperties' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        public bool $bar = true;
-                        public static bool $bar = false;
-                    }
-                    PHP,
-                'error_message' => 'DuplicateProperty',
-                'ignored_issues' => [],
-            ],
-            'duplicatePropertiesDifferentVisibility' => [
-                'code' => <<<'PHP'
-                    <?php
-                    class Foo {
-                        public bool $bar;
-                        private string $bar;
-                    }
-                    PHP,
-                'error_message' => 'DuplicateProperty',
-                'ignored_issues' => [],
             ],
         ];
     }

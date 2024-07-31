@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Tests;
 
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -211,7 +209,6 @@ class ReferenceTest extends TestCase
                 'assertions' => [
                     '$bar===' => "'bar'",
                 ],
-                'ignored_issues' => ['UnsupportedPropertyReferenceUsage'],
             ],
             'referenceReassignedInLoop' => [
                 'code' => '<?php

@@ -1,13 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Psalm\Type\Atomic;
 
 use Psalm\Codebase;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
@@ -18,14 +15,31 @@ use Psalm\Type\Union;
  */
 final class TTemplateKeyOf extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
+    /**
+     * @var string
+     */
+    public $param_name;
+
+    /**
+     * @var string
+     */
+    public $defining_class;
+
+    /**
+     * @var Union
+     */
+    public $as;
+
     public function __construct(
-        public string $param_name,
-        public string $defining_class,
-        public Union $as,
-        bool $from_docblock = false,
+        string $param_name,
+        string $defining_class,
+        Union $as,
+        bool $from_docblock = false
     ) {
-        parent::__construct($from_docblock);
+        $this->param_name = $param_name;
+        $this->defining_class = $defining_class;
+        $this->as = $as;
+        $this->from_docblock = $from_docblock;
     }
 
     public function getKey(bool $include_extra = true): string
@@ -49,7 +63,7 @@ final class TTemplateKeyOf extends Atomic
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        bool $use_phpdoc_format,
+        bool $use_phpdoc_format
     ): string {
         return 'key-of<' . $this->param_name . '>';
     }
@@ -61,7 +75,7 @@ final class TTemplateKeyOf extends Atomic
         ?string $namespace,
         array $aliased_classes,
         ?string $this_class,
-        int $analysis_php_version_id,
+        int $analysis_php_version_id
     ): ?string {
         return null;
     }
@@ -76,7 +90,7 @@ final class TTemplateKeyOf extends Atomic
      */
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
-        ?Codebase $codebase,
+        ?Codebase $codebase
     ): self {
         $as = TemplateInferredTypeReplacer::replace(
             $this->as,
