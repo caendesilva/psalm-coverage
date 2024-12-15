@@ -9,6 +9,8 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Config;
+use Psalm\Coverage\FileCoverageData;
+use Psalm\Coverage\TypeCoverage;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\IssueData;
@@ -1257,6 +1259,8 @@ final class Analyzer
                 $mixed_count += $path_mixed_count;
                 $nonmixed_count += $path_nonmixed_count;
             }
+
+            TypeCoverage::addFile(new FileCoverageData($file_path, $path_mixed_count, $path_nonmixed_count));
         }
 
         return [$mixed_count, $nonmixed_count];
@@ -1292,6 +1296,8 @@ final class Analyzer
             $percentage = $nonmixed_count === $total ? '100' : number_format(100 * $nonmixed_count / $total, 4);
             $lines[] = 'Psalm was able to infer types for ' . $percentage . '%'
                 . ' of the codebase';
+            
+            TypeCoverage::setCoverage($percentage);
         }
 
         return implode("\n", $lines);
