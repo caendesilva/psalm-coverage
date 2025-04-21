@@ -45,6 +45,9 @@
         "symfony/filesystem": "~6.3.12 || ~6.4.3 || ^7.0.3",
         "symfony/polyfill-php84": "^1.31.0"
     },
+    "provide": {
+        "vimeo/psalm": "self.version"
+    },
     "replace": {
         "vimeo/psalm": "self.version"
     },
