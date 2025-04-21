@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Config;
 
+use Override;
 use Psalm\Config\Creator;
 use Psalm\Tests\TestCase;
 
@@ -11,12 +12,14 @@ use function dirname;
 
 use const DIRECTORY_SEPARATOR;
 
-class CreatorTest extends TestCase
+final class CreatorTest extends TestCase
 {
+    #[Override]
     public static function setUpBeforeClass(): void
     {
     }
 
+    #[Override]
     public function setUp(): void
     {
     }

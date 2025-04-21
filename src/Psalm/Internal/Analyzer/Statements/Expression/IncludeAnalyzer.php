@@ -14,8 +14,7 @@ use Psalm\Exception\UnpreparedAnalysisException;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
-use Psalm\Internal\Codebase\TaintFlowGraph;
-use Psalm\Internal\DataFlow\TaintSink;
+use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Issue\MissingFile;
 use Psalm\Issue\UnresolvableInclude;
@@ -110,23 +109,22 @@ final class IncludeAnalyzer
         }
 
         if ($stmt_expr_type
-            && $statements_analyzer->data_flow_graph instanceof TaintFlowGraph
+            && $statements_analyzer->taint_flow_graph
             && $stmt_expr_type->parent_nodes
             && !in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
         ) {
             $arg_location = new CodeLocation($statements_analyzer->getSource(), $stmt->expr);
 
-            $include_param_sink = TaintSink::getForMethodArgument(
+            $include_param_sink = DataFlowNode::getForMethodArgument(
                 'include',
                 'include',
                 0,
                 $arg_location,
                 $arg_location,
+                TaintKind::INPUT_INCLUDE,
             );
 
-            $include_param_sink->taints = [TaintKind::INPUT_INCLUDE];
-
-            $statements_analyzer->data_flow_graph->addSink($include_param_sink);
+            $statements_analyzer->taint_flow_graph->addSink($include_param_sink);
 
             $codebase = $statements_analyzer->getCodebase();
             $event = new AddRemoveTaintsEvent($stmt, $context, $statements_analyzer, $codebase);
@@ -134,8 +132,14 @@ final class IncludeAnalyzer
             $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
             $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
 
+            $taints = $added_taints & ~$removed_taints;
+            if ($taints !== 0) {
+                $taint_source = $include_param_sink->setTaints($taints);
+                $statements_analyzer->taint_flow_graph->addSource($taint_source);
+            }
+
             foreach ($stmt_expr_type->parent_nodes as $parent_node) {
-                $statements_analyzer->data_flow_graph->addPath(
+                $statements_analyzer->taint_flow_graph->addPath(
                     $parent_node,
                     $include_param_sink,
                     'arg',

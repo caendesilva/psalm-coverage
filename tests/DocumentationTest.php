@@ -7,6 +7,7 @@ namespace Psalm\Tests;
 use DOMAttr;
 use DOMDocument;
 use DOMXPath;
+use Override;
 use PHPUnit\Framework\Constraint\Constraint;
 use Psalm\Config;
 use Psalm\Config\IssueHandler;
@@ -42,6 +43,7 @@ use function preg_quote;
 use function scandir;
 use function sort;
 use function str_replace;
+use function str_starts_with;
 use function strlen;
 use function strpos;
 use function substr;
@@ -54,7 +56,7 @@ use const FILE_IGNORE_NEW_LINES;
 use const FILE_SKIP_EMPTY_LINES;
 use const LIBXML_NONET;
 
-class DocumentationTest extends TestCase
+final class DocumentationTest extends TestCase
 {
     /**
      * a list of all files containing annotation documentation
@@ -137,6 +139,7 @@ class DocumentationTest extends TestCase
         return $issue_code;
     }
 
+    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();
@@ -230,6 +233,8 @@ class DocumentationTest extends TestCase
 
         $this->project_analyzer->getConfig()->ensure_override_attribute = $error_message === 'MissingOverrideAttribute';
 
+        $this->project_analyzer->getCodebase()->literal_array_key_check = $error_message === 'LiteralKeyUnshapedArray';
+
         foreach ($ignored_issues as $error_level) {
             $this->project_analyzer->getCodebase()->config->setCustomErrorLevel($error_level, Config::REPORT_SUPPRESS);
         }
@@ -305,6 +310,11 @@ class DocumentationTest extends TestCase
                     $ignored_issues = ['UnusedVariable'];
                     break;
 
+
+                case 'ClassMustBeFinal':
+                    $ignored_issues = ['UnusedClass'];
+                    break;
+
                 case 'AmbiguousConstantInheritance':
                 case 'DeprecatedConstant':
                 case 'DuplicateEnumCase':
@@ -324,12 +334,16 @@ class DocumentationTest extends TestCase
                     $php_version = '8.3';
                     break;
             }
+            if (str_starts_with($issue_name, 'Taint')) {
+                $ignored_issues = TaintTest::IGNORE;
+            }
 
             $invalid_code_data[$issue_name] = [
                 $blocks[0],
                 $issue_name,
                 $ignored_issues,
-                strpos($issue_name, 'Unused') !== false
+                $issue_name === 'ClassMustBeFinal'
+                    || strpos($issue_name, 'Unused') !== false
                     || strpos($issue_name, 'Unevaluated') !== false
                     || strpos($issue_name, 'Unnecessary') !== false,
                 $php_version,
@@ -412,16 +426,19 @@ class DocumentationTest extends TestCase
                 $this->inner = $inner;
             }
 
+            #[Override]
             public function toString(): string
             {
                 return $this->inner->toString();
             }
 
+            #[Override]
             protected function matches(mixed $other): bool
             {
                 return $this->inner->matches($other);
             }
 
+            #[Override]
             protected function failureDescription(mixed $other): string
             {
                 return $this->exporter()->shortenedExport($other) . ' ' . $this->toString();
@@ -431,7 +448,7 @@ class DocumentationTest extends TestCase
 
     /**
      * Tests that issues.md contains the expected links to issue documentation.
-     * issues.md can be generated automatically with bin/generate_documentation_issues_list.php.
+     * issues.md can be generated automatically with bin/docs/generate_documentation_issues_list.php.
      */
     public function testIssuesIndex(): void
     {

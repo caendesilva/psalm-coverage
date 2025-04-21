@@ -4,6 +4,8 @@
     xmlns="https://getpsalm.org/schema/config"
     name="Psalm for Psalm"
     errorLevel="1"
+    noCache="true"
+    forceJit="false"
     throwExceptionOnError="0"
     findUnusedCode="true"
     ensureArrayStringOffsetsExist="true"
@@ -11,6 +13,10 @@
     xsi:schemaLocation="https://getpsalm.org/schema/config config.xsd"
     limitMethodComplexity="true"
     errorBaseline="psalm-baseline.xml"
+    allFunctionsGlobal="true"
+    ensureOverrideAttribute="true"
+    allConstantsGlobal="true"
+    runTaintAnalysis="true"
     findUnusedPsalmSuppress="true"
     findUnusedBaselineEntry="true"
     findUnusedIssueHandlerSuppression="true"
@@ -26,6 +32,7 @@
         <file name="psalm-language-server"/>
         <file name="psalm-plugin"/>
         <file name="psalm-refactor"/>
+        <file name="psalm-review"/>
         <file name="psalter"/>
         <ignoreFiles>
             <file name="src/Psalm/Internal/PhpTraverser/CustomTraverser.php"/>
@@ -33,7 +40,7 @@
             <file name="tests/Internal/CallMapTest.php"/>
             <file name="vendor/symfony/console/Command/Command.php"/>
             <directory name="tests/fixtures"/>
-            <file name="vendor/felixfbecker/advanced-json-rpc/lib/Dispatcher.php" />
+            <file name="vendor/danog/advanced-json-rpc/lib/Dispatcher.php" />
             <directory name="vendor/netresearch/jsonmapper" />
             <directory name="vendor/phpunit" />
             <directory name="vendor/mockery/mockery"/>

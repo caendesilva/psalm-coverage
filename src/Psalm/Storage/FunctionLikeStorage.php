@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
+use Override;
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Issue\CodeIssue;
@@ -148,20 +149,11 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      */
     public bool $specialize_call = false;
 
-    /**
-     * @var array<string>
-     */
-    public array $taint_source_types = [];
+    public int $taint_source_types = 0;
 
-    /**
-     * @var array<string>
-     */
-    public array $added_taints = [];
+    public int $added_taints = 0;
 
-    /**
-     * @var array<string>
-     */
-    public array $removed_taints = [];
+    public int $removed_taints = 0;
 
     /**
      * @var array<Union>
@@ -266,11 +258,13 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
     /**
      * @return list<AttributeStorage>
      */
+    #[Override]
     public function getAttributeStorages(): array
     {
         return $this->attributes;
     }
 
+    #[Override]
     public function __toString(): string
     {
         return $this->getCompletionSignature();

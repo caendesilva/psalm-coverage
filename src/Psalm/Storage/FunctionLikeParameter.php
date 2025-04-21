@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
+use Override;
 use Psalm\CodeLocation;
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
 use Psalm\Type\MutableTypeVisitor;
@@ -20,10 +21,7 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
 
     public ?CodeLocation $signature_type_location = null;
 
-    /**
-     * @var array<string>|null
-     */
-    public ?array $sinks = null;
+    public int $sinks = 0;
 
     public bool $assert_untainted = false;
 
@@ -83,6 +81,7 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
      * @internal Should only be used by the MutableTypeVisitor.
      * @psalm-mutation-free
      */
+    #[Override]
     public function visit(TypeVisitor $visitor): bool
     {
         if ($this->type && !$visitor->traverse($this->type)) {
@@ -104,6 +103,7 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
     /**
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
+    #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
         foreach (['type', 'signature_type', 'out_type', 'default_type'] as $key) {
@@ -135,6 +135,7 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
      * @psalm-mutation-free
      * @return list<AttributeStorage>
      */
+    #[Override]
     public function getAttributeStorages(): array
     {
         return $this->attributes;

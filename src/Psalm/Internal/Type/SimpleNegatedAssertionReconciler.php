@@ -29,7 +29,6 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TCallable;
-use Psalm\Type\Atomic\TCallableKeyedArray;
 use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TCallableString;
 use Psalm\Type\Atomic\TClassString;
@@ -600,7 +599,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                             if (!$properties) {
                                 $existing_var_type->addType(Type::getEmptyArrayAtomic());
                             } else {
-                                $existing_var_type->addType(new TKeyedArray(
+                                $existing_var_type->addType(TKeyedArray::make(
                                     $properties,
                                     null,
                                     null,
@@ -620,12 +619,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                         // Possible, can be empty
                         $redundant = false;
                         $existing_var_type->removeType('array');
-                        $existing_var_type->addType(new TArray(
-                            [
-                                new Union([new TNever()]),
-                                new Union([new TNever()]),
-                            ],
-                        ));
+                        $existing_var_type->addType(Type::getEmptyArrayAtomic());
                     }
                 }
             } elseif (!$array_atomic_type instanceof TArray || !$array_atomic_type->isEmptyArray()) {
@@ -1210,7 +1204,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                     $non_object_types[] = $type;
                 }
             } elseif ($type instanceof TCallable) {
-                $non_object_types[] = new TCallableKeyedArray([
+                $non_object_types[] = TKeyedArray::makeCallable([
                     new Union([new TClassString, new TObject]),
                     Type::getNonEmptyString(),
                 ]);
@@ -1601,7 +1595,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                 $non_string_types[] = new TInt();
                 $redundant = false;
             } elseif ($type instanceof TCallable) {
-                $non_string_types[] = new TCallableKeyedArray([
+                $non_string_types[] = TKeyedArray::makeCallable([
                     new Union([new TClassString, new TObject]),
                     Type::getNonEmptyString(),
                 ]);
@@ -1703,7 +1697,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                 }
             } elseif ($type instanceof TCallable) {
                 $non_array_types[] = new TCallableString();
-                $non_array_types[] = new TCallableObject();
+                $non_array_types[] = new TCallableObject($type->from_docblock, $type);
                 $redundant = false;
             } elseif ($type instanceof TIterable) {
                 if (!$type->type_params[0]->isMixed() || !$type->type_params[1]->isMixed()) {

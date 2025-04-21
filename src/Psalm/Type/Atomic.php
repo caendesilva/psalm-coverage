@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Type;
 
 use InvalidArgumentException;
+use Override;
 use Psalm\Codebase;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -19,7 +20,6 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TCallable;
-use Psalm\Type\Atomic\TCallableKeyedArray;
 use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TCallableString;
 use Psalm\Type\Atomic\TClassString;
@@ -69,7 +69,7 @@ use Psalm\Type\Atomic\TTypeAlias;
 use Psalm\Type\Atomic\TVoid;
 use Stringable;
 
-use function array_filter;
+use function array_any;
 use function array_keys;
 use function count;
 use function is_array;
@@ -184,6 +184,7 @@ abstract class Atomic implements TypeNode, Stringable
                 return new TFloat();
 
             case 'string':
+            case 'uppercase-string': // TODO implement TUppercaseString
                 return new TString();
 
             case 'bool':
@@ -258,10 +259,26 @@ abstract class Atomic implements TypeNode, Stringable
                 );
                 $object = new TObject(true);
                 $string = new TNonEmptyString(true);
-                return new TCallableKeyedArray([
+                return TKeyedArray::makeCallable([
                     new Union([$classString, $object]),
                     new Union([$string]),
                 ]);
+
+            case 'callable-list':
+                $classString = new TClassString(
+                    'object',
+                    null,
+                    false,
+                    false,
+                    false,
+                    true,
+                );
+                $object = new TObject(true);
+                $string = new TNonEmptyString(true);
+                return TKeyedArray::makeCallable([
+                    new Union([$classString, $object]),
+                    new Union([$string]),
+                ], null, true);
 
             case 'list':
                 return Type::getListAtomic(Type::getMixed(false, $from_docblock));
@@ -270,6 +287,7 @@ abstract class Atomic implements TypeNode, Stringable
                 return Type::getNonEmptyListAtomic(Type::getMixed(false, $from_docblock));
 
             case 'non-empty-string':
+            case 'non-empty-uppercase-string': // TODO implement TNonEmptyUppercaseString
                 return new TNonEmptyString();
 
             case 'truthy-string':
@@ -446,7 +464,7 @@ abstract class Atomic implements TypeNode, Stringable
         return $this instanceof TNamedObject
             || ($this instanceof TTemplateParam
                 && ($this->as->hasNamedObjectType()
-                    || array_filter(
+                    || array_any(
                         $this->extra_types,
                         static fn($extra_type): bool => $extra_type->isNamedObjectType(),
                     )
@@ -456,11 +474,7 @@ abstract class Atomic implements TypeNode, Stringable
 
     public function isCallableType(): bool
     {
-        return $this instanceof TCallable
-            || $this instanceof TCallableObject
-            || $this instanceof TCallableString
-            || $this instanceof TCallableKeyedArray
-            || $this instanceof TClosure;
+        return false;
     }
 
     public function isIterable(Codebase $codebase): bool
@@ -534,7 +548,7 @@ abstract class Atomic implements TypeNode, Stringable
                     )))
                 || (
                     $this->extra_types
-                    && array_filter(
+                    && array_any(
                         $this->extra_types,
                         static fn(Atomic $a): bool => $a->hasTraversableInterface($codebase),
                     )
@@ -557,7 +571,7 @@ abstract class Atomic implements TypeNode, Stringable
                     )))
                 || (
                     $this->extra_types
-                    && array_filter(
+                    && array_any(
                         $this->extra_types,
                         static fn(Atomic $a): bool => $a->hasCountableInterface($codebase),
                     )
@@ -595,7 +609,7 @@ abstract class Atomic implements TypeNode, Stringable
                     )))
                 || (
                     $this->extra_types
-                    && array_filter(
+                    && array_any(
                         $this->extra_types,
                         static fn(Atomic $a): bool => $a->hasArrayAccessInterface($codebase),
                     )
@@ -603,6 +617,7 @@ abstract class Atomic implements TypeNode, Stringable
             );
     }
 
+    #[Override]
     public function visit(TypeVisitor $visitor): bool
     {
         foreach ($this->getChildNodeKeys() as $key) {
@@ -631,6 +646,7 @@ abstract class Atomic implements TypeNode, Stringable
     /**
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
+    #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
         foreach ($node->getChildNodeKeys() as $key) {
@@ -686,13 +702,14 @@ abstract class Atomic implements TypeNode, Stringable
         return [];
     }
 
+    #[Override]
     final public function __toString(): string
     {
         return $this->getId();
     }
 
     /**
-     * This is the true identifier for the type. It defaults to self::getKey() but can be overrided to be more precise
+     * This is the true identifier for the type. It defaults to self::getKey() but can be overridden to be more precise
      */
     public function getId(bool $exact = true, bool $nested = false): string
     {

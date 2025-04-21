@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Override;
 use PhpParser;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -17,9 +18,8 @@ use Psalm\Exception\UnresolvableConstantException;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeCollector;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallReturnTypeFetcher;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
-use Psalm\Internal\Codebase\TaintFlowGraph;
-use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
@@ -52,7 +52,6 @@ use Psalm\IssueBuffer;
 use Psalm\Node\Expr\VirtualVariable;
 use Psalm\Node\Stmt\VirtualWhile;
 use Psalm\Plugin\EventHandler\Event\AfterFunctionLikeAnalysisEvent;
-use Psalm\Storage\AttributeStorage;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionLikeStorage;
@@ -70,7 +69,6 @@ use UnexpectedValueException;
 
 use function array_combine;
 use function array_diff_key;
-use function array_filter;
 use function array_key_exists;
 use function array_keys;
 use function array_merge;
@@ -240,7 +238,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $this->is_static = true;
         }
 
-        $statements_analyzer = new StatementsAnalyzer($this, $type_provider);
+        $statements_analyzer = new StatementsAnalyzer($this, $type_provider, true);
 
         $byref_uses = [];
         if ($this instanceof ClosureAnalyzer && $this->function instanceof Closure) {
@@ -275,7 +273,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     if ($statements_analyzer->data_flow_graph && $use_assignment) {
                         $statements_analyzer->data_flow_graph->addPath(
                             $use_assignment,
-                            new DataFlowNode('closure-use', 'closure use', null),
+                            DataFlowNode::getForClosureUse(),
                             'closure-use',
                         );
                     }
@@ -505,7 +503,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $statements_analyzer->addSuppressedIssues(['NoValue']);
         }
 
-        $statements_analyzer->analyze($function_stmts, $context, $global_context, true);
+        $statements_analyzer->analyze($function_stmts, $context, $global_context);
 
         if ($codebase->alter_code
             && isset($project_analyzer->getIssuesToFix()['MissingPureAnnotation'])
@@ -830,6 +828,24 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             }
         }
 
+        // Class methods are analyzed deferred, therefor it's required to
+        // add taint sources additionally on analyze not only on call
+        if ($codebase->taint_flow_graph
+            && $this->function instanceof ClassMethod
+            && $cased_method_id) {
+            $method_source = DataFlowNode::getForMethodReturn(
+                (string) $method_id,
+                $cased_method_id,
+                $storage->location,
+            );
+
+            FunctionCallReturnTypeFetcher::taintUsingStorage(
+                $storage,
+                $codebase->taint_flow_graph,
+                $method_source,
+            );
+        }
+
         if ($add_mutations) {
             if ($this->return_vars_in_scope !== null) {
                 $context->vars_in_scope = TypeAnalyzer::combineKeyedTypes(
@@ -1052,39 +1068,36 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             if ($statements_analyzer->data_flow_graph
                 && $function_param->location
             ) {
-                //don't add to taint flow graph if the type can't transmit taints
-                if (!$statements_analyzer->data_flow_graph instanceof TaintFlowGraph
-                    || $function_param->type === null
-                    || !$function_param->type->isSingle()
-                    || (!$function_param->type->isInt()
-                        && !$function_param->type->isFloat()
-                        && !$function_param->type->isBool())
-                ) {
-                    $param_assignment = DataFlowNode::getForAssignment(
-                        $function_param_id,
+                $param_assignment = DataFlowNode::getForAssignment(
+                    $function_param_id,
+                    $function_param->location,
+                );
+
+                $statements_analyzer->data_flow_graph->addNode($param_assignment);
+
+                if ($cased_method_id !== null) {
+                    $type_source = DataFlowNode::getForMethodArgument(
+                        $cased_method_id,
+                        $cased_method_id,
+                        $offset,
                         $function_param->location,
+                        null,
                     );
 
-                    $statements_analyzer->data_flow_graph->addNode($param_assignment);
-
-                    if ($cased_method_id) {
-                        $type_source = DataFlowNode::getForMethodArgument(
-                            $cased_method_id,
-                            $cased_method_id,
-                            $offset,
-                            $function_param->location,
-                            null,
-                        );
-
-                        $statements_analyzer->data_flow_graph->addPath($type_source, $param_assignment, 'param');
-                    }
-
-                    if ($storage->variadic) {
-                        $this->param_nodes += [$param_assignment->id => $param_assignment];
-                    }
-
-                    $parent_nodes = [$param_assignment->id => $param_assignment];
+                    $statements_analyzer->data_flow_graph->addPath(
+                        $type_source,
+                        $param_assignment,
+                        'param',
+                        0,
+                        $function_param->signature_type?->getTaintsToRemove() ?? 0,
+                    );
                 }
+
+                if ($storage->variadic) {
+                    $this->param_nodes += [$param_assignment->id => $param_assignment];
+                }
+
+                $parent_nodes = [$param_assignment->id => $param_assignment];
             }
 
             if ($function_param->type) {
@@ -1715,6 +1728,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<lowercase-string, string>
      */
+    #[Override]
     public function getAliasedClassesFlipped(): array
     {
         if ($this->source instanceof NamespaceAnalyzer ||
@@ -1731,6 +1745,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<string, string>
      */
+    #[Override]
     public function getAliasedClassesFlippedReplaceable(): array
     {
         if ($this->source instanceof NamespaceAnalyzer ||
@@ -1747,6 +1762,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<string, array<string, Union>>|null
      */
+    #[Override]
     public function getTemplateTypeMap(): ?array
     {
         if ($this->source instanceof ClassLikeAnalyzer) {
@@ -1757,11 +1773,13 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         return $this->storage->template_types;
     }
 
+    #[Override]
     public function isStatic(): bool
     {
         return $this->is_static;
     }
 
+    #[Override]
     public function getCodebase(): Codebase
     {
         return $this->codebase;
@@ -1772,6 +1790,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      *
      * @return array<string>
      */
+    #[Override]
     public function getSuppressedIssues(): array
     {
         return $this->suppressed_issues;
@@ -1780,6 +1799,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     /**
      * @param array<int, string> $new_issues
      */
+    #[Override]
     public function addSuppressedIssues(array $new_issues): void
     {
         if (isset($new_issues[0])) {
@@ -1792,6 +1812,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     /**
      * @param array<int, string> $new_issues
      */
+    #[Override]
     public function removeSuppressedIssues(array $new_issues): void
     {
         if (isset($new_issues[0])) {
@@ -1971,38 +1992,52 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 true,
             );
 
-            if ($codebase->analysis_php_version_id >= 8_03_00) {
-                $has_override_attribute = array_filter(
-                    $storage->attributes,
-                    static fn(AttributeStorage $s): bool => $s->fq_class_name === 'Override',
-                );
-
-                if ($has_override_attribute
-                    && (!$overridden_method_ids || $storage->cased_name === '__construct')
-                ) {
-                    IssueBuffer::maybeAdd(
-                        new InvalidOverride(
-                            'Method ' . $storage->cased_name . ' does not match any parent method',
-                            $codeLocation,
-                        ),
-                        $this->getSuppressedIssues(),
-                    );
+            $has_override_attribute = false;
+            foreach ($storage->attributes as $s) {
+                if ($s->fq_class_name === 'Override') {
+                    $has_override_attribute = true;
+                    break;
                 }
+            }
 
-                if (!$has_override_attribute
-                    && $codebase->config->ensure_override_attribute
-                    && $overridden_method_ids
-                    && $storage->cased_name !== '__construct'
-                    && ($storage->cased_name !== '__toString'
-                       || isset($appearing_class_storage->direct_class_interfaces['stringable']))
+            if ($has_override_attribute
+                && (!$overridden_method_ids || $storage->cased_name === '__construct')
+            ) {
+                IssueBuffer::maybeAdd(
+                    new InvalidOverride(
+                        'Method ' . $storage->cased_name . ' does not match any parent method',
+                        $codeLocation,
+                    ),
+                    $this->getSuppressedIssues(),
+                );
+            }
+
+            if (!$has_override_attribute
+                && $codebase->config->ensure_override_attribute
+                && $overridden_method_ids
+                && ($storage->defining_fqcln === null
+                    || !$codebase->classlike_storage_provider->get($storage->defining_fqcln)->is_trait
+                ) && $storage->cased_name !== '__construct'
+                && ($storage->cased_name !== '__toString'
+                    || isset($appearing_class_storage->direct_class_interfaces['stringable']))
+            ) {
+                IssueBuffer::maybeAdd(
+                    new MissingOverrideAttribute(
+                        'Method ' . $method_id . ' should have the "Override" attribute',
+                        $codeLocation,
+                    ),
+                    $this->getSuppressedIssues(),
+                    true,
+                );
+                    
+                if ($codebase->alter_code
+                    && $storage->stmt_location !== null
+                    && isset($this->getProjectAnalyzer()->getIssuesToFix()['MissingOverrideAttribute'])
                 ) {
-                    IssueBuffer::maybeAdd(
-                        new MissingOverrideAttribute(
-                            'Method ' . $storage->cased_name . ' should have the "Override" attribute',
-                            $codeLocation,
-                        ),
-                        $this->getSuppressedIssues(),
-                    );
+                    $idx = $storage->stmt_location->getSelectionBounds()[0];
+                    FileManipulationBuffer::add($storage->stmt_location->file_path, [
+                        new FileManipulation($idx, $idx, "#[\\Override]\n", true),
+                    ]);
                 }
             }
 
@@ -2171,9 +2206,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             $assignment_node = DataFlowNode::getForAssignment($var_name, $original_location);
 
-            if ($statements_analyzer->data_flow_graph instanceof VariableUseGraph
-                && $statements_analyzer->data_flow_graph->isVariableUsed($assignment_node)
-            ) {
+            if ($statements_analyzer->variable_use_graph?->isVariableUsed($assignment_node)) {
                 continue;
             }
 

@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\TypeReconciliation;
 
+use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class RedundantConditionTest extends TestCase
+final class RedundantConditionTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -984,6 +986,7 @@ class RedundantConditionTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-class TypeAnnotationTest extends TestCase
+final class TypeAnnotationTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -663,7 +665,7 @@ class TypeAnnotationTest extends TestCase
                     '$output===' => 'list<1|2>',
                 ],
             ],
-            'callableWithReturnTypeTypeAliasWithinBackets' => [
+            'callableWithReturnTypeTypeAliasWithinBrackets' => [
                 'code' => '<?php
                     /** @psalm-type TCallback (callable():int) */
                     class Foo {
@@ -959,6 +961,7 @@ class TypeAnnotationTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

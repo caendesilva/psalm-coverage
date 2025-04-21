@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace Psalm\Test\Config\Plugin\Hook;
 
+use Override;
 use Psalm\Plugin\EventHandler\AfterFileAnalysisInterface;
 use Psalm\Plugin\EventHandler\BeforeFileAnalysisInterface;
 use Psalm\Plugin\EventHandler\Event\AfterFileAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\BeforeFileAnalysisEvent;
 
-class FileProvider implements
+final class FileProvider implements
     AfterFileAnalysisInterface,
     BeforeFileAnalysisInterface
 {
     /**
      * Called before a file has been checked
      */
+    #[Override]
     public static function beforeAnalyzeFile(BeforeFileAnalysisEvent $event): void
     {
         $codebase = $event->getCodebase();
@@ -27,6 +29,7 @@ class FileProvider implements
     /**
      * Called before a file has been checked
      */
+    #[Override]
     public static function afterAnalyzeFile(AfterFileAnalysisEvent $event): void
     {
         $codebase = $event->getCodebase();

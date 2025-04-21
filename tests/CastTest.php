@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-class CastTest extends TestCase
+final class CastTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         yield 'SKIPPED-castFalseOrIntToInt' => [

@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class ClosureTest extends TestCase
+final class ClosureTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -599,6 +601,69 @@ class ClosureTest extends TestCase
                     '$result' => 'list{stdClass}',
                 ],
             ],
+            'templateShenanigans' => [
+                'code' => '<?php
+                    class inner {}
+                    class b {
+                        public inner $key;
+
+                        public function __construct() {
+                            $this->key = new inner;
+                        }
+                    }
+
+                    /**
+                     * @template-covariant TKey as array-key
+                     * @template TValue as b
+                     */
+                    class a {
+                        /**
+                         * @template TMappedValue
+                         *
+                         * @param (\Closure(TValue): TMappedValue)|true $callback Callback or null
+                         *
+                         * @return list<$callback is true ? array : TMappedValue>
+                         */
+                        public function toArray1(Closure|true $callback): array {
+                            return [];
+                        }
+                        /**
+                         * @template TMappedValue
+                         * @template T as (\Closure(TValue): TMappedValue)
+                         *
+                         * @param T $callback Callback or null
+                         *
+                         * @return list<TMappedValue>
+                         */
+                        public function toArray2(Closure $callback): array {
+                            return [];
+                        }
+                        /**
+                         * @template TMappedValue
+                         *
+                         * @param (\Closure(TValue): TMappedValue) $callback Callback or null
+                         *
+                         * @return list<TMappedValue>
+                         */
+                        public function toArray3(Closure $callback): array {
+                            return [];
+                        }
+                    }
+
+                    $a = (new a)->toArray1(static fn ($obj) => $obj->key);
+
+                    $b = (new a)->toArray2(static fn ($obj) => $obj->key);
+
+                    $c = (new a)->toArray3(static fn ($obj) => $obj->key);',
+
+                'assertions' => [
+                    '$a===' => 'list<inner>',
+                    '$b===' => 'list<inner>',
+                    '$c===' => 'list<inner>',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '8.1',
+            ],
             'CallableWithArrayReduce' => [
                 'code' => '<?php
                     /**
@@ -921,7 +986,7 @@ class ClosureTest extends TestCase
                 'ignored_issues' => [],
                 'php_version' => '8.1',
             ],
-            'arrowFunctionReturnsNeverImplictly' => [
+            'arrowFunctionReturnsNeverImplicitly' => [
                 'code' => '<?php
                     $bar = ["foo", "bar"];
 
@@ -933,7 +998,7 @@ class ClosureTest extends TestCase
                 'ignored_issues' => [],
                 'php_version' => '8.1',
             ],
-            'arrowFunctionReturnsNeverExplictly' => [
+            'arrowFunctionReturnsNeverExplicitly' => [
                 'code' => '<?php
                     $bar = ["foo", "bar"];
 
@@ -1021,9 +1086,23 @@ class ClosureTest extends TestCase
                 );
                 ',
             ],
+            'closureInArray' => [
+                'code' => '<?php
+                    $arr = [
+                        /**
+                         * @param array{last_access: int} $item
+                         */
+                        static function (array $item): int {
+                            return $item["last_access"];
+                        },
+                    ];
+
+                    $arr[0](["last_access" => 0]);',
+            ],
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

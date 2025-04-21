@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Template;
 
+use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class ClassTemplateExtendsTest extends TestCase
+final class ClassTemplateExtendsTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -1796,6 +1798,7 @@ class ClassTemplateExtendsTest extends TestCase
                 'code' => '<?php
                     /**
                      * @template TData as array
+                     * @psalm-no-seal-properties
                      */
                     abstract class DataBag {
                         /**
@@ -1967,7 +1970,7 @@ class ClassTemplateExtendsTest extends TestCase
 
                     foreach ($bat as $num) {}',
             ],
-            'implictIteratorTemplating' => [
+            'implicitIteratorTemplating' => [
                 'code' => '<?php
                     /**
                      * @template-implements IteratorAggregate<int, int>
@@ -2091,7 +2094,7 @@ class ClassTemplateExtendsTest extends TestCase
                         }
                     }',
             ],
-            'extendsArryObjectGetIterator' => [
+            'extendsArrayObjectGetIterator' => [
                 'code' => '<?php
                     class Obj {}
 
@@ -4699,6 +4702,7 @@ class ClassTemplateExtendsTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

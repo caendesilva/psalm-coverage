@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\FileUpdates;
 
+use Override;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
@@ -21,8 +22,9 @@ use function getcwd;
 
 use const DIRECTORY_SEPARATOR;
 
-class ErrorFixTest extends TestCase
+final class ErrorFixTest extends TestCase
 {
+    #[Override]
     public function setUp(): void
     {
         parent::setUp();

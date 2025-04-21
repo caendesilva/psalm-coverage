@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -11,11 +12,12 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class FunctionCallTest extends TestCase
+final class FunctionCallTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -685,7 +687,7 @@ class FunctionCallTest extends TestCase
                     /** @var string $string */
                     $elements = explode(" ", $string, -5);',
                 'assertions' => [
-                    '$elements' => 'list<never>',
+                    '$elements' => 'array<never, never>',
                 ],
             ],
             'explodeWithDynamicLimit' => [
@@ -740,7 +742,7 @@ class FunctionCallTest extends TestCase
                      */
                     $elements = explode($delim, $string, -5);',
                 'assertions' => [
-                    '$elements' => 'list<never>',
+                    '$elements' => 'array<never, never>',
                 ],
             ],
             'explodeWithDynamicDelimiterAndLimit' => [
@@ -2467,6 +2469,7 @@ class FunctionCallTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

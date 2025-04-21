@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -13,7 +14,7 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class MagicPropertyTest extends TestCase
+final class MagicPropertyTest extends TestCase
 {
     use InvalidCodeAnalysisWithIssuesTestTrait;
     use InvalidCodeAnalysisTestTrait;
@@ -39,6 +40,7 @@ class MagicPropertyTest extends TestCase
         $this->analyzeFile('somefile.php', new Context());
     }
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -131,6 +133,7 @@ class MagicPropertyTest extends TestCase
              */
             'magicSetterUndefinedPropertyNoAnnotation' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-properties */
                     class A {
                         public function __get(string $name): ?string {
                             if ($name === "foo") {
@@ -156,6 +159,7 @@ class MagicPropertyTest extends TestCase
              */
             'magicGetterUndefinedPropertyNoAnnotation' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-properties */
                     class A {
                         public function __get(string $name): ?string {
                             if ($name === "foo") {
@@ -200,6 +204,26 @@ class MagicPropertyTest extends TestCase
                             $this->__set("foo", "value");
                         }
                     }',
+            ],
+            'magicGetterOnArrayValue' => [
+                'code' => '<?php
+                    /**
+                     * @property string $send_type
+                     * @psalm-seal-properties
+                     */
+                    final class b {
+                        public function __set(string $key, mixed $value) {}
+                    }
+
+                    /**
+                     * @param array<string, b> $objs
+                     */
+                    function test(string $k, array $objs): void {
+                        $objs[$k]->send_type = "test";
+                    }',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.0',
             ],
             'propertyDocblockAssignmentToMixed' => [
                 'code' => '<?php
@@ -350,6 +374,7 @@ class MagicPropertyTest extends TestCase
             ],
             'magicPropertyFetchOnProtected' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-properties */
                     class C {
                         /** @var string */
                         protected $foo = "foo";
@@ -372,6 +397,7 @@ class MagicPropertyTest extends TestCase
             ],
             'dontAssumeNonNullAfterPossibleMagicFetch' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-properties */
                     class C {
                         public function __get(string $name) : string {
                             return "hello";
@@ -388,6 +414,7 @@ class MagicPropertyTest extends TestCase
             ],
             'accessInMagicGet' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-properties */
                     class X {
                         public function __get(string $name) : string {
                             switch ($name) {
@@ -601,6 +628,7 @@ class MagicPropertyTest extends TestCase
             ],
             'removeAssertionsAfterCall' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-properties */
                     class C {
                         /**
                          * @return mixed
@@ -767,9 +795,24 @@ class MagicPropertyTest extends TestCase
                         }
                     }',
             ],
+            'propertyFetchWithNullCoalesce' => [
+                'code' => '<?php
+                    /**
+                     * @property-read string|null $p
+                     */
+                    class A {
+                        public function __get(string $name) {
+                            return null;
+                        }
+                        public function f(): string {
+                           return $this->p ?? \'\';
+                        }
+                    }',
+            ],
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -1222,6 +1265,23 @@ class MagicPropertyTest extends TestCase
 
                     echo (new OrganizationObject)->errors;',
                 'error_message' => 'UndefinedMagicPropertyFetch',
+            ],
+            'invalidPropertyFetchWithNullCoalesce' => [
+                'code' => '<?php
+                    /**
+                     * @property-read string|null $p
+                     * 
+                     * @psalm-no-seal-properties // For the test
+                     */
+                    class A {
+                        public function __get(string $name) {
+                            return null;
+                        }
+                        public function f(): string {
+                           return $this->q ?? \'\';
+                        }
+                    }',
+                'error_message' => 'MixedReturnStatement',
             ],
         ];
     }

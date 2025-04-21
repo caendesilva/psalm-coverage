@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\TypeReconciliation;
 
+use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-class TypeAlgebraTest extends TestCase
+final class TypeAlgebraTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -1275,6 +1277,7 @@ class TypeAlgebraTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Cli;
 
 use Composer\Autoload\ClassLoader;
+use Fidry\CpuCoreCounter\CpuCoreCounter;
 use Psalm\Config;
 use Psalm\Config\Creator;
 use Psalm\ErrorBaseline;
@@ -12,11 +13,13 @@ use Psalm\Exception\ConfigCreationException;
 use Psalm\Exception\ConfigException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\CliUtils;
+use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\ReferenceMapGenerator;
 use Psalm\Internal\Composer;
 use Psalm\Internal\ErrorHandler;
 use Psalm\Internal\Fork\PsalmRestarter;
 use Psalm\Internal\IncludeCollector;
+use Psalm\Internal\Preloader;
 use Psalm\Internal\Provider\ClassLikeStorageCacheProvider;
 use Psalm\Internal\Provider\FileProvider;
 use Psalm\Internal\Provider\FileReferenceCacheProvider;
@@ -36,12 +39,14 @@ use Psalm\Report\ReportOptions;
 use ReflectionClass;
 use RuntimeException;
 use Symfony\Component\Filesystem\Path;
+use Throwable;
 
 use function array_filter;
 use function array_key_exists;
 use function array_keys;
 use function array_map;
 use function array_merge;
+use function array_shift;
 use function array_slice;
 use function array_sum;
 use function array_values;
@@ -50,6 +55,7 @@ use function count;
 use function defined;
 use function extension_loaded;
 use function file_exists;
+use function file_get_contents;
 use function file_put_contents;
 use function function_exists;
 use function fwrite;
@@ -78,6 +84,7 @@ use function str_repeat;
 use function str_starts_with;
 use function strlen;
 use function substr;
+use function trim;
 use function wordwrap;
 
 use const DIRECTORY_SEPARATOR;
@@ -85,7 +92,7 @@ use const JSON_THROW_ON_ERROR;
 use const LC_CTYPE;
 use const PHP_EOL;
 use const PHP_URL_SCHEME;
-use const PHP_VERSION_ID;
+use const PHP_VERSION;
 use const STDERR;
 
 // phpcs:disable PSR1.Files.SideEffects
@@ -146,6 +153,7 @@ final class Psalm
         'show-snippet:',
         'stats',
         'threads:',
+        'scan-threads:',
         'update-baseline',
         'use-baseline:',
         'use-ini-defaults',
@@ -154,6 +162,7 @@ final class Psalm
         'generate-json-map:',
         'generate-stubs:',
         'alter',
+        'review',
         'language-server',
         'refactor',
         'shepherd::',
@@ -271,11 +280,13 @@ final class Psalm
             $options['long-progress'] = true;
         }
 
-        $threads = self::detectThreads($options, $config, $in_ci);
+        $threads = self::getThreads($options, $config, $in_ci, false);
+        $scanThreads = self::getThreads($options, $config, $in_ci, true);
 
         $progress = self::initProgress($options, $config, $in_ci);
 
-        self::restart($options, $threads, $progress);
+        $force_jit = $config->force_jit || isset($options['force-jit']);
+        self::restart($options, $force_jit, $threads, $scanThreads, $progress);
 
         if (isset($options['debug-emitted-issues'])) {
             $config->debug_emitted_issues = true;
@@ -353,6 +364,7 @@ final class Psalm
                     : true,
             ),
             $threads,
+            $scanThreads,
             $progress,
         );
 
@@ -378,6 +390,9 @@ final class Psalm
         foreach ($plugins as $plugin_path) {
             $config->addPluginPath($plugin_path);
         }
+
+        // Prime cache
+        InternalCallMapHandler::getCallMap();
 
         if ($paths_to_check === null) {
             $project_analyzer->check($current_dir, $is_diff);
@@ -410,6 +425,41 @@ final class Psalm
         } else {
             self::autoGenerateConfig($project_analyzer, $current_dir, $init_source_dir, $vendor_dir);
         }
+    }
+
+    /** @return int<1, max> */
+    public static function getThreads(array $options, Config $config, bool $in_ci, bool $for_scan): int
+    {
+        if (defined('PHP_WINDOWS_VERSION_MAJOR')) {
+            // No support desired for Windows at the moment
+            return 1;
+        } elseif (!extension_loaded('pcntl')) {
+            // Psalm requires pcntl for multi-threads support
+            return 1;
+        }
+
+        if ($for_scan) {
+            if (isset($options['scan-threads'])) {
+                $threads = max(1, (int)$options['scan-threads']);
+            } elseif (isset($options['debug']) || $in_ci) {
+                $threads = 1;
+            } elseif ($config->scan_threads) {
+                $threads = $config->scan_threads;
+            } else {
+                $threads = max(1, (new CpuCoreCounter())->getCount());
+            }
+        } else {
+            if (isset($options['threads'])) {
+                $threads = max(1, (int)$options['threads']);
+            } elseif (isset($options['debug']) || $in_ci) {
+                $threads = 1;
+            } elseif ($config->threads) {
+                $threads = $config->threads;
+            } else {
+                $threads = max(1, (new CpuCoreCounter())->getCount());
+            }
+        }
+        return $threads;
     }
 
     private static function initOutputFormat(array $options): string
@@ -619,7 +669,7 @@ final class Psalm
 
     private static function initProviders(array $options, Config $config, string $current_dir): Providers
     {
-        if (isset($options['no-cache']) || isset($options['i'])) {
+        if ($config->cache_directory === null || isset($options['i'])) {
             $providers = new Providers(
                 new FileProvider,
             );
@@ -880,8 +930,13 @@ final class Psalm
         return $current_dir;
     }
 
-    private static function restart(array $options, int $threads, Progress $progress): void
-    {
+    private static function restart(
+        array $options,
+        bool $force_jit,
+        int $threads,
+        int $scanThreads,
+        Progress $progress,
+    ): void {
         $ini_handler = new PsalmRestarter('PSALM');
 
         if (isset($options['disable-extension'])) {
@@ -897,7 +952,7 @@ final class Psalm
             }
         }
 
-        if ($threads > 1
+        if (($threads > 1 || $scanThreads > 1)
             && extension_loaded('grpc')
             && (ini_get('grpc.enable_fork_support') === '1' && ini_get('grpc.poll_strategy') === 'epoll1') === false
         ) {
@@ -912,18 +967,17 @@ final class Psalm
 
         $ini_handler->disableExtensions([
             'uopz',
-            // extesions that are incompatible with JIT (they are also usually make Psalm slow)
+            // extensions that are incompatible with JIT (they are also usually make Psalm slow)
             'pcov',
             'blackfire',
+            // Issues w/ parallel forking
+            'uv',
         ]);
-
-        $skipJit = defined('PHP_WINDOWS_VERSION_MAJOR') && PHP_VERSION_ID < PsalmRestarter::MIN_PHP_VERSION_WINDOWS_JIT;
-        if ($skipJit) {
-            $ini_handler->disableExtensions(['opcache', 'Zend OPcache']);
-        }
 
         // If Xdebug is enabled, restart without it
         $ini_handler->check();
+
+        $progress->write(PHP_EOL."Running on PHP ".PHP_VERSION.', Psalm '.PSALM_VERSION.'.'.PHP_EOL);
 
         $hasJit = false;
         if (function_exists('opcache_get_status')) {
@@ -939,44 +993,62 @@ final class Psalm
                     . PHP_EOL . PHP_EOL);
             }
         } else {
-            if ($skipJit) {
-                $progress->write(PHP_EOL
-                    . 'JIT acceleration: OFF (disabled on Windows and PHP < 8.4)' . PHP_EOL
-                    . 'Install PHP 8.4+ to make use of JIT on Windows for a 20%+ performance boost!'
-                    . PHP_EOL . PHP_EOL);
-            } else {
-                $progress->write(PHP_EOL
-                    . 'JIT acceleration: OFF (opcache not installed or not enabled)' . PHP_EOL
-                    . 'Install and enable the opcache extension to make use of JIT for a 20%+ performance boost!'
-                    . PHP_EOL . PHP_EOL);
-            }
+            $progress->write(PHP_EOL
+                . 'JIT acceleration: OFF (opcache not installed or not enabled)' . PHP_EOL
+                . 'Install and enable the opcache extension to make use of JIT for a 20%+ performance boost!'
+                . PHP_EOL . PHP_EOL);
         }
-        if (isset($options['force-jit']) && !$hasJit) {
+        if ($force_jit && !$hasJit) {
             $progress->write('Exiting because JIT was requested but is not available.' . PHP_EOL . PHP_EOL);
             exit(1);
         }
-    }
 
-    private static function detectThreads(array $options, Config $config, bool $in_ci): int
-    {
-        if (isset($options['threads'])) {
-            $threads = (int)$options['threads'];
-        } elseif (isset($options['debug']) || $in_ci) {
-            $threads = 1;
-        } elseif ($config->threads) {
-            $threads = $config->threads;
-        } else {
-            $threads = max(1, ProjectAnalyzer::getCpuCount() - 1);
+        $overcommit = null;
+        try {
+            /** @psalm-suppress RiskyTruthyFalsyComparison */
+            $overcommit = trim(file_get_contents('/proc/sys/vm/overcommit_memory') ?: '');
+        } catch (Throwable) {
         }
-        return $threads;
+
+        if ($overcommit === '2') {
+            $err = 'ERROR: VM overcommiting is disabled.' . PHP_EOL . PHP_EOL
+                . "TL;DR: to fix, run these two commands:" . PHP_EOL . PHP_EOL
+                . "echo 1 | sudo tee /proc/sys/vm/overcommit_memory" . PHP_EOL
+                . "echo vm.overcommit_memory=1 | sudo tee /etc/sysctl.d/40-psalm.conf   # For persistence" . PHP_EOL
+                . PHP_EOL
+                . "Explanation: disabling VM overcommitting *WILL* cause failures when running Psalm "
+                . "in multithreaded mode during analysis," . PHP_EOL
+                . 'as Psalm relies very heavily on the copy-on-write semantics of fork(), which are currently disabled.'
+                . PHP_EOL . PHP_EOL . PHP_EOL
+                . "Please enable VM overcommitting to greatly speed up Psalm and avoid crashes in multithreaded mode."
+                . PHP_EOL . PHP_EOL . PHP_EOL
+                . "This warning may be ignored by setting the PSALM_IGNORE_NO_OVERCOMMIT=1 environment variable "
+                . "(not recommended)."
+                . PHP_EOL . PHP_EOL;
+            
+            fwrite(STDERR, $err);
+            if (getenv('PSALM_IGNORE_NO_OVERCOMMIT') !== '1') {
+                exit(1);
+            }
+        }
+
+        Preloader::preload($progress, $hasJit);
     }
 
-    /** @psalm-suppress UnusedParam $argv is being reported as unused */
+    /** @param array<int, string> $argv */
     private static function forwardCliCall(array $options, array $argv): void
     {
         if (isset($options['alter'])) {
             require_once __DIR__ . '/Psalter.php';
             Psalter::run($argv);
+            exit;
+        }
+
+        if (isset($options['review'])) {
+            require_once __DIR__ . '/Review.php';
+            array_shift($argv);
+            /** @psalm-suppress PossiblyNullArgument */
+            Review::run(array_values($argv));
             exit;
         }
 
@@ -1211,6 +1283,12 @@ final class Psalm
             $project_analyzer->getCodebase()->reportUnusedVariables();
         }
 
+        if ($config->literal_array_key_check) {
+            $project_analyzer->getCodebase()->literal_array_key_check = true;
+        }
+        $project_analyzer->getCodebase()->all_constants_global = $config->all_constants_global;
+        $project_analyzer->getCodebase()->all_functions_global = $config->all_functions_global;
+
         if ($config->run_taint_analysis || $run_taint_analysis) {
             $project_analyzer->trackTaintedInputs();
         }
@@ -1303,7 +1381,10 @@ final class Psalm
                 If set, requires JIT acceleration to be available in order to run Psalm, exiting immediately if it cannot be enabled.
 
             --threads=INT
-                If greater than one, Psalm will run analysis on multiple threads, speeding things up.
+                If greater than one, Psalm will run the scan and analysis on multiple threads, speeding things up.
+
+            --scan-threads=INT
+                If greater than one, Psalm will run the scan on multiple threads, speeding things up (if specified, takes priority over the --threads flag).
 
             --no-diff
                 Turns off Psalm’s diff mode, checks all files regardless of whether they’ve changed.
@@ -1442,6 +1523,9 @@ final class Psalm
 
             --alter
                 Run Psalter
+
+            --review
+                Run the psalm-review tool
 
             --language-server
                 Run Psalm Language Server

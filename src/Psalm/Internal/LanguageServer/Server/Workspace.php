@@ -87,34 +87,38 @@ final class Workspace
                 continue;
             }
 
-            //If the file is currently open then dont analize it because its tracked in didChange
+            //If the file is currently open then dont analyze it because its tracked in didChange
             if (!$this->codebase->file_provider->isOpen($file_path)) {
                 $this->server->queueClosedFileAnalysis($file_path, $change->uri);
             }
         }
     }
 
+    // @codingStandardsIgnoreStart
     /**
      * A notification sent from the client to the server to signal the change of configuration settings.
      *
-     * @psalm-suppress PossiblyUnusedMethod, UnusedParam
+     * @psalm-suppress PossiblyUnusedMethod, UnusedParam, MissingParamType
      */
-    public function didChangeConfiguration(mixed $settings): void
+    public function didChangeConfiguration($settings): void
     {
+        // @codingStandardsIgnoreEnd
         $this->server->logDebug(
             'workspace/didChangeConfiguration',
         );
         $this->server->client->refreshConfiguration();
     }
 
+    // @codingStandardsIgnoreStart
     /**
      * The workspace/executeCommand request is sent from the client to the server to
      * trigger command execution on the server.
      *
-     * @psalm-suppress PossiblyUnusedMethod
+     * @psalm-suppress PossiblyUnusedMethod, MissingParamType
      */
-    public function executeCommand(string $command, mixed $arguments): void
+    public function executeCommand(string $command, $arguments): void
     {
+        // @codingStandardsIgnoreEnd
         $this->server->logDebug(
             'workspace/executeCommand',
             [

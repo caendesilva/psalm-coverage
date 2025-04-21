@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Context;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
@@ -12,7 +13,7 @@ use function getcwd;
 
 use const DIRECTORY_SEPARATOR;
 
-class ConstantTest extends TestCase
+final class ConstantTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
@@ -85,6 +86,7 @@ class ConstantTest extends TestCase
         $this->analyzeFile($file2, new Context());
     }
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -2162,6 +2164,7 @@ class ConstantTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -2439,7 +2442,7 @@ class ConstantTest extends TestCase
                 'ignored_issues' => [],
                 'php_version' => '8.1',
             ],
-            'returnValueofNonExistantConstant' => [
+            'returnValueofNonExistentConstant' => [
                 'code' => '<?php
                     class Foo
                     {
@@ -2473,7 +2476,7 @@ class ConstantTest extends TestCase
                 ',
                 'error_message' => 'UnresolvableConstant',
             ],
-            'takeKeyofNonExistantConstant' => [
+            'takeKeyofNonExistentConstant' => [
                 'code' => '<?php
                     class Foo
                     {

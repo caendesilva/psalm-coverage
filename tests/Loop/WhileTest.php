@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Loop;
 
+use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-class WhileTest extends TestCase
+final class WhileTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -373,7 +375,7 @@ class WhileTest extends TestCase
                         }
                     }',
             ],
-            'assingnedConditionallyReassignedToMixedInLoop' => [
+            'assignedConditionallyReassignedToMixedInLoop' => [
                 'code' => '<?php
                     function foo(array $arr): void {
                         while (rand(0, 1)) {
@@ -643,7 +645,7 @@ class WhileTest extends TestCase
 
                         private function getResult(): string
                         {
-                            // return tring or throw exception whatever
+                            // return string or throw exception whatever
                             throw new Exception();
                         }
 
@@ -701,6 +703,7 @@ class WhileTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
