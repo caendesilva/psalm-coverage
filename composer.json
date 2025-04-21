@@ -46,10 +46,10 @@
         "symfony/polyfill-php84": "^1.31.0"
     },
     "provide": {
-        "vimeo/psalm": "self.version"
+        "vimeo/psalm": "*"
     },
     "replace": {
-        "vimeo/psalm": "self.version"
+        "vimeo/psalm": "*"
     },
     "require-dev": {
         "ext-curl": "*",
