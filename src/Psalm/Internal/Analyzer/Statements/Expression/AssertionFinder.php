@@ -23,7 +23,6 @@ use Psalm\FileSource;
 use Psalm\Internal\Algebra;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
-use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
@@ -855,7 +854,6 @@ final class AssertionFinder
                 $first_var_name,
                 $source,
                 $this_class_name,
-                $codebase && $codebase->literal_array_key_check,
             );
         } elseif (self::hasNonEmptyCountCheck($expr)) {
             if ($first_var_name) {
@@ -1257,7 +1255,7 @@ final class AssertionFinder
                 return [new IsType(TNamedObject::createFromName($instanceof_class))];
             }
 
-            if ($this_class_name !== null
+            if ($this_class_name
                 && (in_array(strtolower($stmt->class->getFirst()), ['self', 'static'], true))) {
                 $is_static = $stmt->class->getFirst() === 'static';
                 $named_object = new TNamedObject($this_class_name, $is_static);
@@ -1267,12 +1265,6 @@ final class AssertionFinder
                 }
 
                 return [new IsType($named_object)];
-            }
-        } elseif ($stmt->class instanceof PhpParser\Node\Expr\Variable && $stmt->class->name === 'this') {
-            if ($this_class_name !== null) {
-                $named_object = new TNamedObject($this_class_name, true);
-
-                return [new IsIdentical($named_object)];
             }
         } elseif ($source instanceof StatementsAnalyzer) {
             $stmt_class_type = $source->node_data->getType($stmt->class);
@@ -1542,7 +1534,7 @@ final class AssertionFinder
                 }
             }
         }
-
+        
         if (($left_get_class || $left_static_class || $left_variable_class_const)
             && ($right_class_string || $right_class_string_t)
         ) {
@@ -2204,7 +2196,7 @@ final class AssertionFinder
         ) {
             $config = $source->getCodebase()->config;
 
-            if (!$config->allow_bool_to_literal_bool_comparison
+            if ($config->strict_binary_operands
                 && $var_type->isSingle()
                 && $var_type->hasBool()
                 && !$var_type->from_docblock
@@ -2937,7 +2929,7 @@ final class AssertionFinder
         ) {
             $config = $source->getCodebase()->config;
 
-            if (!$config->allow_bool_to_literal_bool_comparison
+            if ($config->strict_binary_operands
                 && $var_type->isSingle()
                 && $var_type->hasBool()
                 && !$var_type->from_docblock
@@ -3599,13 +3591,13 @@ final class AssertionFinder
                     $class_node = $second_arg->class;
 
                     if ($class_node->getParts() === ['static']) {
-                        if ($this_class_name !== null) {
+                        if ($this_class_name) {
                             $object = new TNamedObject($this_class_name, true);
 
                             $if_types[$first_var_name] = [[new IsAClass($object, $third_arg_value === 'true')]];
                         }
                     } elseif ($class_node->getParts() === ['self']) {
-                        if ($this_class_name !== null) {
+                        if ($this_class_name) {
                             $object = new TNamedObject($this_class_name);
                             $if_types[$first_var_name] = [[new IsAClass($object, $third_arg_value === 'true')]];
                         }
@@ -3724,20 +3716,7 @@ final class AssertionFinder
         ?string $first_var_name,
         FileSource $source,
         ?string $this_class_name,
-        bool $check_literal_keys,
     ): array {
-        if ($check_literal_keys
-            && $first_var_type
-            && $source instanceof StatementsAnalyzer
-            && ($second_var_type = $source->node_data->getType($expr->getArgs()[1]->value))
-        ) {
-            ArrayFetchAnalyzer::validateArrayOffset(
-                $source,
-                $expr,
-                $second_var_type,
-                $first_var_type,
-            );
-        }
         $if_types = [];
 
         $literal_assertions = [];

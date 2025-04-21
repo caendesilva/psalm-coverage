@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -36,7 +35,6 @@ final class TClassStringMap extends Atomic
         parent::__construct($from_docblock);
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         return 'class-string-map'
@@ -52,7 +50,6 @@ final class TClassStringMap extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
@@ -86,7 +83,6 @@ final class TClassStringMap extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -96,13 +92,11 @@ final class TClassStringMap extends Atomic
         return 'array';
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'array';
@@ -112,7 +106,6 @@ final class TClassStringMap extends Atomic
      * @psalm-suppress InaccessibleProperty We're only acting on cloned instances
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithStandins(
         TemplateResult $template_result,
         Codebase $codebase,
@@ -175,7 +168,6 @@ final class TClassStringMap extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
         ?Codebase $codebase,
@@ -195,13 +187,11 @@ final class TClassStringMap extends Atomic
         );
     }
 
-    #[Override]
     protected function getChildNodeKeys(): array
     {
         return ['value_param'];
     }
 
-    #[Override]
     public function equals(Atomic $other_type, bool $ensure_source_equality): bool
     {
         if ($other_type::class !== self::class) {
@@ -215,7 +205,6 @@ final class TClassStringMap extends Atomic
         return true;
     }
 
-    #[Override]
     public function getAssertionString(): string
     {
         return $this->getKey();

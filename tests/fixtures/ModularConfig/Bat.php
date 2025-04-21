@@ -1,7 +1,7 @@
 <?php
 namespace Vimeo\Test\DummyProject;
 
-final class Bat
+class Bat
 {
     public function __construct()
     {

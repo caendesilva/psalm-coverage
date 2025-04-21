@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm;
 
-use AssertionError;
 use Exception;
 use InvalidArgumentException;
 use LanguageServerProtocol\Command;
@@ -39,7 +38,8 @@ use Psalm\Internal\Codebase\Properties;
 use Psalm\Internal\Codebase\Reflection;
 use Psalm\Internal\Codebase\Scanner;
 use Psalm\Internal\Codebase\TaintFlowGraph;
-use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\DataFlow\TaintSink;
+use Psalm\Internal\DataFlow\TaintSource;
 use Psalm\Internal\LanguageServer\PHPMarkdownContent;
 use Psalm\Internal\LanguageServer\Reference;
 use Psalm\Internal\MethodIdentifier;
@@ -50,7 +50,6 @@ use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Provider\StatementsProvider;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
-use Psalm\Issue\InvalidDocblock;
 use Psalm\Progress\Progress;
 use Psalm\Progress\VoidProgress;
 use Psalm\Storage\ClassLikeStorage;
@@ -66,11 +65,10 @@ use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TNamedObject;
-use Psalm\Type\TaintKind;
+use Psalm\Type\TaintKindGroup;
 use Psalm\Type\Union;
 use ReflectionProperty;
 use ReflectionType;
-use RuntimeException;
 use UnexpectedValueException;
 
 use function array_combine;
@@ -101,7 +99,6 @@ use function strtolower;
 use function substr;
 use function substr_count;
 
-use const PHP_INT_SIZE;
 use const PHP_VERSION_ID;
 
 /**
@@ -136,7 +133,7 @@ final class Codebase
 
     public StatementsProvider $statements_provider;
 
-    public readonly Progress $progress;
+    private readonly Progress $progress;
 
     /**
      * @var array<string, Union>
@@ -152,10 +149,6 @@ final class Codebase
      * Whether to log functions just at the file level or globally (for stubs)
      */
     public bool $register_stub_files = false;
-
-    public bool $all_functions_global = false;
-
-    public bool $all_constants_global = false;
 
     public bool $find_unused_variables = false;
 
@@ -255,44 +248,6 @@ final class Codebase
 
     public bool $track_unused_suppressions = false;
 
-    public bool $literal_array_key_check = false;
-
-    /** @internal */
-    public int $taint_count = TaintKind::BUILTIN_TAINT_COUNT;
-
-    /**
-     * @var array<string, int>
-     */
-    private array $taint_map = [
-        'callable' => TaintKind::INPUT_CALLABLE,
-        'unserialize' => TaintKind::INPUT_UNSERIALIZE,
-        'include' => TaintKind::INPUT_INCLUDE,
-        'eval' => TaintKind::INPUT_EVAL,
-        'ldap' => TaintKind::INPUT_LDAP,
-        'sql' => TaintKind::INPUT_SQL,
-        'html' => TaintKind::INPUT_HTML,
-        'has_quotes' => TaintKind::INPUT_HAS_QUOTES,
-        'shell' => TaintKind::INPUT_SHELL,
-        'ssrf' => TaintKind::INPUT_SSRF,
-        'file' => TaintKind::INPUT_FILE,
-        'cookie' => TaintKind::INPUT_COOKIE,
-        'header' => TaintKind::INPUT_HEADER,
-        'xpath' => TaintKind::INPUT_XPATH,
-        'sleep' => TaintKind::INPUT_SLEEP,
-        'extract' => TaintKind::INPUT_EXTRACT,
-        'user_secret' => TaintKind::USER_SECRET,
-        'system_secret' => TaintKind::SYSTEM_SECRET,
-
-        'input' => TaintKind::ALL_INPUT,
-        'tainted' => TaintKind::ALL_INPUT,
-    ];
-
-    /**
-     * @internal
-     * @var array<int, string>
-     */
-    public array $custom_taints = [];
-
     /** @internal */
     public function __construct(
         public Config $config,
@@ -356,63 +311,6 @@ final class Codebase
         );
 
         $this->loadAnalyzer();
-    }
-
-    /**
-     * Used to register a taint, or to fetch the ID of an already registered taint by its alias.
-     *
-     * Returns null and emits an issue if a code location is passed and there are no more taint slots.
-     *
-     * @throws RuntimeException if no code location is passed and there are no more taint slots.
-     * @return ($location is null ? int : int|null)
-     */
-    public function getOrRegisterTaint(string $taint_type, ?CodeLocation $location = null): ?int
-    {
-        if (isset($this->taint_map[$taint_type])) {
-            return $this->taint_map[$taint_type];
-        }
-        if ($this->taint_count+1 === (PHP_INT_SIZE * 8)) {
-            $taints = implode(',', $this->custom_taints);
-            $err = "No more taint slots left (using $taints), ";
-            if (PHP_INT_SIZE === 8) {
-                $err .= "please use fewer custom taints and use some of the built-in taints!";
-            } else {
-                $err .= "please switch to a 64-bit build of PHP to get 32 more taint slots,".
-                    " or use fewer custom taints and use some of the built-in taints!";
-            }
-            if ($location !== null) {
-                IssueBuffer::maybeAdd(new InvalidDocblock($err, $location));
-                return null;
-            }
-            throw new RuntimeException($err);
-        }
-        $id = 1 << ($this->taint_count++);
-        $this->custom_taints[$id] = $taint_type;
-        $this->taint_map[$taint_type] = $id;
-        return $id;
-    }
-
-    /**
-     * Register an alias taint name based on one or more pre-existing taints.
-     *
-     * @throws AssertionError if the passed taint is already registered or if the alias uses some unregistered taints.
-     */
-    public function registerTaintAlias(string $taint_type, int $alias): int
-    {
-        if (isset($this->taint_map[$taint_type])) {
-            throw new AssertionError("A taint called $taint_type is already registered!");
-        }
-
-        if ($this->taint_count+1 !== (PHP_INT_SIZE * 8)) {
-            $mask = (1 << $this->taint_count) - 1;
-            if ($alias & ~$mask) {
-                throw new AssertionError("The passed alias $alias uses some not yet registered taint slots!");
-            }
-        }
-
-        $this->taint_map[$taint_type] = $alias;
-
-        return $alias;
     }
 
     private function loadAnalyzer(): void
@@ -683,14 +581,6 @@ final class Codebase
     public function getStubbedConstantType(string $const_id): ?Union
     {
         return self::$stubbed_constants[$const_id] ?? null;
-    }
-
-    /**
-     * @param array<string, Union> $stubs
-     */
-    public function addGlobalConstantTypes(array $stubs): void
-    {
-        self::$stubbed_constants += $stubs;
     }
 
     /**
@@ -2238,17 +2128,20 @@ final class Codebase
         $this->scanner->queueClassLikeForScanning($fq_classlike_name, $analyze_too, $store_failure, $phantom_classes);
     }
 
+    /**
+     * @param array<string> $taints
+     */
     public function addTaintSource(
         Union $expr_type,
         string $taint_id,
-        int $taints = TaintKind::ALL_INPUT,
+        array $taints = TaintKindGroup::ALL_INPUT,
         ?CodeLocation $code_location = null,
     ): Union {
         if (!$this->taint_flow_graph) {
             return $expr_type;
         }
 
-        $source = DataFlowNode::make(
+        $source = new TaintSource(
             $taint_id,
             $taint_id,
             $code_location,
@@ -2261,16 +2154,19 @@ final class Codebase
         return $expr_type->addParentNodes([$source->id => $source]);
     }
 
+    /**
+     * @param array<string> $taints
+     */
     public function addTaintSink(
         string $taint_id,
-        int $taints = TaintKind::ALL_INPUT,
+        array $taints = TaintKindGroup::ALL_INPUT,
         ?CodeLocation $code_location = null,
     ): void {
         if (!$this->taint_flow_graph) {
             return;
         }
 
-        $sink = DataFlowNode::make(
+        $sink = new TaintSink(
             $taint_id,
             $taint_id,
             $code_location,

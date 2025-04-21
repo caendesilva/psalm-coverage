@@ -11,7 +11,8 @@ use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ArgumentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\CastAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
-use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Codebase\TaintFlowGraph;
+use Psalm\Internal\DataFlow\TaintSink;
 use Psalm\Issue\ForbiddenCode;
 use Psalm\Issue\ImpureFunctionCall;
 use Psalm\IssueBuffer;
@@ -43,7 +44,7 @@ final class EchoAnalyzer
 
             $expr_type = $statements_analyzer->node_data->getType($expr);
 
-            if ($statements_analyzer->taint_flow_graph) {
+            if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph) {
                 if ($expr_type && $expr_type->hasObjectType()) {
                     $expr_type = CastAnalyzer::castStringAttempt(
                         $statements_analyzer,
@@ -56,20 +57,22 @@ final class EchoAnalyzer
 
                 $call_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
 
-                $echo_param_sink = DataFlowNode::getForMethodArgument(
+                $echo_param_sink = TaintSink::getForMethodArgument(
                     'echo',
                     'echo',
                     (int) $i,
                     null,
                     $call_location,
-                    TaintKind::INPUT_HTML
-                        | TaintKind::INPUT_HAS_QUOTES
-                        | TaintKind::USER_SECRET
-                        | TaintKind::SYSTEM_SECRET,
                 );
 
+                $echo_param_sink->taints = [
+                    TaintKind::INPUT_HTML,
+                    TaintKind::INPUT_HAS_QUOTES,
+                    TaintKind::USER_SECRET,
+                    TaintKind::SYSTEM_SECRET,
+                ];
 
-                $statements_analyzer->taint_flow_graph->addSink($echo_param_sink);
+                $statements_analyzer->data_flow_graph->addSink($echo_param_sink);
             }
 
             if (ArgumentAnalyzer::verifyType(

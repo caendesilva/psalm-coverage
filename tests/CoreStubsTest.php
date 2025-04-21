@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-final class CoreStubsTest extends TestCase
+class CoreStubsTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         yield 'RecursiveArrayIterator::CHILD_ARRAYS_ONLY (#6464)' => [
@@ -366,20 +364,20 @@ final class CoreStubsTest extends TestCase
                 $stringPatternMaybeWithNocheckFlagAndMaybeOnlydir = glob( $string , $maybeNocheckFlag | $maybeOnlydirFlag);
                 PHP,
             'assertions' => [
-                '$emptyPatternNoFlags===' => 'array<never, never>|false',
-                '$emptyPatternWithoutNocheckFlag1===' => 'array<never, never>|false',
-                '$emptyPatternWithoutNocheckFlag2===' => 'array<never, never>|false',
-                '$emptyPatternWithoutNocheckFlag3===' => 'array<never, never>|false',
+                '$emptyPatternNoFlags===' => 'false|list<never>',
+                '$emptyPatternWithoutNocheckFlag1===' => 'false|list<never>',
+                '$emptyPatternWithoutNocheckFlag2===' => 'false|list<never>',
+                '$emptyPatternWithoutNocheckFlag3===' => 'false|list<never>',
                 '$emptyPatternWithNocheckFlag1===' => 'false|list{\'\'}',
                 '$emptyPatternWithNocheckFlag2===' => 'false|list{\'\'}',
                 '$emptyPatternWithNocheckFlag3===' => 'false|list{\'\'}',
-                '$emptyPatternWithNocheckAndOnlydirFlag1===' => 'array<never, never>|false',
-                '$emptyPatternWithNocheckAndOnlydirFlag2===' => 'array<never, never>|false',
-                '$emptyPatternWithNocheckAndOnlydirFlag3===' => 'array<never, never>|false',
-                '$emptyPatternWithNocheckFlagAndMaybeOnlydir===' => 'false|list{0?: \'\'}',
-                '$emptyPatternMaybeWithNocheckFlag===' => 'false|list{0?: \'\'}',
-                '$emptyPatternMaybeWithNocheckFlagAndOnlydir===' => 'array<never, never>|false',
-                '$emptyPatternMaybeWithNocheckFlagAndMaybeOnlydir===' => 'false|list{0?: \'\'}',
+                '$emptyPatternWithNocheckAndOnlydirFlag1===' => 'false|list<never>',
+                '$emptyPatternWithNocheckAndOnlydirFlag2===' => 'false|list<never>',
+                '$emptyPatternWithNocheckAndOnlydirFlag3===' => 'false|list<never>',
+                '$emptyPatternWithNocheckFlagAndMaybeOnlydir===' => 'false|list{0?: \'\', ...<never>}',
+                '$emptyPatternMaybeWithNocheckFlag===' => 'false|list{0?: \'\', ...<never>}',
+                '$emptyPatternMaybeWithNocheckFlagAndOnlydir===' => 'false|list<never>',
+                '$emptyPatternMaybeWithNocheckFlagAndMaybeOnlydir===' => 'false|list{0?: \'\', ...<never>}',
 
                 '$nonEmptyPatternNoFlags===' => 'false|list<non-empty-string>',
                 '$nonEmptyPatternWithoutNocheckFlag1===' => 'false|list<non-empty-string>',
@@ -444,7 +442,6 @@ final class CoreStubsTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         yield 'json_decode invalid depth' => [

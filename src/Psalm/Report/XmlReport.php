@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Report;
 
-use Override;
 use Psalm\Internal\Analyzer\DataFlowNodeData;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Report;
@@ -15,7 +14,6 @@ use function get_object_vars;
 
 final class XmlReport extends Report
 {
-    #[Override]
     public function create(): string
     {
         $xml = ArrayToXml::convert(

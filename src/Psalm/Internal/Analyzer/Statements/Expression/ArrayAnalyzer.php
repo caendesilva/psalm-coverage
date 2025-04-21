@@ -11,6 +11,8 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
+use Psalm\Internal\Codebase\TaintFlowGraph;
+use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeCombiner;
@@ -115,7 +117,7 @@ final class ArrayAnalyzer
 
         // if this array looks like an object-like array, let's return that instead
         if (count($array_creation_info->property_types) !== 0) {
-            $atomic_type = TKeyedArray::make(
+            $atomic_type = new TKeyedArray(
                 $array_creation_info->property_types,
                 $array_creation_info->class_strings,
                 $array_creation_info->can_create_objectlike
@@ -296,7 +298,8 @@ final class ArrayAnalyzer
                 $codebase,
             );
 
-            if (($variable_use_graph = $statements_analyzer->variable_use_graph)
+            if (($data_flow_graph = $statements_analyzer->data_flow_graph)
+                && $data_flow_graph instanceof VariableUseGraph
                 && $unpacked_array_type->parent_nodes
             ) {
                 $var_location = new CodeLocation($statements_analyzer->getSource(), $item->value);
@@ -306,10 +309,10 @@ final class ArrayAnalyzer
                     $var_location,
                 );
 
-                $variable_use_graph->addNode($new_parent_node);
+                $data_flow_graph->addNode($new_parent_node);
 
                 foreach ($unpacked_array_type->parent_nodes as $parent_node) {
-                    $variable_use_graph->addPath(
+                    $data_flow_graph->addPath(
                         $parent_node,
                         $new_parent_node,
                         'arrayvalue-assignment',
@@ -413,21 +416,16 @@ final class ArrayAnalyzer
             $array_creation_info->array_keys[$item_key_value] = true;
         }
 
-        if ($statements_analyzer->data_flow_graph) {
-            $variable_use_graph = $statements_analyzer->variable_use_graph;
-            $taint_flow_graph = $statements_analyzer->taint_flow_graph;
-            if (in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())) {
-                $taint_flow_graph = null;
-            }
+        if (($data_flow_graph = $statements_analyzer->data_flow_graph)
+            && ($data_flow_graph instanceof VariableUseGraph
+                || !in_array('TaintedInput', $statements_analyzer->getSuppressedIssues()))
+        ) {
             if ($item_value_type = $statements_analyzer->node_data->getType($item->value)) {
-                $taint_value_flow_graph = $taint_flow_graph;
-                if ($taint_value_flow_graph
-                    && $item_value_type->isSingle()
-                    && $item_value_type->hasLiteralValue()
+                if ($item_value_type->parent_nodes
+                    && !($item_value_type->isSingle()
+                        && $item_value_type->hasLiteralValue()
+                        && $data_flow_graph instanceof TaintFlowGraph)
                 ) {
-                    $taint_value_flow_graph = null;
-                }
-                if ($item_value_type->parent_nodes) {
                     $var_location = new CodeLocation($statements_analyzer->getSource(), $item);
 
                     $new_parent_node = DataFlowNode::getForAssignment(
@@ -436,34 +434,15 @@ final class ArrayAnalyzer
                         $var_location,
                     );
 
-                    $variable_use_graph?->addNode($new_parent_node);
+                    $data_flow_graph->addNode($new_parent_node);
 
-                    $added_taints = 0;
-                    $removed_taints = 0;
-                    if ($taint_value_flow_graph) {
-                        $taint_value_flow_graph->addNode($new_parent_node);
-                        $event = new AddRemoveTaintsEvent($item, $context, $statements_analyzer, $codebase);
+                    $event = new AddRemoveTaintsEvent($item, $context, $statements_analyzer, $codebase);
 
-                        $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
-                        $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
-
-                        $taints = $added_taints & ~$removed_taints;
-                        if ($taints !== 0) {
-                            $taint_source = $new_parent_node->setTaints($taints);
-                            $taint_value_flow_graph->addSource($taint_source);
-                        }
-                    }
+                    $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
+                    $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
 
                     foreach ($item_value_type->parent_nodes as $parent_node) {
-                        $taint_value_flow_graph?->addPath(
-                            $parent_node,
-                            $new_parent_node,
-                            'arrayvalue-assignment'
-                                . ($item_key_value !== null ? '-\'' . $item_key_value . '\'' : ''),
-                            $added_taints,
-                            $removed_taints,
-                        );
-                        $variable_use_graph?->addPath(
+                        $data_flow_graph->addPath(
                             $parent_node,
                             $new_parent_node,
                             'arrayvalue-assignment'
@@ -476,17 +455,12 @@ final class ArrayAnalyzer
                     $array_creation_info->parent_taint_nodes += [$new_parent_node->id => $new_parent_node];
                 }
 
-                $taint_key_flow_graph = $taint_flow_graph;
-                if ($taint_key_flow_graph
-                    && $item_key_type
-                    && $item_key_type->isSingle()
-                    && $item_key_type->hasLiteralValue()
-                ) {
-                    $taint_key_flow_graph = null;
-                }
                 if ($item_key_type
                     && $item_key_type->parent_nodes
                     && $item_key_value === null
+                    && !($item_key_type->isSingle()
+                        && $item_key_type->hasLiteralValue()
+                        && $data_flow_graph instanceof TaintFlowGraph)
                 ) {
                     $var_location = new CodeLocation($statements_analyzer->getSource(), $item);
 
@@ -495,33 +469,15 @@ final class ArrayAnalyzer
                         $var_location,
                     );
 
-                    $variable_use_graph?->addNode($new_parent_node);
+                    $data_flow_graph->addNode($new_parent_node);
 
-                    $added_taints = 0;
-                    $removed_taints = 0;
-                    if ($taint_key_flow_graph) {
-                        $taint_key_flow_graph->addNode($new_parent_node);
-                        $event = new AddRemoveTaintsEvent($item, $context, $statements_analyzer, $codebase);
+                    $event = new AddRemoveTaintsEvent($item, $context, $statements_analyzer, $codebase);
 
-                        $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
-                        $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
-
-                        $taints = $added_taints & ~$removed_taints;
-                        if ($taints !== 0) {
-                            $taint_source = $new_parent_node->setTaints($taints);
-                            $taint_key_flow_graph->addSource($taint_source);
-                        }
-                    }
+                    $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
+                    $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
 
                     foreach ($item_key_type->parent_nodes as $parent_node) {
-                        $taint_key_flow_graph?->addPath(
-                            $parent_node,
-                            $new_parent_node,
-                            'arraykey-assignment',
-                            $added_taints,
-                            $removed_taints,
-                        );
-                        $variable_use_graph?->addPath(
+                        $data_flow_graph->addPath(
                             $parent_node,
                             $new_parent_node,
                             'arraykey-assignment',

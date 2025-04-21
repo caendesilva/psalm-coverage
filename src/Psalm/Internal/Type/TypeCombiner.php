@@ -13,6 +13,7 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TCallable;
+use Psalm\Type\Atomic\TCallableKeyedArray;
 use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TCallableString;
 use Psalm\Type\Atomic\TClassString;
@@ -54,7 +55,6 @@ use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
-use function array_any;
 use function array_filter;
 use function array_intersect_key;
 use function array_key_exists;
@@ -543,7 +543,7 @@ final class TypeCombiner
             }
         }
 
-        if ($type instanceof TKeyedArray && $type->is_callable) {
+        if ($type instanceof TCallableKeyedArray) {
             if (isset($combination->value_types['callable'])) {
                 return null;
             }
@@ -651,7 +651,7 @@ final class TypeCombiner
         }
 
         if ($type instanceof TKeyedArray) {
-            if ($type->is_callable && isset($combination->value_types['callable'])) {
+            if ($type instanceof TCallableKeyedArray && isset($combination->value_types['callable'])) {
                 return null;
             }
 
@@ -775,7 +775,7 @@ final class TypeCombiner
                 $combination->all_arrays_lists = true;
             }
 
-            if ($type->is_callable) {
+            if ($type instanceof TCallableKeyedArray) {
                 if ($combination->all_arrays_callable !== false) {
                     $combination->all_arrays_callable = true;
                 }
@@ -1066,10 +1066,7 @@ final class TypeCombiner
                 ) {
                     $combination->value_types['string'] = new TNonEmptyString();
                 } elseif (isset($combination->value_types['string'])
-                    && (
-                        $combination->value_types['string'] instanceof TNonEmptyString
-                        || $combination->value_types['string'] instanceof TNonEmptyNonspecificLiteralString
-                    )
+                    && $combination->value_types['string'] instanceof TNonEmptyString
                     && $type->value !== ''
                 ) {
                     // do nothing
@@ -1144,7 +1141,7 @@ final class TypeCombiner
                         } else {
                             $combination->value_types['string'] = $type;
                         }
-                    } elseif ($type instanceof TNonEmptyString || $type instanceof TNonEmptyNonspecificLiteralString) {
+                    } elseif ($type instanceof TNonEmptyString) {
                         $has_empty_string = false;
 
                         foreach ($combination->strings as $string_type) {
@@ -1165,9 +1162,7 @@ final class TypeCombiner
                         }
 
                         if ($has_empty_string) {
-                            $combination->value_types['string'] = $type instanceof TNonEmptyNonspecificLiteralString
-                                ? new TNonspecificLiteralString()
-                                : new TString();
+                            $combination->value_types['string'] = new TString();
                         } elseif ($has_non_lowercase_string && $type::class !== TNonEmptyString::class) {
                             $combination->value_types['string'] = new TNonEmptyString();
                         } else {
@@ -1263,7 +1258,7 @@ final class TypeCombiner
             } else {
                 $combination->ints[$type_key] = $type;
 
-                $all_nonnegative = !array_any(
+                $all_nonnegative = !array_filter(
                     $combination->ints,
                     static fn($int): bool => $int->value < 0,
                 );
@@ -1488,14 +1483,16 @@ final class TypeCombiner
                 );
 
                 if ($combination->all_arrays_callable) {
-                    $objectlike = TKeyedArray::makeCallable(
+                    $objectlike = new TCallableKeyedArray(
                         $combination->objectlike_entries,
                         null,
-                        (bool)$combination->all_arrays_lists,
+                        $sealed || $fallback_key_type === null || $fallback_value_type === null
+                            ? null
+                            : [$fallback_key_type, $fallback_value_type],
                         $from_docblock,
                     );
                 } else {
-                    $objectlike = TKeyedArray::make(
+                    $objectlike = new TKeyedArray(
                         $combination->objectlike_entries,
                         array_filter($combination->objectlike_class_string_keys),
                         $sealed || $fallback_key_type === null || $fallback_value_type === null
@@ -1604,7 +1601,7 @@ final class TypeCombiner
         }
 
         if ($combination->all_arrays_callable) {
-            $array_type = TKeyedArray::makeCallable($generic_type_params);
+            $array_type = new TCallableKeyedArray($generic_type_params);
         } elseif ($combination->array_always_filled
             || ($combination->array_sometimes_filled && $overwrite_empty_array)
             || ($combination->objectlike_entries
@@ -1617,7 +1614,7 @@ final class TypeCombiner
                     && $combination->objectlike_sealed
                     && isset($combination->array_type_params[1])
                 ) {
-                    $array_type = TKeyedArray::make(
+                    $array_type = new TKeyedArray(
                         [$generic_type_params[1]],
                         null,
                         [Type::getInt(), $combination->array_type_params[1]],
@@ -1630,7 +1627,7 @@ final class TypeCombiner
                         $properties []= $generic_type_params[1];
                     }
                     assert($properties !== []);
-                    $array_type = TKeyedArray::make(
+                    $array_type = new TKeyedArray(
                         $properties,
                         null,
                         null,
@@ -1647,7 +1644,7 @@ final class TypeCombiner
                     if (!$properties) {
                         $properties []= $generic_type_params[1]->setPossiblyUndefined(true);
                     }
-                    $array_type = TKeyedArray::make(
+                    $array_type = new TKeyedArray(
                         $properties,
                         null,
                         [Type::getListKey(), $generic_type_params[1]],

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -13,7 +12,7 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class AssertAnnotationTest extends TestCase
+class AssertAnnotationTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
@@ -93,7 +92,7 @@ final class AssertAnnotationTest extends TestCase
         $this->analyzeFile('somefile.php', new Context());
     }
 
-    public function testAssertsAlongCallStaticMethodWork(): void
+    public function testAssertsAllongCallStaticMethodWork(): void
     {
         $this->addFile(
             'somefile.php',
@@ -150,11 +149,10 @@ final class AssertAnnotationTest extends TestCase
     }
 
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
-            'implicitAssertInstanceOfB' => [
+            'implictAssertInstanceOfB' => [
                 'code' => '<?php
                     namespace Bar;
 
@@ -253,7 +251,7 @@ final class AssertAnnotationTest extends TestCase
                         return $s;
                     }',
             ],
-            'implicitAssertInstanceOfInterface' => [
+            'implictAssertInstanceOfInterface' => [
                 'code' => '<?php
                     namespace Bar;
 
@@ -3062,7 +3060,6 @@ final class AssertAnnotationTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

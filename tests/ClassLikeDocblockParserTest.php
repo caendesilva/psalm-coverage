@@ -11,7 +11,7 @@ use Psalm\Internal\PhpVisitor\Reflector\ClassLikeDocblockParser;
 
 use function array_values;
 
-final class ClassLikeDocblockParserTest extends TestCase
+class ClassLikeDocblockParserTest extends TestCase
 {
     public function testDocblockDescription(): void
     {

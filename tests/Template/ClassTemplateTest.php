@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Template;
 
-use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class ClassTemplateTest extends TestCase
+class ClassTemplateTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -208,7 +206,7 @@ final class ClassTemplateTest extends TestCase
                     'DocblockTypeContradiction',
                 ],
             ],
-            'classTemplateSelf' => [
+            'classTemplateSelfs' => [
                 'code' => '<?php
                     /**
                      * @template T as object
@@ -1645,8 +1643,6 @@ final class ClassTemplateTest extends TestCase
                     /**
                      * @template P as string
                      * @template V as mixed
-                     * 
-                     * @psalm-no-seal-properties
                      */
                     class PropertyBag {
                         /** @var array<P,V> */
@@ -3136,7 +3132,7 @@ final class ClassTemplateTest extends TestCase
                         /**
                          * @psalm-param FooOrBarOrNull $qux
                          */
-                        public function __construct(?object $qux)
+                        public function __contruct(?object $qux)
                         {
                             if ($qux instanceof Foo) {
                                 $this->entity = $qux;
@@ -4218,7 +4214,6 @@ final class ClassTemplateTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

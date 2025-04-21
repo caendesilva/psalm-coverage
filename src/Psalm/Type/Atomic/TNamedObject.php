@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
@@ -103,7 +102,6 @@ class TNamedObject extends Atomic
         $cloned->is_static_resolved = $is_static;
         return $cloned;
     }
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         if ($include_extra && $this->extra_types) {
@@ -113,7 +111,6 @@ class TNamedObject extends Atomic
         return $this->value;
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         if ($this->extra_types) {
@@ -132,7 +129,6 @@ class TNamedObject extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
@@ -163,7 +159,6 @@ class TNamedObject extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -186,7 +181,6 @@ class TNamedObject extends Atomic
         return substr($result, $intersection+1);
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return ($this->value !== 'static' && $this->is_static === false) || $analysis_php_version_id >= 8_00_00;
@@ -195,7 +189,6 @@ class TNamedObject extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
         ?Codebase $codebase,
@@ -212,7 +205,6 @@ class TNamedObject extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithStandins(
         TemplateResult $template_result,
         Codebase $codebase,
@@ -244,7 +236,6 @@ class TNamedObject extends Atomic
         }
         return $this;
     }
-    #[Override]
     protected function getChildNodeKeys(): array
     {
         return ['extra_types'];

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use ArgumentCountError;
-use Override;
 use Psalm\Issue\InvalidArgument;
 use Psalm\Issue\RedundantFunctionCall;
 use Psalm\Issue\TooFewArguments;
@@ -18,7 +17,6 @@ use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TLiteralString;
-use Psalm\Type\Atomic\TNonEmptyNonspecificLiteralString;
 use Psalm\Type\Atomic\TNonEmptyString;
 use Psalm\Type\Atomic\TNumeric;
 use Psalm\Type\Union;
@@ -40,7 +38,6 @@ final class SprintfReturnTypeProvider implements FunctionReturnTypeProviderInter
     /**
      * @return array<lowercase-string>
      */
-    #[Override]
     public static function getFunctionIds(): array
     {
         return [
@@ -49,7 +46,6 @@ final class SprintfReturnTypeProvider implements FunctionReturnTypeProviderInter
         ];
     }
 
-    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): ?Union
     {
         $statements_source = $event->getStatementsSource();
@@ -332,7 +328,6 @@ final class SprintfReturnTypeProvider implements FunctionReturnTypeProviderInter
 
             foreach ($atomic_types as $atomic_type) {
                 if ($atomic_type instanceof TNonEmptyString
-                    || $atomic_type instanceof TNonEmptyNonspecificLiteralString
                     || $atomic_type instanceof TClassString
                     || ($atomic_type instanceof TLiteralString && $atomic_type->value !== '')
                     || $atomic_type instanceof TInt

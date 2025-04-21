@@ -49,7 +49,6 @@ use function array_unshift;
 use function assert;
 use function count;
 use function explode;
-use function in_array;
 use function is_numeric;
 use function str_contains;
 use function strtolower;
@@ -79,7 +78,7 @@ final class ArrayFunctionArgumentsAnalyzer
                 continue;
             }
 
-            if ($i === 1 && in_array($method_id, ArgumentsAnalyzer::ARRAY_FILTERLIKE, true)) {
+            if ($i === 1 && $method_id === 'array_filter') {
                 break;
             }
 
@@ -111,8 +110,6 @@ final class ArrayFunctionArgumentsAnalyzer
 
             if ($method_id === 'array_filter') {
                 $max_closure_param_count = count($args) > 2 ? 2 : 1;
-            } elseif (in_array($method_id, ArgumentsAnalyzer::ARRAY_FILTERLIKE, true)) {
-                $max_closure_param_count = 2;
             }
 
             $new = [];
@@ -294,7 +291,7 @@ final class ArrayFunctionArgumentsAnalyzer
 
                         $by_ref_type = new Union([$objectlike_list->setProperties($properties)]);
                     } elseif ($array_type instanceof TArray && $array_type->isEmptyArray()) {
-                        $by_ref_type = new Union([TKeyedArray::make([
+                        $by_ref_type = new Union([new TKeyedArray([
                             $arg_value_type,
                         ], null, null, true)]);
                     } else {
@@ -358,6 +355,9 @@ final class ArrayFunctionArgumentsAnalyzer
         if (($array_arg_type = $statements_analyzer->node_data->getType($array_arg))
             && $array_arg_type->hasArray()
         ) {
+            /**
+             * @var TArray|TKeyedArray
+             */
             $array_type = $array_arg_type->getArray();
             if ($generic_array_type = ArrayType::infer($array_type)) {
                 $array_size = $generic_array_type->count;

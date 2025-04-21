@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
-use Override;
 use Psalm\Internal\Analyzer\Statements\Expression\IncludeAnalyzer;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
@@ -22,13 +21,11 @@ final class BasenameReturnTypeProvider implements FunctionReturnTypeProviderInte
     /**
      * @return array<lowercase-string>
      */
-    #[Override]
     public static function getFunctionIds(): array
     {
         return ['basename'];
     }
 
-    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): ?Union
     {
         $call_args = $event->getCallArgs();

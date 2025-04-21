@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
-use Override;
 use PhpParser;
 use Psalm\CodeLocation\DocblockTypeLocation;
 use Psalm\Codebase;
@@ -162,7 +161,7 @@ class FileAnalyzer extends SourceAnalyzer
         $leftover_stmts = $this->populateCheckers($stmts);
 
         $this->node_data = new NodeDataProvider();
-        $statements_analyzer = new StatementsAnalyzer($this, $this->node_data, true);
+        $statements_analyzer = new StatementsAnalyzer($this, $this->node_data);
 
         foreach ($file_storage->docblock_issues as $docblock_issue) {
             IssueBuffer::maybeAdd($docblock_issue);
@@ -171,7 +170,7 @@ class FileAnalyzer extends SourceAnalyzer
         // if there are any leftover statements, evaluate them,
         // in turn causing the classes/interfaces be evaluated
         if ($leftover_stmts) {
-            $statements_analyzer->analyze($leftover_stmts, $this->context, $global_context);
+            $statements_analyzer->analyze($leftover_stmts, $this->context, $global_context, true);
 
             foreach ($leftover_stmts as $leftover_stmt) {
                 if ($leftover_stmt instanceof PhpParser\Node\Stmt\Return_) {
@@ -434,7 +433,6 @@ class FileAnalyzer extends SourceAnalyzer
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getNamespace(): ?string
     {
         return null;
@@ -444,7 +442,6 @@ class FileAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<lowercase-string, string>
      */
-    #[Override]
     public function getAliasedClassesFlipped(?string $namespace_name = null): array
     {
         if ($namespace_name && isset($this->namespace_aliased_classes_flipped[$namespace_name])) {
@@ -458,7 +455,6 @@ class FileAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<string, string>
      */
-    #[Override]
     public function getAliasedClassesFlippedReplaceable(?string $namespace_name = null): array
     {
         if ($namespace_name && isset($this->namespace_aliased_classes_flipped_replaceable[$namespace_name])) {
@@ -483,34 +479,29 @@ class FileAnalyzer extends SourceAnalyzer
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFileName(): string
     {
         return $this->file_name;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFilePath(): string
     {
         return $this->file_path;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getRootFileName(): string
     {
         return $this->root_file_name ?: $this->file_name;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getRootFilePath(): string
     {
         return $this->root_file_path ?: $this->file_path;
     }
 
-    #[Override]
     public function setRootFilePath(string $file_path, string $file_name): void
     {
         $this->root_file_name = $file_name;
@@ -528,14 +519,12 @@ class FileAnalyzer extends SourceAnalyzer
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function hasParentFilePath(string $file_path): bool
     {
         return $this->file_path === $file_path || isset($this->parent_file_paths[$file_path]);
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function hasAlreadyRequiredFilePath(string $file_path): bool
     {
         return isset($this->required_file_paths[$file_path]);
@@ -560,7 +549,6 @@ class FileAnalyzer extends SourceAnalyzer
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getRequireNesting(): int
     {
         return count($this->parent_file_paths);
@@ -570,7 +558,6 @@ class FileAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<string>
      */
-    #[Override]
     public function getSuppressedIssues(): array
     {
         return $this->suppressed_issues;
@@ -579,7 +566,6 @@ class FileAnalyzer extends SourceAnalyzer
     /**
      * @param array<int, string> $new_issues
      */
-    #[Override]
     public function addSuppressedIssues(array $new_issues): void
     {
         if (isset($new_issues[0])) {
@@ -592,7 +578,6 @@ class FileAnalyzer extends SourceAnalyzer
     /**
      * @param array<int, string> $new_issues
      */
-    #[Override]
     public function removeSuppressedIssues(array $new_issues): void
     {
         if (isset($new_issues[0])) {
@@ -603,21 +588,18 @@ class FileAnalyzer extends SourceAnalyzer
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFQCLN(): ?string
     {
         return null;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getParentFQCLN(): ?string
     {
         return null;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getClassName(): ?string
     {
         return null;
@@ -627,14 +609,12 @@ class FileAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<string, array<string, Union>>|null
      */
-    #[Override]
     public function getTemplateTypeMap(): ?array
     {
         return null;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function isStatic(): bool
     {
         return false;
@@ -643,7 +623,6 @@ class FileAnalyzer extends SourceAnalyzer
     /**
      * @psalm-mutation-free
      */
-    #[Override]
     public function getFileAnalyzer(): FileAnalyzer
     {
         return $this;
@@ -652,14 +631,12 @@ class FileAnalyzer extends SourceAnalyzer
     /**
      * @psalm-mutation-free
      */
-    #[Override]
     public function getProjectAnalyzer(): ProjectAnalyzer
     {
         return $this->project_analyzer;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getCodebase(): Codebase
     {
         return $this->codebase;
@@ -672,7 +649,6 @@ class FileAnalyzer extends SourceAnalyzer
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getNodeTypeProvider(): NodeTypeProvider
     {
         if (!$this->node_data) {

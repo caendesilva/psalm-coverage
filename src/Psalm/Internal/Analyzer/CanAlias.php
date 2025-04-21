@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
-use Override;
 use PhpParser;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
@@ -143,7 +142,6 @@ trait CanAlias
      * @psalm-mutation-free
      * @return array<lowercase-string, string>
      */
-    #[Override]
     public function getAliasedClassesFlipped(): array
     {
         return $this->aliased_classes_flipped;
@@ -153,14 +151,12 @@ trait CanAlias
      * @psalm-mutation-free
      * @return array<string, string>
      */
-    #[Override]
     public function getAliasedClassesFlippedReplaceable(): array
     {
         return $this->aliased_classes_flipped_replaceable;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getAliases(): Aliases
     {
         return new Aliases(

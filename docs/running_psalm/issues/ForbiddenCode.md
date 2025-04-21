@@ -8,7 +8,7 @@ Emitted when Psalm encounters a var_dump, exec or similar expression that may ma
 var_dump("bah");
 ```
 
-This functions list can be extended by configuring `forbiddenFunctions` or `forbiddenConstants` in `psalm.xml`
+This functions list can be extended by configuring `forbiddenFunctions` in `psalm.xml`
 
 ```xml
 <?xml version="1.0"?>
@@ -19,9 +19,5 @@ This functions list can be extended by configuring `forbiddenFunctions` or `forb
         <function name="dd"/>
         <function name="var_dump"/>
     </forbiddenFunctions>
-    
-    <forbiddenConstants>
-        <constant name="FILTER_VALIDATE_URL" />
-    </forbiddenConstants>
 </psalm>
 ```

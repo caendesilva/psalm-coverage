@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\TypeReconciliation;
 
-use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class ScopeTest extends TestCase
+class ScopeTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -237,7 +235,6 @@ final class ScopeTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

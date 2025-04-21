@@ -3,4 +3,4 @@
 /**
  * @psalm-taint-source input
  */
-function custom_taint_source(): string { return ""; }
+function custom_taint_source(){}

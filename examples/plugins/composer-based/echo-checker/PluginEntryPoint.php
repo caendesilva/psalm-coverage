@@ -8,7 +8,6 @@ use SimpleXMLElement;
 
 final class PluginEntryPoint implements PluginEntryPointInterface
 {
-    #[\Override]
     public function __invoke(RegistrationInterface $registration, ?SimpleXMLElement $config = null): void
     {
         require_once __DIR__ . '/EchoChecker.php';

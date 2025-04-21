@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Type\Union;
 
 /**
@@ -22,7 +21,6 @@ final class TDependentGetClass extends TString implements DependentType
         parent::__construct(false);
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         return $this->as_type->isMixed()
@@ -31,7 +29,6 @@ final class TDependentGetClass extends TString implements DependentType
             : 'class-string<' . $this->as_type->getId($exact) . '>';
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'get-class-of<' . $this->typeof
@@ -39,19 +36,16 @@ final class TDependentGetClass extends TString implements DependentType
             . '>';
     }
 
-    #[Override]
     public function getVarId(): string
     {
         return $this->typeof;
     }
 
-    #[Override]
     public function getReplacement(): TClassString
     {
         return new TClassString();
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;

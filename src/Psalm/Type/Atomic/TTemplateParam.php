@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
@@ -51,7 +50,6 @@ final class TTemplateParam extends Atomic
         return $cloned;
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         if ($include_extra && $this->extra_types) {
@@ -61,13 +59,11 @@ final class TTemplateParam extends Atomic
         return $this->param_name . ':' . $this->defining_class;
     }
 
-    #[Override]
     public function getAssertionString(): string
     {
         return $this->as->getId();
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         if (!$exact) {
@@ -89,7 +85,6 @@ final class TTemplateParam extends Atomic
      * @param  array<lowercase-string, string> $aliased_classes
      * @return null
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -102,7 +97,6 @@ final class TTemplateParam extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
@@ -128,13 +122,11 @@ final class TTemplateParam extends Atomic
         return $this->param_name . $intersection_types;
     }
 
-    #[Override]
     protected function getChildNodeKeys(): array
     {
         return ['as', 'extra_types'];
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;
@@ -143,7 +135,6 @@ final class TTemplateParam extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
         ?Codebase $codebase,

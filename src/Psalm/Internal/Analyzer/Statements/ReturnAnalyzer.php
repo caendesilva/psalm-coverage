@@ -18,6 +18,8 @@ use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollector;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Codebase\TaintFlowGraph;
+use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
@@ -35,7 +37,6 @@ use Psalm\Issue\NoValue;
 use Psalm\Issue\NonVariableReferenceReturn;
 use Psalm\Issue\NullableReturnStatement;
 use Psalm\IssueBuffer;
-use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\MethodStorage;
 use Psalm\Type;
@@ -79,7 +80,6 @@ final class ReturnAnalyzer
                 $var_comments = $codebase->config->disable_var_parsing
                     ? []
                     : CommentAnalyzer::arrayToDocblocks(
-                        $statements_analyzer->getCodebase(),
                         $doc_comment,
                         $parsed_docblock,
                         $statements_analyzer->getSource(),
@@ -258,14 +258,15 @@ final class ReturnAnalyzer
                     $source->getParentFQCLN(),
                 );
 
-                self::handleTaints(
-                    $statements_analyzer,
-                    $stmt,
-                    $cased_method_id,
-                    $inferred_type,
-                    $storage,
-                    $context,
-                );
+                if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph) {
+                    self::handleTaints(
+                        $statements_analyzer,
+                        $stmt,
+                        $cased_method_id,
+                        $inferred_type,
+                        $storage,
+                    );
+                }
 
                 if ($storage instanceof MethodStorage && $context->self) {
                     $self_class = $context->self;
@@ -353,11 +354,11 @@ final class ReturnAnalyzer
                         if ($stmt_type->isMixed()) {
                             $origin_locations = [];
 
-                            if ($statements_analyzer->variable_use_graph) {
+                            if ($statements_analyzer->data_flow_graph instanceof VariableUseGraph) {
                                 foreach ($stmt_type->parent_nodes as $parent_node) {
                                     $origin_locations = [
                                         ...$origin_locations,
-                                        ...$statements_analyzer->variable_use_graph->getOriginLocations($parent_node),
+                                        ...$statements_analyzer->data_flow_graph->getOriginLocations($parent_node),
                                     ];
                                 }
                             }
@@ -578,9 +579,8 @@ final class ReturnAnalyzer
         string $cased_method_id,
         Union $inferred_type,
         FunctionLikeStorage $storage,
-        Context $context,
     ): void {
-        if (!$statements_analyzer->taint_flow_graph
+        if (!$statements_analyzer->data_flow_graph instanceof TaintFlowGraph
             || !$stmt->expr
             || !$storage->location
         ) {
@@ -593,19 +593,11 @@ final class ReturnAnalyzer
             $storage->signature_return_type_location ?: $storage->location,
         );
 
-        $statements_analyzer->taint_flow_graph->addNode($method_node);
-
-        $codebase = $statements_analyzer->getCodebase();
-
-        $event = new AddRemoveTaintsEvent($stmt->expr, $context, $statements_analyzer, $codebase);
-
-        $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
-        $storage->added_taints |= $added_taints;
-        $storage->removed_taints |= $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
+        $statements_analyzer->data_flow_graph->addNode($method_node);
 
         if ($inferred_type->parent_nodes) {
             foreach ($inferred_type->parent_nodes as $parent_node) {
-                $statements_analyzer->taint_flow_graph->addPath(
+                $statements_analyzer->data_flow_graph->addPath(
                     $parent_node,
                     $method_node,
                     'return',

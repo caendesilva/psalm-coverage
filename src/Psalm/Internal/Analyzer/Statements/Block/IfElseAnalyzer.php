@@ -96,8 +96,6 @@ final class IfElseAnalyzer
             }
         }
 
-        $branch_point = $context->branch_point ?: (int) $stmt->getAttribute('startFilePos');
-
         try {
             $if_conditional_scope = IfConditionalAnalyzer::analyze(
                 $statements_analyzer,
@@ -105,7 +103,7 @@ final class IfElseAnalyzer
                 $context,
                 $codebase,
                 $if_scope,
-                $branch_point,
+                $context->branch_point ?: (int) $stmt->getAttribute('startFilePos'),
             );
 
             // this is the context for stuff that happens within the `if` block
@@ -144,6 +142,7 @@ final class IfElseAnalyzer
         $if_clauses_handled = [];
         foreach ($if_clauses as $clause) {
             $keys = array_keys($clause->possibilities);
+
             $mixed_var_ids = array_diff($mixed_var_ids, $keys);
 
             foreach ($keys as $key) {
@@ -164,7 +163,7 @@ final class IfElseAnalyzer
 
         // this will see whether any of the clauses in set A conflict with the clauses in set B
         AlgebraAnalyzer::checkForParadox(
-            $entry_clauses,
+            $context->clauses,
             $if_clauses,
             $statements_analyzer,
             $stmt->cond,
@@ -173,9 +172,11 @@ final class IfElseAnalyzer
 
         $if_clauses = Algebra::simplifyCNF($if_clauses);
 
+        $if_context_clauses = [...$entry_clauses, ...$if_clauses];
+
         $if_context->clauses = $entry_clauses
-            ? Algebra::simplifyCNF([...$entry_clauses, ...$if_clauses])
-            : $if_clauses;
+            ? Algebra::simplifyCNF($if_context_clauses)
+            : $if_context_clauses;
 
         if ($if_context->reconciled_expression_clauses) {
             $reconciled_expression_clauses = $if_context->reconciled_expression_clauses;
@@ -183,7 +184,7 @@ final class IfElseAnalyzer
             $if_context->clauses = array_values(
                 array_filter(
                     $if_context->clauses,
-                    static fn(Clause $c): bool => !in_array($c->hash, $reconciled_expression_clauses, true),
+                    static fn(Clause $c): bool => !in_array($c->hash, $reconciled_expression_clauses),
                 ),
             );
 
@@ -293,8 +294,9 @@ final class IfElseAnalyzer
         }
 
         if ($stmt->else) {
-            if ($codebase->alter_code && $else_context->branch_point === null) {
-                $else_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+            if ($codebase->alter_code) {
+                $else_context->branch_point =
+                    $else_context->branch_point ?: (int) $stmt->getAttribute('startFilePos');
             }
         }
 
@@ -428,7 +430,7 @@ final class IfElseAnalyzer
                             $codebase,
                         );
 
-                        if (!$combined_type->equals($context->vars_in_scope[$var_id], true, false)) {
+                        if (!$combined_type->equals($context->vars_in_scope[$var_id])) {
                             $context->removeDescendents($var_id, $combined_type);
                         }
 

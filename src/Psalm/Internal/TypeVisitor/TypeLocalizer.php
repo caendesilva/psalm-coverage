@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypeVisitor;
 
-use Override;
 use Psalm\Internal\Codebase\Methods;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TTemplateParam;
@@ -31,7 +30,6 @@ final class TypeLocalizer extends MutableTypeVisitor
     ) {
     }
 
-    #[Override]
     protected function enterNode(TypeNode &$type): ?int
     {
         if ($type instanceof TTemplateParamClass) {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer;
 
 use InvalidArgumentException;
-use Override;
 use PhpParser;
 use PhpParser\Node\Stmt\Namespace_;
 use Psalm\Context;
@@ -77,7 +76,7 @@ final class NamespaceAnalyzer extends SourceAnalyzer
         }
 
         if ($leftover_stmts) {
-            $statements_analyzer = new StatementsAnalyzer($this, new NodeDataProvider(), true);
+            $statements_analyzer = new StatementsAnalyzer($this, new NodeDataProvider());
             $file_context = $this->source->context;
 
             if ($file_context !== null) {
@@ -88,7 +87,7 @@ final class NamespaceAnalyzer extends SourceAnalyzer
                 $context->defineGlobals();
                 $context->collect_exceptions = $codebase->config->check_for_throws_in_global_scope;
             }
-            $statements_analyzer->analyze($leftover_stmts, $context);
+            $statements_analyzer->analyze($leftover_stmts, $context, null, true);
         }
     }
 
@@ -113,7 +112,6 @@ final class NamespaceAnalyzer extends SourceAnalyzer
         }
     }
 
-    #[Override]
     public function getNamespace(): string
     {
         return $this->namespace_name;
@@ -141,7 +139,6 @@ final class NamespaceAnalyzer extends SourceAnalyzer
         throw new InvalidArgumentException('Given $visibility not supported');
     }
 
-    #[Override]
     public function getFileAnalyzer(): FileAnalyzer
     {
         return $this->source;

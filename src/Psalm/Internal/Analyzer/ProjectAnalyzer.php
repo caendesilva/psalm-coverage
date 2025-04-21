@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Fidry\CpuCoreCounter\CpuCoreCounter;
+use Fidry\CpuCoreCounter\NumberOfCpuCoreNotFound;
 use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Config;
@@ -22,7 +24,6 @@ use Psalm\Internal\Provider\ParserCacheProvider;
 use Psalm\Internal\Provider\ProjectCacheProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Provider\StatementsProvider;
-use Psalm\Issue\ClassMustBeFinal;
 use Psalm\Issue\CodeIssue;
 use Psalm\Issue\InvalidFalsableReturnType;
 use Psalm\Issue\InvalidNullableReturnType;
@@ -31,7 +32,6 @@ use Psalm\Issue\LessSpecificReturnType;
 use Psalm\Issue\MismatchingDocblockParamType;
 use Psalm\Issue\MismatchingDocblockReturnType;
 use Psalm\Issue\MissingClosureReturnType;
-use Psalm\Issue\MissingOverrideAttribute;
 use Psalm\Issue\MissingParamType;
 use Psalm\Issue\MissingPropertyType;
 use Psalm\Issue\MissingReturnType;
@@ -47,7 +47,6 @@ use Psalm\Issue\UnusedMethod;
 use Psalm\Issue\UnusedProperty;
 use Psalm\Issue\UnusedVariable;
 use Psalm\Plugin\EventHandler\Event\AfterCodebasePopulatedEvent;
-use Psalm\Progress\Phase;
 use Psalm\Progress\Progress;
 use Psalm\Progress\VoidProgress;
 use Psalm\Report;
@@ -66,9 +65,11 @@ use function array_merge;
 use function array_shift;
 use function clearstatcache;
 use function count;
+use function defined;
 use function dirname;
 use function end;
 use function explode;
+use function extension_loaded;
 use function file_exists;
 use function fwrite;
 use function implode;
@@ -80,6 +81,7 @@ use function mkdir;
 use function number_format;
 use function preg_match;
 use function rename;
+use function sprintf;
 use function str_ends_with;
 use function str_starts_with;
 use function strlen;
@@ -166,8 +168,6 @@ final class ProjectAnalyzer
      * @var array<int, class-string<CodeIssue>>
      */
     private const SUPPORTED_ISSUES_TO_FIX = [
-        ClassMustBeFinal::class,
-        MissingOverrideAttribute::class,
         InvalidFalsableReturnType::class,
         InvalidNullableReturnType::class,
         InvalidReturnType::class,
@@ -193,7 +193,7 @@ final class ProjectAnalyzer
 
     private const PHP_VERSION_REGEX = '^(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\..*)?$';
 
-    private const PHP_SUPPORTED_VERSIONS_REGEX = '^(5\.[456]|7\.[01234]|8\.[01234])(\..*)?$';
+    private const PHP_SUPPORTED_VERSIONS_REGEX = '^(5\.[456]|7\.[01234]|8\.[0123])(\..*)?$';
 
     /**
      * @param array<ReportOptions> $generated_report_options
@@ -203,10 +203,7 @@ final class ProjectAnalyzer
         Providers $providers,
         public ?ReportOptions $stdout_report_options = null,
         public array $generated_report_options = [],
-        /** @var int<1, max> */
         public int $threads = 1,
-        /** @var int<1, max> */
-        public int $scanThreads = 1,
         ?Progress $progress = null,
         ?Codebase $codebase = null,
     ) {
@@ -246,7 +243,7 @@ final class ProjectAnalyzer
             );
 
             foreach ($file_paths as $file_path) {
-                $this->project_files[$file_path] = $file_path;
+                $this->addProjectFile($file_path);
             }
         }
 
@@ -258,12 +255,12 @@ final class ProjectAnalyzer
             );
 
             foreach ($file_paths as $file_path) {
-                $this->extra_files[$file_path] = $file_path;
+                $this->addExtraFile($file_path);
             }
         }
 
         foreach ($this->config->getProjectFiles() as $file_path) {
-            $this->project_files[$file_path] = $file_path;
+            $this->addProjectFile($file_path);
         }
 
         self::$instance = $this;
@@ -284,7 +281,7 @@ final class ProjectAnalyzer
             clearstatcache(true, $cache_directory);
             if (is_dir($cache_directory)) {
                 $this->progress->debug(
-                    'Composer lockfile change detected, clearing cache directory ' . $cache_directory . PHP_EOL,
+                    'Composer lockfile change detected, clearing cache directory ' . $cache_directory . "\n",
                 );
 
                 Config::removeCacheDirectory($cache_directory);
@@ -301,7 +298,7 @@ final class ProjectAnalyzer
             clearstatcache(true, $cache_directory);
             if (is_dir($cache_directory)) {
                 $this->progress->debug(
-                    'Config change detected, clearing cache directory ' . $cache_directory . PHP_EOL,
+                    'Config change detected, clearing cache directory ' . $cache_directory . "\n",
                 );
 
                 Config::removeCacheDirectory($cache_directory);
@@ -354,7 +351,7 @@ final class ProjectAnalyzer
         $now_time = microtime(true);
 
         $this->progress->debug(
-            'Visiting autoload files took ' . number_format($now_time - $start_time, 3) . 's' . PHP_EOL,
+            'Visiting autoload files took ' . number_format($now_time - $start_time, 3) . 's' . "\n",
         );
     }
 
@@ -366,6 +363,15 @@ final class ProjectAnalyzer
         $server->logInfo("Initializing: Loading Reference Cache...");
         $this->file_reference_provider->loadReferenceCache();
         $this->codebase->enterServerMode();
+
+        $cpu_count = self::getCpuCount();
+
+        // let's not go crazy
+        $usable_cpus = $cpu_count - 2;
+
+        if ($usable_cpus > 1) {
+            $this->threads = $usable_cpus;
+        }
 
         $server->logInfo("Initializing: Initialize Plugins...");
         $this->config->initializePlugins($this);
@@ -415,11 +421,12 @@ final class ProjectAnalyzer
             $codebase->config->php_extensions_supported_by_psalm_callmaps,
         );
 
-        $message = "Target PHP version: "
-            .$codebase->getMajorAnalysisPhpVersion()."."
-            .$codebase->getMinorAnalysisPhpVersion()." "
-            .$source
-        ;
+        $message = sprintf(
+            "Target PHP version: %d.%d %s",
+            $codebase->getMajorAnalysisPhpVersion(),
+            $codebase->getMinorAnalysisPhpVersion(),
+            $source,
+        );
 
         $enabled_extensions_names = array_keys(array_filter($codebase->config->php_extensions));
         if (count($enabled_extensions_names) > 0) {
@@ -430,9 +437,7 @@ final class ProjectAnalyzer
             $message .= ' (unsupported extensions: ' . implode(', ', $unsupported_php_extensions) . ')';
         }
 
-        $message .= '.'.PHP_EOL.PHP_EOL;
-
-        return $message;
+        return "$message.\n";
     }
 
     public function check(string $base_dir, bool $is_diff = false): void
@@ -462,7 +467,7 @@ final class ProjectAnalyzer
         }
 
         $this->progress->write($this->generatePHPVersionMessage());
-        $this->progress->startPhase(Phase::SCAN, $this->scanThreads);
+        $this->progress->startScanningFiles();
 
         $diff_no_files = false;
 
@@ -479,13 +484,13 @@ final class ProjectAnalyzer
 
             $this->config->initializePlugins($this);
 
-            $this->codebase->scanFiles($this->scanThreads);
+            $this->codebase->scanFiles($this->threads);
 
             $this->codebase->infer_types_from_usage = true;
         } else {
             $this->codebase->diff_run = true;
-            $this->progress->debug(count($diff_files) . ' changed files: ' . PHP_EOL);
-            $this->progress->debug('    ' . implode(PHP_EOL."    ", $diff_files) . PHP_EOL);
+            $this->progress->debug(count($diff_files) . ' changed files: ' . "\n");
+            $this->progress->debug('    ' . implode("\n    ", $diff_files) . "\n");
 
             $this->codebase->analyzer->addFilesToShowResults($this->project_files);
 
@@ -503,7 +508,7 @@ final class ProjectAnalyzer
 
                     $this->config->initializePlugins($this);
 
-                    $this->codebase->scanFiles($this->scanThreads);
+                    $this->codebase->scanFiles($this->threads);
                 } else {
                     $diff_no_files = true;
                 }
@@ -520,7 +525,7 @@ final class ProjectAnalyzer
             $this->config->eventDispatcher->dispatchAfterCodebasePopulated($event);
         }
 
-        $this->progress->startPhase(Phase::ANALYSIS, $this->threads);
+        $this->progress->startAnalyzingFiles();
 
         $this->codebase->analyzer->analyzeFiles(
             $this,
@@ -533,7 +538,7 @@ final class ProjectAnalyzer
             $removed_parser_files = $this->parser_cache_provider->deleteOldParserCaches($start_checks);
 
             if ($removed_parser_files) {
-                $this->progress->debug('Removed ' . $removed_parser_files . ' old parser caches' . PHP_EOL);
+                $this->progress->debug('Removed ' . $removed_parser_files . ' old parser caches' . "\n");
             }
         }
     }
@@ -856,14 +861,14 @@ final class ProjectAnalyzer
             $selection_start = $selection_bounds[0] - $snippet_bounds[0];
             $selection_length = $selection_bounds[1] - $selection_bounds[0];
 
-            echo $location->file_name . ':' . $location->getLineNumber() . PHP_EOL .
+            echo $location->file_name . ':' . $location->getLineNumber() . "\n" .
                 (
                     $this->stdout_report_options->use_color
                     ? substr($snippet, 0, $selection_start) .
                     "\e[97;42m" . substr($snippet, $selection_start, $selection_length) .
                     "\e[0m" . substr($snippet, $selection_length + $selection_start)
                     : $snippet
-                ) . PHP_EOL . PHP_EOL;
+                ) . "\n" . "\n";
         }
     }
 
@@ -876,15 +881,15 @@ final class ProjectAnalyzer
         $this->checkDirWithConfig($dir_name, $this->config, true);
 
         $this->progress->write($this->generatePHPVersionMessage());
-        $this->progress->startPhase(Phase::SCAN, $this->scanThreads);
+        $this->progress->startScanningFiles();
 
         $this->config->initializePlugins($this);
 
-        $this->codebase->scanFiles($this->scanThreads);
+        $this->codebase->scanFiles($this->threads);
 
         $this->config->visitStubFiles($this->codebase, $this->progress);
 
-        $this->progress->startPhase(Phase::ANALYSIS, $this->threads);
+        $this->progress->startAnalyzingFiles();
 
         $this->codebase->analyzer->analyzeFiles(
             $this,
@@ -912,6 +917,16 @@ final class ProjectAnalyzer
         }
 
         $this->codebase->addFilesToAnalyze($files_to_scan);
+    }
+
+    public function addProjectFile(string $file_path): void
+    {
+        $this->project_files[$file_path] = $file_path;
+    }
+
+    public function addExtraFile(string $file_path): void
+    {
+        $this->extra_files[$file_path] = $file_path;
     }
 
     /**
@@ -952,7 +967,7 @@ final class ProjectAnalyzer
             }
 
             if (!$config->isInProjectDirs($file_path)) {
-                $this->progress->debug('skipping ' . $file_path . PHP_EOL);
+                $this->progress->debug('skipping ' . $file_path . "\n");
 
                 continue;
             }
@@ -965,7 +980,7 @@ final class ProjectAnalyzer
 
     public function checkFile(string $file_path): void
     {
-        $this->progress->debug('Checking ' . $file_path . PHP_EOL);
+        $this->progress->debug('Checking ' . $file_path . "\n");
 
         $this->config->visitPreloadedStubFiles($this->codebase, $this->progress);
 
@@ -976,15 +991,15 @@ final class ProjectAnalyzer
         $this->file_reference_provider->loadReferenceCache();
 
         $this->progress->write($this->generatePHPVersionMessage());
-        $this->progress->startPhase(Phase::SCAN, $this->scanThreads);
+        $this->progress->startScanningFiles();
 
         $this->config->initializePlugins($this);
 
-        $this->codebase->scanFiles($this->scanThreads);
+        $this->codebase->scanFiles($this->threads);
 
         $this->config->visitStubFiles($this->codebase, $this->progress);
 
-        $this->progress->startPhase(Phase::ANALYSIS, $this->threads);
+        $this->progress->startAnalyzingFiles();
 
         $this->codebase->analyzer->analyzeFiles(
             $this,
@@ -1000,7 +1015,7 @@ final class ProjectAnalyzer
     public function checkPaths(array $paths_to_check): void
     {
         $this->progress->write($this->generatePHPVersionMessage());
-        $this->progress->startPhase(Phase::SCAN, $this->scanThreads);
+        $this->progress->startScanningFiles();
 
         $this->config->visitPreloadedStubFiles($this->codebase, $this->progress);
         $this->visitAutoloadFiles();
@@ -1008,7 +1023,7 @@ final class ProjectAnalyzer
         $this->codebase->scanner->addFilesToShallowScan($this->extra_files);
 
         foreach ($paths_to_check as $path) {
-            $this->progress->debug('Checking ' . $path . PHP_EOL);
+            $this->progress->debug('Checking ' . $path . "\n");
 
             if (is_dir($path)) {
                 $this->checkDirWithConfig($path, $this->config, true);
@@ -1024,7 +1039,7 @@ final class ProjectAnalyzer
         $this->config->initializePlugins($this);
 
 
-        $this->codebase->scanFiles($this->scanThreads);
+        $this->codebase->scanFiles($this->threads);
 
         $this->config->visitStubFiles($this->codebase, $this->progress);
 
@@ -1032,7 +1047,7 @@ final class ProjectAnalyzer
 
         $this->config->eventDispatcher->dispatchAfterCodebasePopulated($event);
 
-        $this->progress->startPhase(Phase::ANALYSIS, $this->threads);
+        $this->progress->startAnalyzingFiles();
 
         $this->codebase->analyzer->analyzeFiles(
             $this,
@@ -1294,6 +1309,28 @@ final class ProjectAnalyzer
         $file_analyzer->interface_analyzers_to_analyze = [];
 
         return $function_analyzer;
+    }
+
+    /**
+     * Adapted from https://gist.github.com/divinity76/01ef9ca99c111565a72d3a8a6e42f7fb
+     * returns number of cpu cores
+     * Copyleft 2018, license: WTFPL
+     *
+     * @throws NumberOfCpuCoreNotFound
+     */
+    public static function getCpuCount(): int
+    {
+        if (defined('PHP_WINDOWS_VERSION_MAJOR')) {
+            // No support desired for Windows at the moment
+            return 1;
+        }
+
+        if (!extension_loaded('pcntl')) {
+            // Psalm requires pcntl for multi-threads support
+            return 1;
+        }
+
+        return (new CpuCoreCounter())->getCount();
     }
 
     /**

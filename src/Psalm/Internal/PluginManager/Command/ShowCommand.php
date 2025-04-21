@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PluginManager\Command;
 
-use Override;
 use Psalm\Internal\PluginManager\PluginListFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -31,7 +30,6 @@ final class ShowCommand extends Command
         parent::__construct();
     }
 
-    #[Override]
     protected function configure(): void
     {
         $this
@@ -41,7 +39,6 @@ final class ShowCommand extends Command
             ->addUsage('[-c path/to/psalm.xml]');
     }
 
-    #[Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);

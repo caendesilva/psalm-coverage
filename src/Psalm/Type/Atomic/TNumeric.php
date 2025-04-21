@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
-
 /**
  * Denotes the `numeric` type (which can also result from an `is_numeric` check).
  *
@@ -13,7 +11,6 @@ use Override;
  */
 class TNumeric extends Scalar
 {
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'numeric';
@@ -22,7 +19,6 @@ class TNumeric extends Scalar
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -32,7 +28,6 @@ class TNumeric extends Scalar
         return null;
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypeVisitor;
 
-use Override;
 use Psalm\Type\Atomic\TClassConstant;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TNamedObject;
@@ -32,7 +31,6 @@ final class ContainsClassLikeVisitor extends TypeVisitor
     /**
      * @psalm-external-mutation-free
      */
-    #[Override]
     protected function enterNode(TypeNode $type): ?int
     {
         if ($type instanceof TNamedObject) {

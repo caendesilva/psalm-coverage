@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\FileManipulation;
 
-use Override;
-
-final class ImmutableAnnotationAdditionTest extends FileManipulationTestCase
+class ImmutableAnnotationAdditionTest extends FileManipulationTestCase
 {
-    #[Override]
     public function providerValidCodeParse(): array
     {
         return [

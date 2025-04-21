@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -14,7 +13,7 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class MagicMethodAnnotationTest extends TestCase
+class MagicMethodAnnotationTest extends TestCase
 {
     use InvalidCodeAnalysisWithIssuesTestTrait;
     use InvalidCodeAnalysisTestTrait;
@@ -203,7 +202,7 @@ final class MagicMethodAnnotationTest extends TestCase
         $this->analyzeFile('somefile.php', $context);
     }
 
-    public function testOverrideParentClassReturnType(): void
+    public function testOverrideParentClassRetunType(): void
     {
         Config::getInstance()->use_phpdoc_method_without_magic_or_parent = true;
 
@@ -253,7 +252,6 @@ final class MagicMethodAnnotationTest extends TestCase
         $this->analyzeFile('somefile.php', $context);
     }
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -1148,7 +1146,6 @@ final class MagicMethodAnnotationTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -1845,7 +1842,7 @@ final class MagicMethodAnnotationTest extends TestCase
 
               /** @var A & B $b */
               $b = new B();
-              $b->nonExistentMethod();
+              $b->nonExistantMethod();
               ',
         );
 

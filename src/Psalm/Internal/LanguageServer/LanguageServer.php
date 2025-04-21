@@ -264,7 +264,6 @@ final class LanguageServer extends Dispatcher
             null,
             [],
             1,
-            1,
             $progress,
             $codebase,
         );
@@ -373,9 +372,9 @@ final class LanguageServer extends Dispatcher
         $this->logInfo("Initializing: Getting code base...");
         $progress->update('getting code base');
 
-        $this->logInfo("Initializing: Scanning files ({$this->project_analyzer->scanThreads} Threads)...");
+        $this->logInfo("Initializing: Scanning files ({$this->project_analyzer->threads} Threads)...");
         $progress->update('scanning files');
-        $this->codebase->scanFiles($this->project_analyzer->scanThreads);
+        $this->codebase->scanFiles($this->project_analyzer->threads);
 
         $this->logInfo("Initializing: Registering stub files...");
         $progress->update('registering stub files');

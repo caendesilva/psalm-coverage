@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer;
 
 use InvalidArgumentException;
-use Override;
 use PhpParser;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
@@ -103,7 +102,6 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         $this->storage = $codebase->classlike_storage_provider->get($fq_class_name);
     }
 
-    #[Override]
     public function __destruct()
     {
         unset($this->source);
@@ -423,7 +421,6 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<lowercase-string, string>
      */
-    #[Override]
     public function getAliasedClassesFlipped(): array
     {
         if ($this->source instanceof NamespaceAnalyzer || $this->source instanceof FileAnalyzer) {
@@ -437,7 +434,6 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<string, string>
      */
-    #[Override]
     public function getAliasedClassesFlippedReplaceable(): array
     {
         if ($this->source instanceof NamespaceAnalyzer || $this->source instanceof FileAnalyzer) {
@@ -448,14 +444,12 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFQCLN(): string
     {
         return $this->fq_class_name;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getClassName(): ?string
     {
         return $this->class->name->name ?? null;
@@ -465,21 +459,18 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
      * @psalm-mutation-free
      * @return array<string, array<string, Union>>|null
      */
-    #[Override]
     public function getTemplateTypeMap(): ?array
     {
         return $this->storage->template_types;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getParentFQCLN(): ?string
     {
         return $this->parent_fq_class_name;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function isStatic(): bool
     {
         return false;
@@ -817,7 +808,6 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         }
     }
 
-    #[Override]
     public function getFileAnalyzer(): FileAnalyzer
     {
         return $this->file_analyzer;

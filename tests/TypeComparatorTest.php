@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
@@ -20,9 +19,8 @@ use function array_diff_key;
 use function array_keys;
 use function array_map;
 
-final class TypeComparatorTest extends TestCase
+class TypeComparatorTest extends TestCase
 {
-    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();

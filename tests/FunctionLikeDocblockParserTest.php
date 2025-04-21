@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use PhpParser\Comment\Doc;
 use PhpParser\Node\Scalar\String_;
@@ -18,13 +17,12 @@ use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
-final class FunctionLikeDocblockParserTest extends BaseTestCase
+class FunctionLikeDocblockParserTest extends BaseTestCase
 {
     public string $test_cased_function_id = 'hello_world';
 
     public CodeLocation $test_code_location;
 
-    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();
@@ -64,7 +62,6 @@ final class FunctionLikeDocblockParserTest extends BaseTestCase
 ';
         $php_parser_doc = new Doc($doc);
         $function_docblock = FunctionLikeDocblockParser::parse(
-            ProjectAnalyzer::getInstance()->getCodebase(),
             $php_parser_doc,
             $this->test_code_location,
             $this->test_cased_function_id,
@@ -89,7 +86,6 @@ final class FunctionLikeDocblockParserTest extends BaseTestCase
 ';
         $php_parser_doc = new Doc($doc);
         $function_docblock = FunctionLikeDocblockParser::parse(
-            ProjectAnalyzer::getInstance()->getCodebase(),
             $php_parser_doc,
             $this->test_code_location,
             $this->test_cased_function_id,
@@ -112,7 +108,6 @@ final class FunctionLikeDocblockParserTest extends BaseTestCase
         $this->expectException(IncorrectDocblockException::class);
         $this->expectExceptionMessage('Misplaced variable');
         FunctionLikeDocblockParser::parse(
-            ProjectAnalyzer::getInstance()->getCodebase(),
             $php_parser_doc,
             $this->test_code_location,
             $this->test_cased_function_id,
@@ -128,7 +123,6 @@ final class FunctionLikeDocblockParserTest extends BaseTestCase
 ';
         $php_parser_doc = new Doc($doc);
         $function_docblock = FunctionLikeDocblockParser::parse(
-            ProjectAnalyzer::getInstance()->getCodebase(),
             $php_parser_doc,
             $this->test_code_location,
             $this->test_cased_function_id,
@@ -146,7 +140,6 @@ final class FunctionLikeDocblockParserTest extends BaseTestCase
 ';
         $php_parser_doc = new Doc($doc, 0);
         $function_docblock = FunctionLikeDocblockParser::parse(
-            ProjectAnalyzer::getInstance()->getCodebase(),
             $php_parser_doc,
             $this->test_code_location,
             $this->test_cased_function_id,

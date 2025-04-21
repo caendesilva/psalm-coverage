@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Type\Union;
 
 use function array_merge;
@@ -22,7 +21,6 @@ final class TKeyOf extends TArrayKey
         parent::__construct($from_docblock);
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'key-of<' . $this->type . '>';
@@ -31,7 +29,6 @@ final class TKeyOf extends TArrayKey
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -41,13 +38,11 @@ final class TKeyOf extends TArrayKey
         return null;
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;
     }
 
-    #[Override]
     public function getAssertionString(): string
     {
         return 'mixed';

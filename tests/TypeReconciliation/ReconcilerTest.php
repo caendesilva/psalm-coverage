@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Tests\TypeReconciliation;
 
 use Countable;
-use Override;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -40,13 +39,12 @@ use Psalm\Type\Atomic\TObject;
 use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Union;
 
-final class ReconcilerTest extends TestCase
+class ReconcilerTest extends TestCase
 {
     protected FileAnalyzer $file_analyzer;
 
     protected StatementsAnalyzer $statements_analyzer;
 
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -56,7 +54,6 @@ final class ReconcilerTest extends TestCase
         $this->statements_analyzer = new StatementsAnalyzer(
             $this->file_analyzer,
             new NodeDataProvider(),
-            false,
         );
 
         $this->addFile('newfile.php', '
@@ -72,9 +69,9 @@ final class ReconcilerTest extends TestCase
     }
 
     /**
-     * @dataProvider providerTestReconciliation
+     * @dataProvider providerTestReconcilation
      */
-    public function testReconciliation(string $expected_type, Assertion $assertion, string $original_type): void
+    public function testReconcilation(string $expected_type, Assertion $assertion, string $original_type): void
     {
         $reconciled = AssertionReconciler::reconcile(
             $assertion,
@@ -110,7 +107,7 @@ final class ReconcilerTest extends TestCase
     /**
      * @return array<string,array{string,Assertion,string}>
      */
-    public function providerTestReconciliation(): array
+    public function providerTestReconcilation(): array
     {
         return [
             'notNullWithObject' => ['SomeClass', new IsNotType(new TNull()), 'SomeClass'],
@@ -163,9 +160,9 @@ final class ReconcilerTest extends TestCase
             'nullableClassStringTruthy' => ['class-string<SomeClass>', new Truthy(), 'class-string<SomeClass>|null'],
             'iterableToArray' => ['array<int, int>', new IsType(new TArray([Type::getArrayKey(), Type::getMixed()])), 'iterable<int, int>'],
             'iterableToTraversable' => ['Traversable<int, int>', new IsType(new TNamedObject('Traversable')), 'iterable<int, int>'],
-            'callableToCallableArray' => ['callable-array{0: class-string|object, 1: non-empty-string}', new IsType(new TArray([Type::getArrayKey(), Type::getMixed()])), 'callable'],
-            'SmallKeyedArrayAndCallable' => ['array{test: string}', new IsType(TKeyedArray::make(['test' => Type::getString()])), 'callable'],
-            'BigKeyedArrayAndCallable' => ['array{foo: string, test: string, thing: string}', new IsType(TKeyedArray::make(['foo' => Type::getString(), 'test' => Type::getString(), 'thing' => Type::getString()])), 'callable'],
+            'callableToCallableArray' => ['callable-array{class-string|object, non-empty-string}', new IsType(new TArray([Type::getArrayKey(), Type::getMixed()])), 'callable'],
+            'SmallKeyedArrayAndCallable' => ['array{test: string}', new IsType(new TKeyedArray(['test' => Type::getString()])), 'callable'],
+            'BigKeyedArrayAndCallable' => ['array{foo: string, test: string, thing: string}', new IsType(new TKeyedArray(['foo' => Type::getString(), 'test' => Type::getString(), 'thing' => Type::getString()])), 'callable'],
             'callableOrArrayToCallableArray' => ['array<array-key, mixed>', new IsType(new TArray([Type::getArrayKey(), Type::getMixed()])), 'callable|array'],
             'traversableToIntersection' => ['Countable&Traversable', new IsType(new TNamedObject('Traversable')), 'Countable'],
             'iterableWithoutParamsToTraversableWithoutParams' => ['Traversable', new IsNotType(new TArray([Type::getArrayKey(), Type::getMixed()])), 'iterable'],

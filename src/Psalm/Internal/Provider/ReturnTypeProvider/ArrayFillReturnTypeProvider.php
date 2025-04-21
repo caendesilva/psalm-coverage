@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
-use Override;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
@@ -22,13 +21,11 @@ final class ArrayFillReturnTypeProvider implements FunctionReturnTypeProviderInt
     /**
      * @return array<lowercase-string>
      */
-    #[Override]
     public static function getFunctionIds(): array
     {
         return ['array_fill'];
     }
 
-    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): Union
     {
         $statements_source = $event->getStatementsSource();
@@ -70,7 +67,7 @@ final class ArrayFillReturnTypeProvider implements FunctionReturnTypeProviderInt
             if (!$result) {
                 return Type::getEmptyArray();
             }
-            return new Union([TKeyedArray::make(
+            return new Union([new TKeyedArray(
                 $result,
                 null,
                 null,

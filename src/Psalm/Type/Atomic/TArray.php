@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
@@ -45,7 +44,6 @@ class TArray extends Atomic
         parent::__construct($from_docblock);
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'array';
@@ -54,7 +52,6 @@ class TArray extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -64,13 +61,11 @@ class TArray extends Atomic
         return $this->getKey();
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return $this->type_params[0]->isArrayKey() && $this->type_params[1]->isMixed();
     }
 
-    #[Override]
     public function equals(Atomic $other_type, bool $ensure_source_equality): bool
     {
         if ($other_type::class !== static::class) {
@@ -97,7 +92,6 @@ class TArray extends Atomic
         return true;
     }
 
-    #[Override]
     public function getAssertionString(): string
     {
         if ($this->type_params[0]->isMixed() && $this->type_params[1]->isMixed()) {
@@ -115,7 +109,6 @@ class TArray extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithStandins(
         TemplateResult $template_result,
         Codebase $codebase,
@@ -151,7 +144,6 @@ class TArray extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithArgTypes(TemplateResult $template_result, ?Codebase $codebase): self
     {
         $type_params = $this->replaceTypeParamsTemplateTypesWithArgTypes(
@@ -166,7 +158,6 @@ class TArray extends Atomic
         return $this;
     }
 
-    #[Override]
     protected function getChildNodeKeys(): array
     {
         return ['type_params'];

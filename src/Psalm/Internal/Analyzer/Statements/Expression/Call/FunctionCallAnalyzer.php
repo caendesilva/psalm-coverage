@@ -17,7 +17,8 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
-use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Codebase\TaintFlowGraph;
+use Psalm\Internal\DataFlow\TaintSink;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
@@ -65,7 +66,6 @@ use function array_map;
 use function array_merge;
 use function array_shift;
 use function array_slice;
-use function assert;
 use function count;
 use function explode;
 use function implode;
@@ -830,34 +830,28 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                 return $function_call_info;
             }
 
-            if ($statements_analyzer->taint_flow_graph
+            if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph
                 && $stmt_name_type->parent_nodes
                 && !in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
             ) {
-                assert($statements_analyzer->data_flow_graph !== null);
                 $arg_location = new CodeLocation($statements_analyzer->getSource(), $function_name);
 
-                $custom_call_sink = DataFlowNode::getForMethodArgument(
+                $custom_call_sink = TaintSink::getForMethodArgument(
                     'variable-call',
                     'variable-call',
                     0,
                     $arg_location,
                     $arg_location,
-                    TaintKind::INPUT_CALLABLE,
                 );
 
-                $statements_analyzer->taint_flow_graph->addSink($custom_call_sink);
+                $custom_call_sink->taints = [TaintKind::INPUT_CALLABLE];
+
+                $statements_analyzer->data_flow_graph->addSink($custom_call_sink);
 
                 $event = new AddRemoveTaintsEvent($stmt, $context, $statements_analyzer, $codebase);
 
                 $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
                 $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
-
-                $taints = $added_taints & ~$removed_taints;
-                if ($taints !== 0) {
-                    $taint_source = $custom_call_sink->setTaints($taints);
-                    $statements_analyzer->taint_flow_graph->addSource($taint_source);
-                }
 
                 foreach ($stmt_name_type->parent_nodes as $parent_node) {
                     $statements_analyzer->data_flow_graph->addPath(

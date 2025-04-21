@@ -86,7 +86,6 @@ use function json_decode;
 use function libxml_clear_errors;
 use function libxml_get_errors;
 use function libxml_use_internal_errors;
-use function max;
 use function mkdir;
 use function phpversion;
 use function preg_match;
@@ -300,9 +299,7 @@ final class Config
 
     public ?bool $show_mixed_issues = null;
 
-    public bool $strict_binary_operands = true;
-
-    public bool $allow_bool_to_literal_bool_comparison = true;
+    public bool $strict_binary_operands = false;
 
     public bool $remember_property_assignments_after_call = true;
 
@@ -313,7 +310,7 @@ final class Config
 
     public bool $allow_string_standin_for_class = false;
 
-    public bool $disable_suppress_all = true;
+    public bool $disable_suppress_all = false;
 
     public bool $use_phpdoc_method_without_magic_or_parent = false;
 
@@ -321,9 +318,9 @@ final class Config
 
     public bool $skip_checks_on_unresolvable_includes = false;
 
-    public bool $seal_all_methods = true;
+    public bool $seal_all_methods = false;
 
-    public bool $seal_all_properties = true;
+    public bool $seal_all_properties = false;
 
     public bool $memoize_method_calls = false;
 
@@ -367,16 +364,12 @@ final class Config
 
     public bool $ensure_array_int_offsets_exist = false;
 
-    public bool $ensure_override_attribute = true;
+    public bool $ensure_override_attribute = false;
 
     /**
      * @var array<lowercase-string, bool>
      */
     public array $forbidden_functions = [];
-    /**
-     * @var array<string, bool>
-     */
-    public array $forbidden_constants = [];
 
     public bool $find_unused_code = true;
 
@@ -398,21 +391,11 @@ final class Config
 
     public bool $limit_method_complexity = false;
 
-    public bool $literal_array_key_check = false;
-
-    public bool $all_functions_global = false;
-
-    public bool $all_constants_global = false;
-
-    public bool $force_jit = false;
-
     public int $max_graph_size = 200;
 
     public int $max_avg_path_length = 70;
 
     public int $max_shaped_array_size = 100;
-
-    public float $long_scan_warning = 10.0;
 
     /**
      * @var string[]
@@ -480,10 +463,7 @@ final class Config
      */
     public array $internal_stubs = [];
 
-    /** @var ?int<1, max> */
     public ?int $threads = null;
-    /** @var ?int<1, max> */
-    public ?int $scan_threads = null;
 
     /**
      * A list of php extensions supported by Psalm.
@@ -944,7 +924,6 @@ final class Config
             'resolveFromConfigFile' => 'resolve_from_config_file',
             'allowFileIncludes' => 'allow_includes',
             'strictBinaryOperands' => 'strict_binary_operands',
-            'allowBoolToLiteralBoolComparison' => 'allow_bool_to_literal_bool_comparison',
             'rememberPropertyAssignmentsAfterCall' => 'remember_property_assignments_after_call',
             'disableVarParsing' => 'disable_var_parsing',
             'allowStringToStandInForClass' => 'allow_string_standin_for_class',
@@ -1061,14 +1040,7 @@ final class Config
             $config->autoloader = (string) realpath($autoloader_path);
         }
 
-        $no_cache = false;
-        if (isset($config_xml['noCache'])) {
-            $no_cache = (string) $config_xml['noCache'];
-            $no_cache = $no_cache === '1' || $no_cache === 'true';
-        }
-        if ($no_cache) {
-            $config->cache_directory = null;
-        } elseif (isset($config_xml['cacheDirectory'])) {
+        if (isset($config_xml['cacheDirectory'])) {
             $config->cache_directory = (string)$config_xml['cacheDirectory'];
         } elseif ($user_cache_dir = (new Xdg())->getHomeCacheDir()) {
             $config->cache_directory = $user_cache_dir . '/psalm';
@@ -1078,9 +1050,7 @@ final class Config
 
         $config->global_cache_directory = $config->cache_directory;
 
-        if ($config->cache_directory !== null) {
-            $config->cache_directory .= DIRECTORY_SEPARATOR . sha1($base_dir);
-        }
+        $config->cache_directory .= DIRECTORY_SEPARATOR . sha1($base_dir);
 
         if (isset($config_xml['serializer'])) {
             $attribute_text = (string) $config_xml['serializer'];
@@ -1126,26 +1096,6 @@ final class Config
             $config->find_unused_variables = $config->find_unused_code;
         }
 
-        if (isset($config_xml['disallowLiteralKeysOnUnshapedArrays'])) {
-            $attribute_text = (string) $config_xml['disallowLiteralKeysOnUnshapedArrays'];
-            $config->literal_array_key_check = $attribute_text === 'true' || $attribute_text === '1';
-        }
-
-        if (isset($config_xml['allFunctionsGlobal'])) {
-            $attribute_text = (string) $config_xml['allFunctionsGlobal'];
-            $config->all_functions_global = $attribute_text === 'true' || $attribute_text === '1';
-        }
-
-        if (isset($config_xml['allConstantsGlobal'])) {
-            $attribute_text = (string) $config_xml['allConstantsGlobal'];
-            $config->all_constants_global = $attribute_text === 'true' || $attribute_text === '1';
-        }
-
-        if (isset($config_xml['forceJit'])) {
-            $attribute_text = (string) $config_xml['forceJit'];
-            $config->force_jit = $attribute_text === 'true' || $attribute_text === '1';
-        }
-
         if (isset($config_xml['findUnusedVariablesAndParams'])) {
             $attribute_text = (string) $config_xml['findUnusedVariablesAndParams'];
             $config->find_unused_variables = $attribute_text === 'true' || $attribute_text === '1';
@@ -1187,11 +1137,6 @@ final class Config
         if (isset($config_xml['maxShapedArraySize'])) {
             $attribute_text = (int)$config_xml['maxShapedArraySize'];
             $config->max_shaped_array_size = $attribute_text;
-        }
-
-        if (isset($config_xml['longScanWarning'])) {
-            $attribute_text = (float)$config_xml['longScanWarning'];
-            $config->long_scan_warning = $attribute_text;
         }
 
         if (isset($config_xml['inferPropertyTypesFromConstructor'])) {
@@ -1343,13 +1288,6 @@ final class Config
             }
         }
 
-        if (isset($config_xml->forbiddenConstants) && isset($config_xml->forbiddenConstants->constant)) {
-            /** @var SimpleXMLElement $forbidden_function */
-            foreach ($config_xml->forbiddenConstants->constant as $forbidden_function) {
-                $config->forbidden_constants[(string) $forbidden_function['name']] = true;
-            }
-        }
-
         if (isset($config_xml->stubs) && isset($config_xml->stubs->file)) {
             /** @var SimpleXMLElement $stub_file */
             foreach ($config_xml->stubs->file as $stub_file) {
@@ -1441,12 +1379,7 @@ final class Config
         }
 
         if (isset($config_xml['threads'])) {
-            $config->threads = max(1, (int)$config_xml['threads']);
-            $config->scan_threads = $config->threads;
-        }
-
-        if (isset($config_xml['scanThreads'])) {
-            $config->scan_threads = max(1, (int)$config_xml['scanThreads']);
+            $config->threads = (int)$config_xml['threads'];
         }
 
         return $config;
@@ -2263,16 +2196,6 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        if (PHP_VERSION_ID < 8_04_00 && $codebase->analysis_php_version_id >= 8_04_00) {
-            $stringable_path = dirname(__DIR__, 2) . '/stubs/Php84.phpstub';
-
-            if (!file_exists($stringable_path)) {
-                throw new UnexpectedValueException('Cannot locate PHP 8.4 classes');
-            }
-
-            $core_generic_files[] = $stringable_path;
-        }
-
         $stub_files = array_merge($core_generic_files, $this->preloaded_stub_files);
 
         if (!$stub_files) {
@@ -2316,7 +2239,6 @@ final class Config
             $stubsDir . 'CoreImmutableClasses.phpstub',
             $stubsDir . 'Reflection.phpstub',
             $stubsDir . 'SPL.phpstub',
-            $stubsDir . 'CoreGenericAttributes.phpstub',
         ];
 
         if ($codebase->analysis_php_version_id >= 7_04_00) {
@@ -2324,6 +2246,7 @@ final class Config
         }
 
         if ($codebase->analysis_php_version_id >= 8_00_00) {
+            $this->internal_stubs[] = $stubsDir . 'CoreGenericAttributes.phpstub';
             $this->internal_stubs[] = $stubsDir . 'Php80.phpstub';
         }
 
@@ -2334,10 +2257,6 @@ final class Config
         if ($codebase->analysis_php_version_id >= 8_02_00) {
             $this->internal_stubs[] = $stubsDir . 'Php82.phpstub';
             $this->php_extensions['random'] = true; // random is a part of the PHP core starting from PHP 8.2
-        }
-
-        if ($codebase->analysis_php_version_id >= 8_04_00) {
-            $this->internal_stubs[] = $stubsDir . 'Php84.phpstub';
         }
 
         $ext_stubs_dir = $dir_lvl_2 . DIRECTORY_SEPARATOR . "stubs" . DIRECTORY_SEPARATOR . "extensions";
@@ -2509,7 +2428,9 @@ final class Config
             // as they might be autoloadable once we require the autoloader below
             $codebase->classlikes->forgetMissingClassLikes();
 
-            $this->include_collector->runAndCollect($this->requireAutoloader(...));
+            $this->include_collector->runAndCollect(
+                $this->requireAutoloader(...),
+            );
         }
 
         $this->collectPredefinedConstants();

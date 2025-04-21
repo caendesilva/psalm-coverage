@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class ClassTest extends TestCase
+class ClassTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
@@ -44,7 +43,6 @@ final class ClassTest extends TestCase
         );
     }
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -279,13 +277,11 @@ final class ClassTest extends TestCase
             ],
             'typedMagicCall' => [
                 'code' => '<?php
-                    /** @psalm-no-seal-methods */
                     class B {
                         public function __call(string $methodName, array $args) : string {
                             return __METHOD__;
                         }
                     }
-                    /** @psalm-no-seal-methods */
                     class A {
                         public function __call(string $methodName, array $args) : B {
                             return new B;
@@ -453,7 +449,7 @@ final class ClassTest extends TestCase
                         }
                     }',
             ],
-            'classAliasOnNonexistentClass' => [
+            'classAliasOnNonexistantClass' => [
                 'code' => '<?php
                     if (!class_exists(\PHPUnit\Framework\TestCase::class)) {
                         /** @psalm-suppress UndefinedClass */
@@ -947,7 +943,6 @@ final class ClassTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -1161,7 +1156,7 @@ final class ClassTest extends TestCase
                     class A extends A {}',
                 'error_message' => 'CircularReference',
             ],
-            'preventAbstractInstantiationDefiniteClass' => [
+            'preventAbstractInstantiationDefiniteClasss' => [
                 'code' => '<?php
                     abstract class A {}
 

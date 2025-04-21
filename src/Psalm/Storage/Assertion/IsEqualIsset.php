@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Storage\Assertion;
 
-use Override;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
@@ -14,7 +13,6 @@ use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 final class IsEqualIsset extends Assertion
 {
     use UnserializeMemoryUsageSuppressionTrait;
-    #[Override]
     public function getNegation(): Assertion
     {
         return new Any();
@@ -25,13 +23,11 @@ final class IsEqualIsset extends Assertion
         return '=isset';
     }
 
-    #[Override]
     public function hasEquality(): bool
     {
         return true;
     }
 
-    #[Override]
     public function isNegationOf(Assertion $assertion): bool
     {
         return false;

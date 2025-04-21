@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\TypeReconciliation;
 
-use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-final class ArrayKeyExistsTest extends TestCase
+class ArrayKeyExistsTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -159,7 +157,7 @@ final class ArrayKeyExistsTest extends TestCase
                         echo $a[0];
                     }',
             ],
-            'arrayKeyExistsShouldNotModifyIntType' => [
+            'arrayKeyExistsShoudldNotModifyIntType' => [
                 'code' => '<?php
                     class HttpError {
                         const ERRS = [
@@ -527,7 +525,6 @@ final class ArrayKeyExistsTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

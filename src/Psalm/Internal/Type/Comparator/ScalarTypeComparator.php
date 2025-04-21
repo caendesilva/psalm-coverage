@@ -74,11 +74,8 @@ final class ScalarTypeComparator
             return true;
         }
 
-        if (($container_type_part instanceof TNonEmptyString
-            || $container_type_part instanceof TNonEmptyNonspecificLiteralString)
-            && ($input_type_part::class === TString::class
-                || $input_type_part::class === TNonspecificLiteralString::class
-                || $input_type_part::class === TLowercaseString::class)
+        if ($container_type_part instanceof TNonEmptyString
+            && $input_type_part::class === TString::class
         ) {
             if ($atomic_comparison_result) {
                 $atomic_comparison_result->type_coerced = true;
@@ -324,8 +321,7 @@ final class ScalarTypeComparator
             return false;
         }
 
-        if (($container_type_part instanceof TNonEmptyString
-                || $container_type_part instanceof TNonEmptyNonspecificLiteralString)
+        if ($container_type_part instanceof TNonEmptyString
             && $input_type_part instanceof TLiteralString
             && $input_type_part->value === ''
         ) {

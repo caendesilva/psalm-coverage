@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Tests\LanguageServer;
 
 use Amp\DeferredFuture;
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -28,12 +27,11 @@ use Psalm\Tests\TestConfig;
 use function getcwd;
 use function rand;
 
-final class DiagnosticTest extends AsyncTestCase
+class DiagnosticTest extends AsyncTestCase
 {
     protected Codebase $codebase;
     private int $increment = 0;
 
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -58,7 +56,6 @@ final class DiagnosticTest extends AsyncTestCase
             $providers,
             null,
             [],
-            1,
             1,
             null,
             $this->codebase,

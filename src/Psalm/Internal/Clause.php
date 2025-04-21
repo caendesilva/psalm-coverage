@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal;
 
-use Override;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\ImmutableNonCloneableTrait;
 use Psalm\Type\Atomic\TClassConstant;
@@ -136,7 +135,6 @@ final class Clause implements Stringable
     /**
      * @psalm-mutation-free
      */
-    #[Override]
     public function __toString(): string
     {
         $clause_strings = [];

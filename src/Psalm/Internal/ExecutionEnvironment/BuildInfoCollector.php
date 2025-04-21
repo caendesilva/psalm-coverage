@@ -246,7 +246,7 @@ final class BuildInfoCollector
     }
 
     /**
-     * Fill GitHub Actions environment variables.
+     * Fill Github Actions environment variables.
      *
      * @return $this
      * @psalm-suppress PossiblyUndefinedStringArrayOffset

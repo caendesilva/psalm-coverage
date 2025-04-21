@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 use Psalm\Type;
@@ -12,7 +11,7 @@ use Psalm\Type\Atomic;
 
 use function array_reverse;
 
-final class TypeCombinationTest extends TestCase
+class TypeCombinationTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
 
@@ -42,7 +41,6 @@ final class TypeCombinationTest extends TestCase
         );
     }
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -164,21 +162,6 @@ final class TypeCombinationTest extends TestCase
                 'assertions' => [
                     '$x===' => 'list<non-empty-string>',
                 ],
-            ],
-            'nonemptyliteralstring' => [
-                'code' => '<?php
-                    /** @var non-empty-literal-string */
-                    $instance = "test";
-                    $provider = "test";
-                    $key = "";
-                    if (random_int(0, 1)) {
-                        $key = "{$instance}_{$provider}";
-                        /** @psalm-check-type-exact $key=non-empty-literal-string */;
-                    }
-                    /** @psalm-check-type-exact $key=literal-string */;
-
-                    $_ = $key !== "" ? "test{$key}]" : "test";
-                ',
             ],
         ];
     }
@@ -707,20 +690,6 @@ final class TypeCombinationTest extends TestCase
                 'callable',
                 [
                     'callable-array',
-                    'callable',
-                ],
-            ],
-            'combineCallableAndCallableList' => [
-                'callable',
-                [
-                    'callable',
-                    'callable-list',
-                ],
-            ],
-            'combineCallableListAndCallable' => [
-                'callable',
-                [
-                    'callable-list',
                     'callable',
                 ],
             ],

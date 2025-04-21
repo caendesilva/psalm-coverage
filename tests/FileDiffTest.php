@@ -16,7 +16,7 @@ use function get_class;
 use function strpos;
 use function var_export;
 
-final class FileDiffTest extends TestCase
+class FileDiffTest extends TestCase
 {
     /**
      * @dataProvider getChanges

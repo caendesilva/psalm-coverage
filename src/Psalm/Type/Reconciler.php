@@ -9,6 +9,8 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Codebase\TaintFlowGraph;
+use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Internal\Type\TypeExpander;
@@ -53,7 +55,6 @@ use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNever;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TObject;
-use Psalm\Type\Atomic\TObjectWithProperties;
 use Psalm\Type\Atomic\TString;
 use Psalm\Type\Atomic\TTemplateParam;
 use ReflectionProperty;
@@ -312,10 +313,10 @@ class Reconciler
                 continue;
             }
 
-            if (($statements_analyzer->taint_flow_graph
+            if (($statements_analyzer->data_flow_graph instanceof TaintFlowGraph
                     && (!$result_type->hasScalarType()
                         || ($result_type->hasString() && !$result_type->hasLiteralString())))
-                || $statements_analyzer->variable_use_graph
+                || $statements_analyzer->data_flow_graph instanceof VariableUseGraph
             ) {
                 if ($before_adjustment && $before_adjustment->parent_nodes) {
                     $result_type = $result_type->setParentNodes($before_adjustment->parent_nodes);
@@ -845,9 +846,6 @@ class Reconciler
 
                         if ($existing_key_type_part instanceof TNull) {
                             $class_property_type = Type::getNull();
-                        } elseif ($existing_key_type_part instanceof TObjectWithProperties) {
-                            $class_property_type =
-                                $existing_key_type_part->properties[$property_name] ?? Type::getMixed();
                         } elseif ($existing_key_type_part instanceof TMixed
                             || $existing_key_type_part instanceof TObject
                             || ($existing_key_type_part instanceof TNamedObject
@@ -1175,7 +1173,7 @@ class Reconciler
                             $fallback_key_type = $base_atomic_type->type_params[0];
                             $fallback_value_type = $base_atomic_type->type_params[1];
 
-                            $base_atomic_type = TKeyedArray::make(
+                            $base_atomic_type = new TKeyedArray(
                                 [
                                 $array_key_offset => $result_type,
                                 ],
@@ -1206,7 +1204,7 @@ class Reconciler
                                     $base_atomic_type = $base_atomic_type->setProperties($properties);
                                 } else {
                                     // This should actually be a paradox
-                                    $base_atomic_type = TKeyedArray::make(
+                                    $base_atomic_type = new TKeyedArray(
                                         $properties,
                                         null,
                                         $base_atomic_type->fallback_params,

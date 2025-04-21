@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm;
 
 use InvalidArgumentException;
-use Override;
 use Psalm\Plugin\EventHandler\DynamicFunctionStorageProviderInterface;
 use Psalm\Plugin\EventHandler\FunctionExistenceProviderInterface;
 use Psalm\Plugin\EventHandler\FunctionParamsProviderInterface;
@@ -28,18 +27,16 @@ final class PluginRegistrationSocket implements RegistrationInterface
      * @internal
      */
     public function __construct(
-        public readonly Config $config,
-        public readonly Codebase $codebase,
+        private readonly Config $config,
+        private readonly Codebase $codebase,
     ) {
     }
 
-    #[Override]
     public function addStubFile(string $file_name): void
     {
         $this->config->addStubFile($file_name);
     }
 
-    #[Override]
     public function registerHooksFromClass(string $handler): void
     {
         if (!class_exists($handler, false)) {

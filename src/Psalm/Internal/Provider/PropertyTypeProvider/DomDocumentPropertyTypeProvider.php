@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\PropertyTypeProvider;
 
-use Override;
 use Psalm\Plugin\EventHandler\Event\PropertyTypeProviderEvent;
 use Psalm\Plugin\EventHandler\PropertyTypeProviderInterface;
 use Psalm\Type\Atomic\TNamedObject;
@@ -19,7 +18,6 @@ use function strtolower;
 final class DomDocumentPropertyTypeProvider implements PropertyTypeProviderInterface
 {
     private static ?Union $cache = null;
-    #[Override]
     public static function getPropertyType(PropertyTypeProviderEvent $event): ?Union
     {
         if (strtolower($event->getPropertyName()) === 'documentelement') {
@@ -33,7 +31,6 @@ final class DomDocumentPropertyTypeProvider implements PropertyTypeProviderInter
         return null;
     }
 
-    #[Override]
     public static function getClassLikeNames(): array
     {
         return ['domdocument'];

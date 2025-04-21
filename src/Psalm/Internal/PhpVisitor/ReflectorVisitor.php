@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\PhpVisitor;
 
 use LogicException;
-use Override;
 use PhpParser;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Name;
@@ -39,7 +38,6 @@ use SplObjectStorage;
 use UnexpectedValueException;
 
 use function array_pop;
-use function defined;
 use function end;
 use function explode;
 use function in_array;
@@ -104,7 +102,6 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
         $this->closure_statements = new SplObjectStorage();
     }
 
-    #[Override]
     public function enterNode(PhpParser\Node $node): ?int
     {
         foreach ($node->getComments() as $comment) {
@@ -177,9 +174,6 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
                   || $node instanceof PhpParser\Node\Arg
                      && ($node->value instanceof PhpParser\Node\Expr\ArrowFunction
                          || $node->value instanceof PhpParser\Node\Expr\Closure)
-                  || $node instanceof PhpParser\Node\ArrayItem
-                     && ($node->value instanceof PhpParser\Node\Expr\ArrowFunction
-                         || $node->value instanceof PhpParser\Node\Expr\Closure)
          ) {
             $doc_comment = null;
             if ($node instanceof PhpParser\Node\Stmt\Function_
@@ -193,7 +187,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
                 /** @var PhpParser\Node\FunctionLike */
                 $node = $node->expr;
                 $this->closure_statements->attach($node);
-            } elseif ($node instanceof PhpParser\Node\Arg || $node instanceof PhpParser\Node\ArrayItem) {
+            } elseif ($node instanceof PhpParser\Node\Arg) {
                 $doc_comment = $node->getDocComment();
                 /** @var PhpParser\Node\FunctionLike */
                 $node = $node->value;
@@ -291,11 +285,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
 
                 $fq_const_name = Type::getFQCLNFromString($const->name->name, $this->aliases);
 
-                if (($this->codebase->register_stub_files
-                    || $this->codebase->register_autoload_files
-                    || $this->codebase->all_constants_global
-                    ) && (!defined($fq_const_name) || !$const_type->isMixed())
-                ) {
+                if ($this->codebase->register_stub_files || $this->codebase->register_autoload_files) {
                     $this->codebase->addGlobalConstantType($fq_const_name, $const_type);
                 }
 
@@ -368,7 +358,6 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
 
             try {
                 $var_comments = CommentAnalyzer::getTypeFromComment(
-                    $this->codebase,
                     $doc_comment,
                     $this->file_scanner,
                     $this->aliases,
@@ -504,7 +493,6 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     /**
      * @return null
      */
-    #[Override]
     public function leaveNode(PhpParser\Node $node)
     {
         if ($node instanceof PhpParser\Node\Stmt\Namespace_) {
@@ -620,35 +608,30 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFilePath(): string
     {
         return $this->file_path;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFileName(): string
     {
         return $this->file_scanner->getFileName();
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getRootFilePath(): string
     {
         return $this->file_scanner->getRootFilePath();
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getRootFileName(): string
     {
         return $this->file_scanner->getRootFileName();
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getAliases(): Aliases
     {
         return $this->aliases;
@@ -657,7 +640,6 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     /**
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
      */
-    #[Override]
     public function afterTraverse(array $nodes)
     {
         $this->file_storage->type_aliases = $this->type_aliases;

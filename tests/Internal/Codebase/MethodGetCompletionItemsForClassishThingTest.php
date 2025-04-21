@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal\Codebase;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -25,7 +24,6 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 {
     private Codebase $codebase;
 
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -50,7 +48,6 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             $providers,
             null,
             [],
-            1,
             1,
             null,
             $this->codebase,

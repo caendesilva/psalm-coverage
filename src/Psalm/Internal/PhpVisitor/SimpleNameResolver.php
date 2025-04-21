@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
-use Override;
 use PhpParser;
 use PhpParser\ErrorHandler;
 use PhpParser\NameContext;
@@ -47,7 +46,6 @@ final class SimpleNameResolver extends NodeVisitorAbstract
         $this->nameContext = new NameContext($errorHandler);
     }
 
-    #[Override]
     public function beforeTraverse(array $nodes): ?array
     {
         $this->nameContext->startNamespace();
@@ -55,7 +53,6 @@ final class SimpleNameResolver extends NodeVisitorAbstract
         return null;
     }
 
-    #[Override]
     public function enterNode(Node $node): ?int
     {
         if ($node instanceof Stmt\Namespace_) {

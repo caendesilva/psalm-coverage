@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\ReturnTypeProvider;
 
-use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-final class GetObjectVarsTest extends TestCase
+class GetObjectVarsTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         yield 'returnsPublicProperties' => [
@@ -24,19 +22,6 @@ final class GetObjectVarsTest extends TestCase
                 $ret = get_object_vars(new C);
             ',
             'assertions' => ['$ret' => 'array{prop: string}'],
-        ];
-
-        yield 'retrurnsNotMixed' => [
-            'code' => '<?php
-                /**
-                 * @param object{g: bool} $o
-                 */
-                function f(object $o, bool $b): bool {
-                    if ($o->g && $b) {
-                        return $o->g;
-                    }
-                    return true;
-                }',
         ];
 
         yield 'returnsSealedArrayForFinalClass' => [

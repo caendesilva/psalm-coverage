@@ -4,18 +4,16 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\InvalidCodeAnalysisWithIssuesTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-final class MixinAnnotationTest extends TestCase
+class MixinAnnotationTest extends TestCase
 {
     use InvalidCodeAnalysisWithIssuesTestTrait;
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -625,7 +623,6 @@ final class MixinAnnotationTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -677,7 +674,7 @@ final class MixinAnnotationTest extends TestCase
                     }
 
                     (new A)->foo = "bar";',
-                'error_message' => 'UndefinedDocblockClass',
+                'error_message' => 'UndefinedMagicPropertyAssignment',
             ],
             'undefinedMixinClassWithMethodCall' => [
                 'code' => '<?php

@@ -13,7 +13,7 @@ class A {
 
 class B extends A {
     #[Override]
-    function obtain(): void
+    function recieve(): void
     {
     }
 }

@@ -10,7 +10,7 @@ use function version_compare;
 
 use const PHP_VERSION;
 
-final class SuicidalAutoloaderTest extends TestCase
+class SuicidalAutoloaderTest extends TestCase
 {
     use PsalmRunnerTrait;
 

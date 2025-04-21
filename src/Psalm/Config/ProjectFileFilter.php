@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Config;
 
-use Override;
 use Psalm\Exception\ConfigException;
 use SimpleXMLElement;
 
@@ -16,7 +15,6 @@ final class ProjectFileFilter extends FileFilter
 {
     private ?ProjectFileFilter $file_filter = null;
 
-    #[Override]
     public static function loadFromXMLElement(
         SimpleXMLElement $e,
         string $base_dir,
@@ -35,7 +33,6 @@ final class ProjectFileFilter extends FileFilter
         return $filter;
     }
 
-    #[Override]
     public function allows(string $file_name, bool $case_sensitive = false): bool
     {
         if ($this->inclusive && $this->file_filter) {

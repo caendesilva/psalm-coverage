@@ -28,6 +28,7 @@ use function getcwd;
 use function getopt;
 use function implode;
 use function in_array;
+use function ini_set;
 use function is_array;
 use function is_numeric;
 use function is_string;
@@ -142,7 +143,11 @@ final class LanguageServer
             exit(1);
         }
 
-        CliUtils::setMemoryLimit($options, '1');
+        if (!array_key_exists('use-ini-defaults', $options)) {
+            ini_set('display_errors', '1');
+            ini_set('display_startup_errors', '1');
+            ini_set('memory_limit', (string) (8 * 1_024 * 1_024 * 1_024));
+        }
 
         if (array_key_exists('help', $options)) {
             $options['h'] = false;
@@ -296,8 +301,6 @@ final class LanguageServer
             // extensions bellow are incompatible with JIT
             'pcov',
             'blackfire',
-            // Issues w/ parallel forking
-            'uv',
         ]);
 
         $disableXdebug = !isset($options['disable-xdebug'])

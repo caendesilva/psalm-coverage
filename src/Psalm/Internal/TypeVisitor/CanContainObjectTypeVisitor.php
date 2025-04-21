@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypeVisitor;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TMixed;
@@ -22,7 +21,6 @@ final class CanContainObjectTypeVisitor extends TypeVisitor
     ) {
     }
 
-    #[Override]
     protected function enterNode(TypeNode $type): ?int
     {
         if (($type instanceof Union

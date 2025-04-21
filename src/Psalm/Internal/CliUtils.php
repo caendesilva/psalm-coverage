@@ -133,7 +133,7 @@ final class CliUtils
              * @psalm-suppress UnresolvableInclude
              * @var mixed
              */
-            $autoloader = ErrorHandler::runWithExceptionsSuppressed(static fn(): mixed => require_once $file);
+            $autoloader = require_once $file;
 
             if (!$first_autoloader
                 && $autoloader instanceof ClassLoader
@@ -459,13 +459,13 @@ final class CliUtils
      * @param array<string,string|false|list<mixed>> $options
      * @throws ConfigException
      */
-    public static function setMemoryLimit(array $options, string $display_error = 'stderr'): void
+    public static function setMemoryLimit(array $options): void
     {
         if (!array_key_exists('use-ini-defaults', $options)) {
-            ini_set('display_errors', $display_error);
+            ini_set('display_errors', 'stderr');
             ini_set('display_startup_errors', '1');
 
-            $memoryLimit = '-1';
+            $memoryLimit = (8 * 1_024 * 1_024 * 1_024);
 
             if (array_key_exists('memory-limit', $options)) {
                 $memoryLimit = $options['memory-limit'];
@@ -517,13 +517,15 @@ final class CliUtils
             || isset($_SERVER['JENKINS_URL'])
             || isset($_SERVER['SCRUTINIZER'])
             || isset($_SERVER['GITLAB_CI'])
-            || isset($_SERVER['CI'])
             || isset($_SERVER['GITHUB_WORKFLOW'])
             || isset($_SERVER['DRONE']);
     }
 
     public static function checkRuntimeRequirements(): void
     {
+        $required_php_version = 7_04_00;
+        $required_php_version_text = '7.4.0';
+
         // the following list was taken from vendor/composer/platform_check.php
         // It includes both Psalm's requirements (from composer.json) and the
         // requirements of our dependencies `netresearch/jsonmapper` and
@@ -542,21 +544,9 @@ final class CliUtils
         ];
         $issues = [];
 
-        $major_minor = PHP_VERSION_ID - (PHP_VERSION_ID % 100);
-        foreach ([
-            8_01_31 => '8.1.31',
-            8_02_27 => '8.2.27',
-            8_03_16 => '8.3.16',
-            8_04_03 => '8.4.3',
-        ] as $version => $txt) {
-            $version_m = $version - ($version % 100);
-            if ($version_m === $major_minor) {
-                if (PHP_VERSION_ID < $version) {
-                    $issues[] = 'Psalm requires a PHP version ">= ' . $txt . '".'
+        if (PHP_VERSION_ID < $required_php_version) {
+            $issues[] = 'Psalm requires a PHP version ">= ' . $required_php_version_text . '".'
                         . ' You are running ' . PHP_VERSION . '.';
-                }
-                break;
-            }
         }
 
         $missing_extensions = array_filter(

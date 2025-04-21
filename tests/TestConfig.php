@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Config;
 use Psalm\Config\ProjectFileFilter;
 use Psalm\Internal\IncludeCollector;
@@ -12,7 +11,7 @@ use SimpleXMLElement;
 
 use function getcwd;
 
-final class TestConfig extends Config
+class TestConfig extends Config
 {
     private static ?ProjectFileFilter $cached_project_files = null;
 
@@ -30,8 +29,6 @@ final class TestConfig extends Config
         $this->cache_directory = null;
         $this->ignore_internal_falsable_issues = true;
         $this->ignore_internal_nullable_issues = true;
-        $this->ensure_override_attribute = false;
-        $this->strict_binary_operands = false;
 
         $this->base_dir = (string) getcwd();
 
@@ -63,13 +60,11 @@ final class TestConfig extends Config
     }
 
     /** @return false */
-    #[Override]
     public function getComposerFilePathForClassLike(string $fq_classlike_name): bool
     {
         return false;
     }
 
-    #[Override]
     public function getProjectDirectories(): array
     {
         return [];

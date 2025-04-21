@@ -19,7 +19,6 @@ use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
-use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
@@ -30,7 +29,6 @@ use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNonEmptyArray;
-use Psalm\Type\Atomic\TNonEmptyNonspecificLiteralString;
 use Psalm\Type\Atomic\TNonEmptyString;
 use Psalm\Type\Atomic\TNonFalsyString;
 use Psalm\Type\Atomic\TNull;
@@ -192,7 +190,7 @@ final class FilterUtils
                     if ($filter_int_used === FILTER_CALLBACK) {
                         $only_callables = true;
                         foreach ($atomic_type->properties['options']->getAtomicTypes() as $option_atomic) {
-                            if ($option_atomic->isCallableType() && !$option_atomic instanceof TClosure) {
+                            if ($option_atomic->isCallableType()) {
                                 continue;
                             }
 
@@ -727,7 +725,7 @@ final class FilterUtils
                         $fallback_params = [$keys_union, $values_union];
                     }
 
-                    $from_array[] = TKeyedArray::make(
+                    $from_array[] = new TKeyedArray(
                         $new,
                         $atomic_type->class_strings,
                         $fallback_params,
@@ -1176,9 +1174,7 @@ final class FilterUtils
                 }
 
                 foreach ($input_type->getAtomicTypes() as $atomic_type) {
-                    if ($atomic_type instanceof TNonEmptyString
-                        || $atomic_type instanceof TNonEmptyNonspecificLiteralString
-                    ) {
+                    if ($atomic_type instanceof TNonEmptyString) {
                         $filter_types[] = $atomic_type;
                     } elseif ($atomic_type instanceof TString) {
                         if (self::hasFlag($flags_int_used, FILTER_FLAG_HOSTNAME)) {
@@ -1264,10 +1260,7 @@ final class FilterUtils
                         [FILTER_SANITIZE_ENCODED, FILTER_SANITIZE_SPECIAL_CHARS, FILTER_DEFAULT],
                         true,
                     )
-                        && (
-                            $atomic_type instanceof TNonEmptyString
-                            || $atomic_type instanceof TNonEmptyNonspecificLiteralString
-                        )
+                        && $atomic_type instanceof TNonEmptyString
                         && (self::hasFlag($flags_int_used, FILTER_FLAG_STRIP_LOW)
                             || self::hasFlag($flags_int_used, FILTER_FLAG_STRIP_HIGH)
                             || self::hasFlag($flags_int_used, FILTER_FLAG_STRIP_BACKTICK)
@@ -1282,9 +1275,7 @@ final class FilterUtils
                         continue;
                     }
 
-                    if ($atomic_type instanceof TNonEmptyString
-                        || $atomic_type instanceof TNonEmptyNonspecificLiteralString
-                    ) {
+                    if ($atomic_type instanceof TNonEmptyString) {
                         $filter_types[] = new TNonEmptyString();
                         continue;
                     }
@@ -1431,7 +1422,7 @@ final class FilterUtils
         if (!$in_array_recursion
             && !self::hasFlag($flags_int_used, FILTER_REQUIRE_ARRAY)
             && self::hasFlag($flags_int_used, FILTER_FORCE_ARRAY)) {
-            $return_type = new Union([TKeyedArray::make(
+            $return_type = new Union([new TKeyedArray(
                 [$return_type],
                 null,
                 null,
@@ -1481,7 +1472,9 @@ final class FilterUtils
         Union $return_type,
         string $function_id,
     ): Union {
-        if ($statements_analyzer->data_flow_graph) {
+        if ($statements_analyzer->data_flow_graph
+            && !in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
+        ) {
             $function_return_sink = DataFlowNode::getForMethodReturn(
                 $function_id,
                 $function_id,

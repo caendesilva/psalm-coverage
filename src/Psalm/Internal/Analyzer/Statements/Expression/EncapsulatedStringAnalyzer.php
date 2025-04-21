@@ -11,7 +11,6 @@ use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
-use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Type;
@@ -24,6 +23,8 @@ use Psalm\Type\Atomic\TNonspecificLiteralInt;
 use Psalm\Type\Atomic\TNonspecificLiteralString;
 use Psalm\Type\Atomic\TString;
 use Psalm\Type\Union;
+
+use function in_array;
 
 /**
  * @internal
@@ -89,11 +90,13 @@ final class EncapsulatedStringAnalyzer
                     }
                 }
 
-                if ($graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
+                if ($statements_analyzer->data_flow_graph
+                    && !in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
+                ) {
                     $var_location = new CodeLocation($statements_analyzer, $part);
 
                     $new_parent_node = DataFlowNode::getForAssignment('concat', $var_location);
-                    $graph->addNode($new_parent_node);
+                    $statements_analyzer->data_flow_graph->addNode($new_parent_node);
 
                     $parent_nodes[$new_parent_node->id] = $new_parent_node;
 
@@ -103,15 +106,9 @@ final class EncapsulatedStringAnalyzer
                     $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
                     $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
 
-                    $taints = $added_taints & ~$removed_taints;
-                    if ($taints !== 0 && !$graph instanceof VariableUseGraph) {
-                        $taint_source = $new_parent_node->setTaints($taints);
-                        $graph->addSource($taint_source);
-                    }
-
                     if ($casted_part_type->parent_nodes) {
                         foreach ($casted_part_type->parent_nodes as $parent_node) {
-                            $graph->addPath(
+                            $statements_analyzer->data_flow_graph->addPath(
                                 $parent_node,
                                 $new_parent_node,
                                 'concat',

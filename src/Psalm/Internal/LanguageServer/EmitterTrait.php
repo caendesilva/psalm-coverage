@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer;
 
-use Override;
-
 use function array_multisort;
 use function call_user_func_array;
 use function count;
@@ -38,7 +36,6 @@ trait EmitterTrait
     /**
      * Subscribe to an event.
      */
-    #[Override]
     public function on(string $eventName, callable $callBack, int $priority = 100): void
     {
         if (!isset($this->listeners[$eventName])) {
@@ -77,7 +74,6 @@ trait EmitterTrait
      *
      * @param list<mixed> $arguments
      */
-    #[Override]
     public function emit(
         string $eventName,
         array $arguments = [],
@@ -120,7 +116,6 @@ trait EmitterTrait
      *
      * @return callable[]
      */
-    #[Override]
     public function listeners(string $eventName): array
     {
         if (!isset($this->listeners[$eventName])) {
@@ -145,7 +140,6 @@ trait EmitterTrait
      * If the listener could not be found, this method will return false. If it
      * was removed it will return true.
      */
-    #[Override]
     public function removeListener(string $eventName, callable $listener): bool
     {
         if (!isset($this->listeners[$eventName])) {

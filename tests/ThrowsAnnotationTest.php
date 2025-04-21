@@ -8,7 +8,7 @@ use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
 
-final class ThrowsAnnotationTest extends TestCase
+class ThrowsAnnotationTest extends TestCase
 {
     public function testUndefinedClassAsThrows(): void
     {

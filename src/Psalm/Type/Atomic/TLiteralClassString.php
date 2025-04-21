@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
-
 use function preg_quote;
 use function preg_replace;
 use function str_contains;
@@ -29,7 +27,6 @@ final class TLiteralClassString extends TLiteralString
         parent::__construct($value, $from_docblock);
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'class-string(' . $this->value . ')';
@@ -38,7 +35,6 @@ final class TLiteralClassString extends TLiteralString
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -48,13 +44,11 @@ final class TLiteralClassString extends TLiteralString
         return 'string';
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         if (!$exact) {
@@ -64,7 +58,6 @@ final class TLiteralClassString extends TLiteralString
         return $this->value . '::class';
     }
 
-    #[Override]
     public function getAssertionString(): string
     {
         return $this->getKey();
@@ -73,7 +66,6 @@ final class TLiteralClassString extends TLiteralString
     /**
      * @param array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,

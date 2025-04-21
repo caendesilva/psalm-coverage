@@ -4,18 +4,16 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class ArrayFunctionCallTest extends TestCase
+class ArrayFunctionCallTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -446,31 +444,6 @@ final class ArrayFunctionCallTest extends TestCase
                     '$d' => 'non-empty-array<int|string, int|string>',
                 ],
             ],
-            'arrayReverseListDontPreserveKey' => [
-                'code' => '<?php
-                    /** @return list{0: 1, 1: 1.1, 2: 2, 3: false, 4?: string|true, 5?: true} */
-                    function f(): array {
-                        return [1, 1.1, 2, false, "", true];
-                    }
-                    /** @return list{0: 0, 1: 1, 2: 2, 3?: 3, 4?: 4} */
-                    function g(): array { return [0, 1, 2]; }
-
-                    $r = array_reverse(f());
-                    $s = array_reverse(g());',
-                'assertions' => [
-                    '$r===' => 'list{0: bool|string, 1: 2|bool|string, 2: 2|false|float(1.1), 3: 1|2|float(1.1), 4?: 1|float(1.1), 5?: 1}',
-                    '$s===' => 'list{0: 2|3|4, 1: 1|2|3, 2: 0|1|2, 3?: 0|1, 4?: 0}',
-                ],
-            ],
-            'arrayReverseListInt' => [
-                'code' => '<?php
-                    /** @return list<int> */
-                    function f(): array { return []; }
-                    $a = array_reverse(f());',
-                'assertions' => [
-                    '$a' => 'list<int>',
-                ],
-            ],
             'arrayReverseDontPreserveKeyExplicitArg' => [
                 'code' => '<?php
                     $d = array_reverse(["a", "b", 1, "d" => 4], false);',
@@ -513,35 +486,6 @@ final class ArrayFunctionCallTest extends TestCase
                 'assertions' => [
                     '$r' => 'array<string, int>',
                 ],
-            ],
-            'variousUArrays' => [
-                'code' => '<?php
-                    $array1 = array("a" => "green", "b" => "brown", "c" => "blue", "red");
-                    $array2 = array("a" => "GREEN", "B" => "brown", "yellow", "red");
-                    $array3 = array("a" => "GREEN");
-
-                    function compareKey(string $a, string $b): int { return $a <=> $b; }
-                    function compareValue(mixed $a, mixed $b): int { return -1; }
-
-                    // Key comparison
-                    array_diff_ukey($array1, $array2, $array3, "compareKey");
-                    array_diff_uassoc($array1, $array2, $array3, "compareKey");
-                    array_intersect_ukey($array1, $array2, $array3, "compareKey");
-                    array_intersect_uassoc($array1, $array2, $array3, "compareKey");
-
-                    // Key+value comparison
-                    array_udiff_uassoc($array1, $array2, $array3, "compareKey", "compareValue");
-                    array_uintersect_uassoc($array1, $array2, $array3, "compareKey", "compareValue");
-
-                    // Value comparison
-                    array_udiff($array1, $array2, $array3, "compareValue");
-                    array_udiff_assoc($array1, $array2, $array3,  "compareValue");
-                    array_uintersect($array1, $array2, $array3, "compareValue");
-                    array_uintersect_assoc($array1, $array2, $array3,  "compareValue");
-                ',
-                'assertions' => [],
-                'ignored_issues' => [],
-                'php_version' => '8.0',
             ],
             'arrayPopMixed' => [
                 'code' => '<?php
@@ -698,7 +642,7 @@ final class ArrayFunctionCallTest extends TestCase
                     '$b' => 'int',
                 ],
             ],
-            'arrayPopNonEmptyAfterCountGreaterOrEqualToOneReversed' => [
+            'arrayPopNonEmptyAfterCountGreatorOrEqualToOneReversed' => [
                 'code' => '<?php
                     /** @var array<string, int> */
                     $a = ["a" => 5, "b" => 6, "c" => 7];
@@ -1222,7 +1166,7 @@ final class ArrayFunctionCallTest extends TestCase
                 ',
                 'assertions' => [
                     '$a===' => 'list{0, 0, 0}',
-                    // Technically this doesn't cover the case of running on 8.0 but nvm
+                    // Techinically this doesn't cover the case of running on 8.0 but nvm
                     '$b===' => 'array{-1: 0, 0: 0, 1: 0}',
                     '$c===' => 'array{-2: 0, 0: 0, 1: 0}',
                 ],
@@ -2251,7 +2195,7 @@ final class ArrayFunctionCallTest extends TestCase
                     shuffle($emptyArray);',
                 'assertions' => [
                     '$array' => 'non-empty-list<int>',
-                    '$emptyArray' => 'array<never, never>',
+                    '$emptyArray' => 'list<never>',
                 ],
             ],
             'sort' => [
@@ -2262,7 +2206,7 @@ final class ArrayFunctionCallTest extends TestCase
                     sort($emptyArray);',
                 'assertions' => [
                     '$array' => 'non-empty-list<int>',
-                    '$emptyArray' => 'array<never, never>',
+                    '$emptyArray' => 'list<never>',
                 ],
             ],
             'rsort' => [
@@ -2273,7 +2217,7 @@ final class ArrayFunctionCallTest extends TestCase
                     rsort($emptyArray);',
                 'assertions' => [
                     '$array' => 'non-empty-list<int>',
-                    '$emptyArray' => 'array<never, never>',
+                    '$emptyArray' => 'list<never>',
                 ],
             ],
             'usort' => [
@@ -2285,7 +2229,7 @@ final class ArrayFunctionCallTest extends TestCase
                     usort($emptyArray, "baz");',
                 'assertions' => [
                     '$array' => 'non-empty-list<int>',
-                    '$emptyArray' => 'array<never, never>',
+                    '$emptyArray' => 'list<never>',
                 ],
             ],
             'closureParamConstraintsMet' => [
@@ -2755,11 +2699,10 @@ final class ArrayFunctionCallTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
-            'arrayFilterUseMethodOnInferableInt' => [
+            'arrayFilterUseMethodOnInferrableInt' => [
                 'code' => '<?php
                     $a = array_filter([1, 2, 3, 4], function ($i) { return $i->foo(); });',
                 'error_message' => 'InvalidMethodCall',
@@ -2805,7 +2748,7 @@ final class ArrayFunctionCallTest extends TestCase
                     array_filter($arg, "strlen", ARRAY_FILTER_USE_KEY);',
                 'error_message' => 'InvalidScalarArgument',
             ],
-            'arrayMapUseMethodOnInferableInt' => [
+            'arrayMapUseMethodOnInferrableInt' => [
                 'code' => '<?php
                     $a = array_map(function ($i) { return $i->foo(); }, [1, 2, 3, 4]);',
                 'error_message' => 'InvalidMethodCall',
@@ -3159,53 +3102,6 @@ final class ArrayFunctionCallTest extends TestCase
                         SORT_NATURAL
                     );',
                 'error_message' => 'InvalidArgument - src' . DIRECTORY_SEPARATOR . 'somefile.php:3:21 - All arguments of array_multisort after argument 4, which are after the last by reference passed array argument and its flags, are redundant and can be removed, since the sorting happens by reference',
-            ],
-            'badArrayCb1' => [
-                'code' => '<?php
-                    $array1 = array("a" => "green", "b" => "brown", "c" => "blue", "red");
-                    $array2 = array("a" => "GREEN", "B" => "brown", "yellow", "red");
-                    $array3 = array("a" => "GREEN");
-
-                    function compareKey(string $a, string $b): int { return $a <=> $b; }
-                    function compareValue(mixed $a, mixed $b): int { return -1; }
-
-                    // Key comparison
-                    array_diff_ukey($array1, $array2, $array3, "compareKey", "compareKey");
-                ',
-                'error_message' => 'InvalidArgument',
-                'ignored_issues' => [],
-                'php_version' => '8.0',
-            ],
-            'badArrayCb2' => [
-                'code' => '<?php
-                    $array1 = array("a" => "green", "b" => "brown", "c" => "blue", "red");
-                    $array2 = array("a" => "GREEN", "B" => "brown", "yellow", "red");
-                    $array3 = array("a" => "GREEN");
-
-                    function compareKey(string $a, string $b): int { return $a <=> $b; }
-                    function compareValue(mixed $a, mixed $b): int { return -1; }
-
-                    // Key+value comparison
-                    array_udiff_uassoc($array1, $array2, $array3, "compareKey");
-                ',
-                'error_message' => 'InvalidArgument',
-                'ignored_issues' => [],
-                'php_version' => '8.0',
-            ],
-            'badArrayCb3' => [
-                'code' => '<?php
-                    $array1 = array("a" => "green", "b" => "brown", "c" => "blue", "red");
-                    $array2 = array("a" => "GREEN", "B" => "brown", "yellow", "red");
-                    $array3 = array("a" => "GREEN");
-
-                    function compareKey(int $a): int { return $a; }
-
-                    // Value comparison
-                    array_udiff($array1, $array2, $array3, "compareKey");
-                ',
-                'error_message' => 'PossiblyInvalidArgument',
-                'ignored_issues' => [],
-                'php_version' => '8.0',
             ],
         ];
     }

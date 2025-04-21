@@ -48,7 +48,10 @@ final class VarDocblockComment
      */
     public bool $allow_private_mutation = false;
 
-    public int $removed_taints = 0;
+    /**
+     * @var list<string>
+     */
+    public array $removed_taints = [];
 
     /**
      * @var array<int, string>

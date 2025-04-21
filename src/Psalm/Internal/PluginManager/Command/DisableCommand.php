@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\PluginManager\Command;
 
 use InvalidArgumentException;
-use Override;
 use Psalm\Internal\PluginManager\PluginListFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -30,7 +29,6 @@ final class DisableCommand extends Command
         parent::__construct();
     }
 
-    #[Override]
     protected function configure(): void
     {
         $this
@@ -46,7 +44,6 @@ final class DisableCommand extends Command
         $this->addUsage('\'Plugin\Class\Name\' [-c path/to/psalm.xml]');
     }
 
-    #[Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\LanguageServer\Client\Progress;
 
 use LogicException;
-use Override;
 use Psalm\Internal\LanguageServer\ClientHandler;
 
 /** @internal */
@@ -24,7 +23,6 @@ final class Progress implements ProgressInterface
     ) {
     }
 
-    #[Override]
     public function begin(
         string $title,
         ?string $message = null,
@@ -60,7 +58,6 @@ final class Progress implements ProgressInterface
         $this->status = self::STATUS_ACTIVE;
     }
 
-    #[Override]
     public function end(?string $message = null): void
     {
         if ($this->status === self::STATUS_FINISHED) {
@@ -87,7 +84,6 @@ final class Progress implements ProgressInterface
         $this->status = self::STATUS_FINISHED;
     }
 
-    #[Override]
     public function update(?string $message = null, ?int $percentage = null): void
     {
         if ($this->status === self::STATUS_FINISHED) {

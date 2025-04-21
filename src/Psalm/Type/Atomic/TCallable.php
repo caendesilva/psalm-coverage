@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
@@ -18,7 +17,7 @@ use Psalm\Type\Union;
  *
  * @psalm-immutable
  */
-final class TCallable extends Atomic
+final class TCallable extends Atomic implements TCallableInterface
 {
     use UnserializeMemoryUsageSuppressionTrait;
     use CallableTrait;
@@ -47,7 +46,6 @@ final class TCallable extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -57,7 +55,6 @@ final class TCallable extends Atomic
         return 'callable';
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return $this->params === null && $this->return_type === null;
@@ -66,7 +63,6 @@ final class TCallable extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithArgTypes(TemplateResult $template_result, ?Codebase $codebase): self
     {
         $replaced = $this->replaceCallableTemplateTypesWithArgTypes($template_result, $codebase);
@@ -83,7 +79,6 @@ final class TCallable extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithStandins(
         TemplateResult $template_result,
         Codebase $codebase,
@@ -119,16 +114,8 @@ final class TCallable extends Atomic
         );
     }
 
-    #[Override]
     protected function getChildNodeKeys(): array
     {
         return $this->getCallableChildNodeKeys();
-    }
-
-    /** @return true */
-    #[Override]
-    public function isCallableType(): bool
-    {
-        return true;
     }
 }

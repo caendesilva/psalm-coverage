@@ -39,7 +39,6 @@ use Psalm\Type\Atomic\TVoid;
 use Psalm\Type\Union;
 use ReflectionProperty;
 
-use function array_any;
 use function array_filter;
 use function array_map;
 use function array_merge;
@@ -498,7 +497,7 @@ final class TypeExpander
                 unset($property_type);
             }
             if ($changed) {
-                $return_type = TKeyedArray::make(
+                $return_type = new TKeyedArray(
                     $properties,
                     $return_type->class_strings,
                     $fallback_params,
@@ -602,7 +601,7 @@ final class TypeExpander
             );
 
             if ($container_class_storage->template_types
-                && array_any(
+                && array_filter(
                     $container_class_storage->template_types,
                     static fn($type_map): bool => !reset($type_map)->hasMixed(),
                 )
@@ -674,18 +673,7 @@ final class TypeExpander
             }
             $return_type = $return_type->setIntersectionTypes($return_type_types)
                 ->setIsStatic(true, true);
-        } elseif ($return_type->is_static
-            && is_string($static_class_type)
-            && $final
-            && (
-                $return_type->value === $self_class
-                || ($self_class !== null &&
-                    ($codebase->classExtends($return_type->value, $self_class)
-                        || $codebase->classExtends($self_class, $return_type->value)
-                    )
-                )
-            )
-        ) {
+        } elseif ($return_type->is_static && is_string($static_class_type) && $final) {
             $return_type = $return_type->setValueIsStatic(
                 $static_class_type,
                 false,
@@ -988,7 +976,7 @@ final class TypeExpander
         if ($properties === []) {
             return [$return_type];
         }
-        return [TKeyedArray::make(
+        return [new TKeyedArray(
             $properties,
             null,
             $all_sealed ? null : [Type::getString(), Type::getMixed()],

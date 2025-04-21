@@ -92,11 +92,11 @@ final class SimpleTypeInferer
                         return Type::getString($result);
                     }
 
-                    if ($left->isNonEmptyString()) {
+                    if ($left->isSingle() && $left->getSingleAtomic() instanceof TNonEmptyString) {
                         return new Union([new TNonEmptyString()]);
                     }
 
-                    if ($right->isNonEmptyString()) {
+                    if ($right->isSingle() && $right->getSingleAtomic() instanceof TNonEmptyString) {
                         return new Union([new TNonEmptyString()]);
                     }
                 }
@@ -590,7 +590,7 @@ final class SimpleTypeInferer
             && $array_creation_info->can_create_objectlike
             && $array_creation_info->property_types
         ) {
-            $objectlike = TKeyedArray::make(
+            $objectlike = new TKeyedArray(
                 $array_creation_info->property_types,
                 $array_creation_info->class_strings,
                 null,

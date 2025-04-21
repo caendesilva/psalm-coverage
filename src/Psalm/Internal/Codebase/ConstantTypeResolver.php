@@ -31,7 +31,6 @@ use Psalm\Internal\Scanner\UnresolvedConstantComponent;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TArray;
-use Psalm\Type\Atomic\TEnumCase;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralClassString;
@@ -39,12 +38,12 @@ use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TMixed;
+use Psalm\Type\Atomic\TNever;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TString;
 use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Union;
 use ReflectionProperty;
-use UnitEnum;
 
 use function ctype_digit;
 use function is_array;
@@ -145,7 +144,7 @@ final class ConstantTypeResolver
                 }
 
                 if ($left instanceof TKeyedArray && $right instanceof TKeyedArray) {
-                    $type = TKeyedArray::make(
+                    $type = new TKeyedArray(
                         $left->properties + $right->properties,
                         null,
                     );
@@ -216,7 +215,7 @@ final class ConstantTypeResolver
                     }
 
                     if (!$spread_array instanceof TKeyedArray) {
-                        return Type::getArrayAtomic();
+                        return new TArray([Type::getArrayKey(), Type::getMixed()]);
                     }
 
                     foreach ($spread_array->properties as $k => $spread_array_type) {
@@ -252,7 +251,7 @@ final class ConstantTypeResolver
                         $auto_key = ((int) $key_type->value) + 1;
                     }
                 } else {
-                    return Type::getArrayAtomic();
+                    return new TArray([Type::getArrayKey(), Type::getMixed()]);
                 }
 
                 $value_type = new Union([self::resolve(
@@ -266,9 +265,12 @@ final class ConstantTypeResolver
             }
 
             if (empty($properties)) {
-                $resolved_type = Type::getEmptyArrayAtomic();
+                $resolved_type = new TArray([
+                    new Union([new TNever()]),
+                    new Union([new TNever()]),
+                ]);
             } else {
-                $resolved_type = TKeyedArray::make($properties, null, null, $is_list);
+                $resolved_type = new TKeyedArray($properties, null, null, $is_list);
             }
 
             return $resolved_type;
@@ -366,14 +368,11 @@ final class ConstantTypeResolver
     /**
      * Note: This takes an array, but any array should only contain other arrays and scalars.
      */
-    public static function getLiteralTypeFromScalarValue(array|string|int|float|bool|UnitEnum|null $value): Atomic
+    public static function getLiteralTypeFromScalarValue(array|string|int|float|bool|null $value): Atomic
     {
-        if ($value instanceof UnitEnum) {
-            return new TEnumCase($value::class, $value->name);
-        }
         if (is_array($value)) {
             if (empty($value)) {
-                return Type::getEmptyArrayAtomic();
+                return Type::getEmptyArray()->getSingleAtomic();
             }
 
             $types = [];
@@ -381,7 +380,7 @@ final class ConstantTypeResolver
             foreach ($value as $key => $val) {
                 $types[$key] = new Union([self::getLiteralTypeFromScalarValue($val)]);
             }
-            return TKeyedArray::make($types, null);
+            return new TKeyedArray($types, null);
         }
 
         if (is_string($value)) {

@@ -66,7 +66,7 @@ final class ParsedDocblock
 
     private static function shouldAddNewLineBetweenAnnotations(): bool
     {
-        return self::$shouldAddNewLineBetweenAnnotations;
+        return static::$shouldAddNewLineBetweenAnnotations;
     }
 
     /**
@@ -74,11 +74,11 @@ final class ParsedDocblock
      */
     public static function addNewLineBetweenAnnotations(bool $should = true): void
     {
-        self::$shouldAddNewLineBetweenAnnotations = $should;
+        static::$shouldAddNewLineBetweenAnnotations = $should;
     }
 
     public static function resetNewlineBetweenAnnotations(): void
     {
-        self::$shouldAddNewLineBetweenAnnotations = true;
+        static::$shouldAddNewLineBetweenAnnotations = true;
     }
 }

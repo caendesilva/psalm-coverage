@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -41,7 +40,6 @@ trait GenericTrait
         return $cloned;
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         $s = '';
@@ -73,7 +71,6 @@ trait GenericTrait
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,

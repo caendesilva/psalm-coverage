@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
-use Override;
 use PhpParser;
 
 /**
@@ -24,7 +23,6 @@ final class OffsetShifterVisitor extends PhpParser\NodeVisitorAbstract
     ) {
     }
 
-    #[Override]
     public function enterNode(PhpParser\Node $node): ?int
     {
         /** @var array{startFilePos: int, endFilePos: int, startLine: int} */

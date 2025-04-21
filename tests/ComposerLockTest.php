@@ -12,7 +12,7 @@ use function json_encode;
 use const JSON_THROW_ON_ERROR;
 
 /** @group PluginManager */
-final class ComposerLockTest extends TestCase
+class ComposerLockTest extends TestCase
 {
     /**
      * @test

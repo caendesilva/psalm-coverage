@@ -259,7 +259,7 @@ final class Context
     public bool $is_global = false;
 
     /**
-     * @var array<string, bool|int>
+     * @var array<string, bool>
      */
     public array $protected_var_ids = [];
 

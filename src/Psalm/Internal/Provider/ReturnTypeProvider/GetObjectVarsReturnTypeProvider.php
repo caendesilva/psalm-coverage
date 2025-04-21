@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
-use Override;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassAnalyzer;
@@ -32,7 +31,6 @@ use function strtolower;
  */
 final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
-    #[Override]
     public static function getFunctionIds(): array
     {
         return ['get_object_vars'];
@@ -60,7 +58,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                 $codebase = $statements_source->getCodebase();
                 $enum_classlike_storage = $codebase->classlike_storage_provider->get($object_type->value);
                 if ($enum_classlike_storage->enum_type === null) {
-                    return TKeyedArray::make($properties);
+                    return new TKeyedArray($properties);
                 }
                 $enum_case_storage = $enum_classlike_storage->enum_cases[$object_type->case_name];
                 $case_value = $enum_case_storage->getValue($statements_source->getCodebase()->classlikes);
@@ -69,14 +67,14 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                     $properties['value'] = new Union([$case_value]);
                 }
 
-                return TKeyedArray::make($properties);
+                return new TKeyedArray($properties);
             }
 
             if ($object_type instanceof TObjectWithProperties) {
                 if ([] === $object_type->properties) {
                     return self::$fallback;
                 }
-                return TKeyedArray::make($object_type->properties);
+                return new TKeyedArray($object_type->properties);
             }
 
             if ($object_type instanceof TNamedObject) {
@@ -140,7 +138,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                     return self::$fallback;
                 }
 
-                return TKeyedArray::make(
+                return new TKeyedArray(
                     $properties,
                     null,
                     $class_storage->final
@@ -154,7 +152,6 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
         return self::$fallback;
     }
 
-    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): ?Union
     {
         $statements_source = $event->getStatementsSource();

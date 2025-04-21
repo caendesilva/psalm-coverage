@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\LanguageServer;
 
 use Amp\ByteStream\WritableResourceStream;
-use Override;
 
 /**
  * @internal
@@ -25,7 +24,6 @@ final class ProtocolStreamWriter implements ProtocolWriter
     /**
      * {@inheritdoc}
      */
-    #[Override]
     public function write(Message $msg): void
     {
         $this->output->write((string)$msg);

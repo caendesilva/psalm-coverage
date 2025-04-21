@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use Psalm\Codebase;
@@ -29,11 +28,10 @@ use function getcwd;
 
 use const DIRECTORY_SEPARATOR;
 
-final class CodebaseTest extends TestCase
+class CodebaseTest extends TestCase
 {
     private Codebase $codebase;
 
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -156,7 +154,6 @@ final class CodebaseTest extends TestCase
              * @return void
              * @phpcsSuppress SlevomatCodingStandard.TypeHints.ReturnTypeHint
              */
-            #[Override]
             public static function afterClassLikeVisit(AfterClassLikeVisitEvent $event)
             {
                 $stmt = $event->getStmt();
@@ -234,7 +231,6 @@ final class CodebaseTest extends TestCase
 
         $eventHandler = new class implements BeforeAddIssueInterface
         {
-            #[Override]
             public static function beforeAddIssue(BeforeAddIssueEvent $event): ?bool
             {
                 $issue = $event->getIssue();
@@ -280,7 +276,6 @@ final class CodebaseTest extends TestCase
         );
         $eventHandler = new class implements BeforeAddIssueInterface
         {
-            #[Override]
             public static function beforeAddIssue(BeforeAddIssueEvent $event): ?bool
             {
                 $issue = $event->getIssue();

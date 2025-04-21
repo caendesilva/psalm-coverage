@@ -27,7 +27,6 @@ use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TNamedObject;
-use Psalm\Type\Atomic\TNonEmptyNonspecificLiteralString;
 use Psalm\Type\Atomic\TNonEmptyString;
 use Psalm\Type\Atomic\TString;
 use Psalm\Type\Atomic\TTemplateParam;
@@ -197,10 +196,6 @@ final class NegatedAssertionReconciler extends Reconciler
             && $existing_var_type->hasString()
         ) {
             // do nothing
-        } elseif ($assertion_type instanceof TNonEmptyNonspecificLiteralString
-            && $existing_var_type->hasString()
-        ) {
-            // do nothing
         } elseif ($assertion instanceof IsClassNotEqual) {
             // do nothing
         } elseif ($assertion_type instanceof TClassString && $assertion_type->is_loaded) {
@@ -210,7 +205,7 @@ final class NegatedAssertionReconciler extends Reconciler
             && $assertion_type instanceof TNamedObject
             && isset($existing_var_type->getAtomicTypes()[$assertion_type->getKey()])
         ) {
-            // checking if two types share a common parent is not enough to guarantee children are instanceof each other
+            // checking if two types share a common parent is not enough to guarantee childs are instanceof each other
             // fall through
         } elseif ($existing_var_type->isArray()
             && ($assertion->getAtomicType() instanceof TArray

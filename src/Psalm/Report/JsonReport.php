@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Report;
 
-use Override;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Json\Json;
 use Psalm\Report;
@@ -14,7 +13,6 @@ use function array_values;
 
 final class JsonReport extends Report
 {
-    #[Override]
     public function create(): string
     {
         $options = $this->pretty ? Json::PRETTY : Json::DEFAULT;

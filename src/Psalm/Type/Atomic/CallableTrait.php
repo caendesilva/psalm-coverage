@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -108,7 +107,6 @@ trait CallableTrait
         return $return_type_string;
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         $param_string = $this->getParamString();
@@ -121,7 +119,6 @@ trait CallableTrait
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
@@ -177,7 +174,6 @@ trait CallableTrait
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -191,7 +187,6 @@ trait CallableTrait
         return $this->value;
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         $param_string = '';

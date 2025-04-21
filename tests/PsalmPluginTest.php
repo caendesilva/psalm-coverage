@@ -8,7 +8,6 @@ use InvalidArgumentException;
 use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use Mockery\MockInterface;
-use Override;
 use Psalm\Internal\PluginManager\Command\DisableCommand;
 use Psalm\Internal\PluginManager\Command\EnableCommand;
 use Psalm\Internal\PluginManager\Command\ShowCommand;
@@ -22,7 +21,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 use function preg_quote;
 
 /** @group PluginManager */
-final class PsalmPluginTest extends TestCase
+class PsalmPluginTest extends TestCase
 {
     use MockeryPHPUnitIntegration;
 
@@ -32,7 +31,6 @@ final class PsalmPluginTest extends TestCase
 
     private Application $app;
 
-    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();

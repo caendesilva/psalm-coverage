@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
@@ -29,13 +28,11 @@ final class TTemplateKeyOf extends Atomic
         parent::__construct($from_docblock);
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'key-of<' . $this->param_name . '>';
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         if (!$exact) {
@@ -48,7 +45,6 @@ final class TTemplateKeyOf extends Atomic
     /**
      * @param array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
@@ -61,7 +57,6 @@ final class TTemplateKeyOf extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -71,7 +66,6 @@ final class TTemplateKeyOf extends Atomic
         return null;
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;
@@ -80,7 +74,6 @@ final class TTemplateKeyOf extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
         ?Codebase $codebase,

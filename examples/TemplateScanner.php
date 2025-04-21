@@ -18,7 +18,6 @@ final class TemplateScanner extends Psalm\Internal\Scanner\FileScanner
 {
     final public const VIEW_CLASS = 'Your\\View\\Class';
 
-    #[\Override]
     public function scan(
         Codebase $codebase,
         FileStorage $file_storage,

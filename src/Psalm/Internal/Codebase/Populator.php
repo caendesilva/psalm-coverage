@@ -560,8 +560,6 @@ final class Populator
                 $storage->declaring_pseudo_method_ids[$method_name] = $pseudo_method_id;
             };
         }
-
-        $parent_storage->has_children = true;
     }
 
     private function populateInterfaceData(

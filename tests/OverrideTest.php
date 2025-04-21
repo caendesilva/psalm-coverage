@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Config;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-final class OverrideTest extends TestCase
+class OverrideTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
 
-    #[Override]
     protected function makeConfig(): Config
     {
         $config = parent::makeConfig();
@@ -22,7 +20,6 @@ final class OverrideTest extends TestCase
         return $config;
     }
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -39,6 +36,9 @@ final class OverrideTest extends TestCase
                         public function __construct() {}
                     }
                 ',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.3',
             ],
             'overrideClass' => [
                 'code' => '<?php
@@ -47,10 +47,13 @@ final class OverrideTest extends TestCase
                     }
 
                     class C2 extends C {
-                        #[\Override]
+                        #[Override]
                         public function f(): void {}
                     }
                 ',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.3',
             ],
             'overrideInterface' => [
                 'code' => '<?php
@@ -63,36 +66,9 @@ final class OverrideTest extends TestCase
                         public function f(): void;
                     }
                 ',
-            ],
-            'traitNotMissingAttribute1' => [
-                'code' => '<?php
-                    trait B {
-                        public function f(): void {}
-                    }
-
-                    class C {
-                        use B;
-                    }
-
-                    class C2 extends C {
-                        use B;
-                    }
-                ',
-            ],
-            'traitNotMissingAttribute2' => [
-                'code' => '<?php
-                    trait B {
-                        public function f(): void {}
-                    }
-
-                    class C {
-                        public function f(): void {}
-                    }
-
-                    class C2 extends C {
-                        use B;
-                    }
-                ',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.3',
             ],
             'canBeUsedOnPureMethods' => [
                 'code' => <<<'PHP'
@@ -107,6 +83,9 @@ final class OverrideTest extends TestCase
                         public function f(): void {}
                     }
                     PHP,
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.3',
             ],
             'ignoreImplicitStringable' => [
                 'code' => '
@@ -117,11 +96,13 @@ final class OverrideTest extends TestCase
                         }
                     }
                 ',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.3',
             ],
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

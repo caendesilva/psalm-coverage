@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-final class GeneratorTest extends TestCase
+class GeneratorTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -186,17 +184,6 @@ final class GeneratorTest extends TestCase
                         takesString($s);
                     }',
             ],
-            'returnTypeArr' => [
-                'code' => '<?php
-                    function foo() : Generator {
-                        $result = yield from [2];
-                        /** @psalm-check-type-exact $result = null */;
-                    }
-                    function foo2() : Generator {
-                        $result = yield from [];
-                        /** @psalm-check-type-exact $result = null */;
-                    }',
-            ],
             'expectNonNullableTypeWithYield' => [
                 'code' => '<?php
                     function example() : Generator {
@@ -310,7 +297,6 @@ final class GeneratorTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

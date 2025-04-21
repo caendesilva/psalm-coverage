@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\TypeReconciliation;
 
-use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-final class ConditionalTest extends TestCase
+class ConditionalTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -1232,19 +1230,6 @@ final class ConditionalTest extends TestCase
                         }
                     }',
             ],
-            'thingInstanceOfThis' => [
-                'code' => '<?php
-                    abstract class A {
-                        /** @psalm-param mixed $other */
-                        public function equals($other): void {
-                            if ($other instanceof $this) {
-                                /** @psalm-check-type $other = A&static */
-                                return;
-                            }
-                        }
-                    }
-                ',
-            ],
             'reconcileCallable' => [
                 'code' => '<?php
                     function reflectCallable(callable $callable): ReflectionFunctionAbstract {
@@ -1416,7 +1401,7 @@ final class ConditionalTest extends TestCase
                         takes_int($int);
                     }',
             ],
-            'looseEqualityShouldNotConvertMixedToString' => [
+            'looseEqualityShouldNotConverMixedToString' => [
                 'code' => '<?php
                     /** @var mixed */
                     $int = 0;
@@ -3190,7 +3175,6 @@ final class ConditionalTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Report;
 
-use Override;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\DataFlowNodeData;
 use Psalm\Internal\Analyzer\IssueData;
@@ -21,7 +20,6 @@ final class ConsoleReport extends Report
 {
     private ?string $link_format = null;
 
-    #[Override]
     public function create(): string
     {
         $output = '';

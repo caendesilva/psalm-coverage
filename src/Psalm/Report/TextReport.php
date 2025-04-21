@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Report;
 
-use Override;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Report;
 
@@ -12,7 +11,6 @@ use function sprintf;
 
 final class TextReport extends Report
 {
-    #[Override]
     public function create(): string
     {
         $output = '';

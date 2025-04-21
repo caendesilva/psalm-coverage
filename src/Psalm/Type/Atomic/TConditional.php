@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
@@ -58,19 +57,16 @@ final class TConditional extends Atomic
         return $cloned;
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'TConditional<' . $this->param_name . '>';
     }
 
-    #[Override]
     public function getAssertionString(): string
     {
         return '';
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         return '('
@@ -85,7 +81,6 @@ final class TConditional extends Atomic
      * @param  array<lowercase-string, string> $aliased_classes
      * @return null
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -98,7 +93,6 @@ final class TConditional extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
@@ -108,13 +102,11 @@ final class TConditional extends Atomic
         return '';
     }
 
-    #[Override]
     protected function getChildNodeKeys(): array
     {
         return ['conditional_type', 'if_type', 'else_type'];
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;
@@ -123,7 +115,6 @@ final class TConditional extends Atomic
     /**
      * @return static
      */
-    #[Override]
     public function replaceTemplateTypesWithArgTypes(
         TemplateResult $template_result,
         ?Codebase $codebase,

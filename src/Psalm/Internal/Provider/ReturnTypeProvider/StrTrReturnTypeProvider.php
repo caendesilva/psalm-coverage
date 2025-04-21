@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
-use Override;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
@@ -12,6 +11,8 @@ use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
 use Psalm\Type;
 use Psalm\Type\Union;
 use UnexpectedValueException;
+
+use function in_array;
 
 /**
  * @internal
@@ -21,7 +22,6 @@ final class StrTrReturnTypeProvider implements FunctionReturnTypeProviderInterfa
     /**
      * @return array<lowercase-string>
      */
-    #[Override]
     public static function getFunctionIds(): array
     {
         return [
@@ -29,7 +29,6 @@ final class StrTrReturnTypeProvider implements FunctionReturnTypeProviderInterfa
         ];
     }
 
-    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): Union
     {
         $statements_source = $event->getStatementsSource();
@@ -42,7 +41,8 @@ final class StrTrReturnTypeProvider implements FunctionReturnTypeProviderInterfa
 
         $type = Type::getString();
 
-        if ($statements_source->data_flow_graph) {
+        if ($statements_source->data_flow_graph
+            && !in_array('TaintedInput', $statements_source->getSuppressedIssues())) {
             $function_return_sink = DataFlowNode::getForMethodReturn(
                 $function_id,
                 $function_id,

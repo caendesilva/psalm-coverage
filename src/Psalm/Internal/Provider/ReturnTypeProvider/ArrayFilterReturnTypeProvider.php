@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
-use Override;
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Exception\ComplicatedExpressionException;
@@ -44,13 +43,11 @@ final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderI
     /**
      * @return array<lowercase-string>
      */
-    #[Override]
     public static function getFunctionIds(): array
     {
         return ['array_filter'];
     }
 
-    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): Union
     {
         $statements_source = $event->getStatementsSource();
@@ -63,7 +60,7 @@ final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderI
             return Type::getMixed();
         }
 
-        $fallback = Type::getArrayAtomic();
+        $fallback = new TArray([Type::getArrayKey(), Type::getMixed()]);
         $array_arg = $call_args[0]->value ?? null;
         if (!$array_arg) {
             $first_arg_array = $fallback;
@@ -118,7 +115,7 @@ final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderI
                     return Type::getEmptyArray();
                 }
 
-                return new Union([TKeyedArray::make(
+                return new Union([new TKeyedArray(
                     $new_properties,
                     null,
                     $first_arg_array->fallback_params,

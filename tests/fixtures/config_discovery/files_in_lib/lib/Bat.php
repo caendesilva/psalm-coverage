@@ -1,6 +1,6 @@
 <?php
 namespace Foo\Bar;
 
-final class Bat
+class Bat
 {
 }

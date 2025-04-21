@@ -6,7 +6,6 @@ namespace Psalm\Tests\Config;
 
 use Composer\Autoload\ClassLoader;
 use ErrorException;
-use Override;
 use Psalm\CodeLocation\Raw;
 use Psalm\Config;
 use Psalm\Config\IssueHandler;
@@ -20,6 +19,7 @@ use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Internal\Scanner\FileScanner;
+use Psalm\Internal\VersionUtils;
 use Psalm\Issue\TooManyArguments;
 use Psalm\Issue\UndefinedFunction;
 use Psalm\Tests\Config\Plugin\FileTypeSelfRegisteringPlugin;
@@ -28,6 +28,8 @@ use Psalm\Tests\TestCase;
 use Psalm\Tests\TestConfig;
 
 use function array_map;
+use function define;
+use function defined;
 use function dirname;
 use function error_get_last;
 use function get_class;
@@ -45,7 +47,7 @@ use function unlink;
 
 use const DIRECTORY_SEPARATOR;
 
-final class ConfigTest extends TestCase
+class ConfigTest extends TestCase
 {
     protected static TestConfig $config;
 
@@ -54,19 +56,19 @@ final class ConfigTest extends TestCase
     /** @var callable(int, string, string=, int=, array=):bool|null */
     protected $original_error_handler = null;
 
-    #[Override]
     public static function setUpBeforeClass(): void
     {
-        parent::setUpBeforeClass();
-
-        // hack to isolate Psalm from PHPUnit cli arguments
-        global $argv;
-        $argv = [];
-
         self::$config = new TestConfig();
+
+        if (!defined('PSALM_VERSION')) {
+            define('PSALM_VERSION', VersionUtils::getPsalmVersion());
+        }
+
+        if (!defined('PHP_PARSER_VERSION')) {
+            define('PHP_PARSER_VERSION', VersionUtils::getPhpParserVersion());
+        }
     }
 
-    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();
@@ -1334,6 +1336,10 @@ final class ConfigTest extends TestCase
 
     public function testModularConfig(): void
     {
+        // hack to isolate Psalm from PHPUnit arguments
+        global $argv;
+        $argv = [];
+
         $root = __DIR__ . '/../fixtures/ModularConfig';
         $config = Config::loadFromXMLFile($root . '/psalm.xml', $root);
         $this->assertEquals(
@@ -1345,7 +1351,6 @@ final class ConfigTest extends TestCase
         );
     }
 
-    #[Override]
     public function tearDown(): void
     {
         set_error_handler($this->original_error_handler);

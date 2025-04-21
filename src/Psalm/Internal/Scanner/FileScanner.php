@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Scanner;
 
-use Override;
 use PhpParser;
 use PhpParser\NodeTraverser;
 use Psalm\Aliases;
@@ -76,35 +75,30 @@ class FileScanner implements FileSource
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFilePath(): string
     {
         return $this->file_path;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFileName(): string
     {
         return $this->file_name;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getRootFilePath(): string
     {
         return $this->file_path;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getRootFileName(): string
     {
         return $this->file_name;
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getAliases(): Aliases
     {
         return new Aliases();

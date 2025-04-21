@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
-use Override;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\FuncCall;
@@ -52,7 +51,6 @@ final class NodeDataProvider implements NodeTypeProvider
     /**
      * @param Expr|Name|Return_ $node
      */
-    #[Override]
     public function setType(NodeAbstract $node, Union $type): void
     {
         $this->node_types[$node] = $type;
@@ -61,7 +59,6 @@ final class NodeDataProvider implements NodeTypeProvider
     /**
      * @param Expr|Name|Return_ $node
      */
-    #[Override]
     public function getType(NodeAbstract $node): ?Union
     {
         return $this->node_types[$node] ?? null;

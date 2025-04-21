@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -16,22 +15,11 @@ use function getcwd;
 
 use const DIRECTORY_SEPARATOR;
 
-final class IssueSuppressionTest extends TestCase
+class IssueSuppressionTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
 
-    #[Override]
-    protected function makeConfig(): Config
-    {
-        $config = parent::makeConfig();
-        $config->disable_suppress_all = false;
-
-        return $config;
-    }
-
-
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -229,7 +217,7 @@ final class IssueSuppressionTest extends TestCase
             $file_path,
             '<?php
                 /** @psalm-suppress PossiblyUnusedProperty */
-                final class Foo {
+                class Foo {
                     public string $bar = "baz";
                 }
 
@@ -250,7 +238,7 @@ final class IssueSuppressionTest extends TestCase
         $this->addFile(
             $file_path,
             '<?php
-                final class Foo {
+                class Foo {
                     /** @psalm-suppress PossiblyUnusedProperty */
                     public string $bar = "baz";
                 }
@@ -264,7 +252,6 @@ final class IssueSuppressionTest extends TestCase
         IssueBuffer::processUnusedSuppressions($this->project_analyzer->getCodebase()->file_provider);
     }
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -421,7 +408,6 @@ final class IssueSuppressionTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

@@ -4,18 +4,16 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class ReadonlyPropertyTest extends TestCase
+class ReadonlyPropertyTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -135,7 +133,6 @@ final class ReadonlyPropertyTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -157,7 +154,7 @@ final class ReadonlyPropertyTest extends TestCase
                     }',
                 'error_message' => 'InaccessibleProperty',
             ],
-            'readonlyPropertySetInConstructorAndAlsoAnotherMethodInSubclass' => [
+            'readonlyPropertySetInConstructorAndAlsoAnotherMethodInSublass' => [
                 'code' => '<?php
                     class A {
                         /**

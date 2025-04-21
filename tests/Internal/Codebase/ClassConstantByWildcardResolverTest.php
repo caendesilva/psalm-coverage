@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal\Codebase;
 
-use Override;
 use Psalm\Internal\Codebase\ClassConstantByWildcardResolver;
 use Psalm\Tests\TestCase;
 use Psalm\Type\Atomic\TLiteralString;
@@ -15,7 +14,6 @@ final class ClassConstantByWildcardResolverTest extends TestCase
 {
     private ClassConstantByWildcardResolver $resolver;
 
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();

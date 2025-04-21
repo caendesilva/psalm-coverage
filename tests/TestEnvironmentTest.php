@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase as PHPUnitTestCase;
 
 use function ini_get;
 
-final class TestEnvironmentTest extends PHPUnitTestCase
+class TestEnvironmentTest extends PHPUnitTestCase
 {
     public function testIniSettings(): void
     {

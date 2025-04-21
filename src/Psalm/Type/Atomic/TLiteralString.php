@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Type\Atomic;
 
 use InvalidArgumentException;
-use Override;
 use Psalm\Config;
 
 use function addcslashes;
@@ -73,13 +72,11 @@ class TLiteralString extends TString
         return $cloned;
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'string(' . $this->value . ')';
     }
 
-    #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
         if (!$exact) {
@@ -94,7 +91,6 @@ class TLiteralString extends TString
         return "'" . $no_newline_value . "'";
     }
 
-    #[Override]
     public function getAssertionString(): string
     {
         return 'string(' . $this->value . ')';
@@ -103,7 +99,6 @@ class TLiteralString extends TString
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,

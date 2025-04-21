@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
 use PhpParser;
-use PhpParser\Node\Expr;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
@@ -16,6 +15,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
@@ -29,7 +29,6 @@ use Psalm\Issue\EmptyArrayAccess;
 use Psalm\Issue\InvalidArrayAccess;
 use Psalm\Issue\InvalidArrayAssignment;
 use Psalm\Issue\InvalidArrayOffset;
-use Psalm\Issue\LiteralKeyUnshapedArray;
 use Psalm\Issue\MixedArrayAccess;
 use Psalm\Issue\MixedArrayAssignment;
 use Psalm\Issue\MixedArrayOffset;
@@ -386,9 +385,22 @@ final class ArrayFetchAnalyzer
             && ($stmt_var_type = $statements_analyzer->node_data->getType($var))
             && $stmt_var_type->parent_nodes
         ) {
-            if (!$graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
+            if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph
+                && in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
+            ) {
                 $statements_analyzer->node_data->setType($var, $stmt_var_type->setParentNodes([]));
                 return;
+            }
+
+            $added_taints = [];
+            $removed_taints = [];
+
+            if ($context) {
+                $codebase = $statements_analyzer->getCodebase();
+                $event = new AddRemoveTaintsEvent($var, $context, $statements_analyzer, $codebase);
+
+                $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
+                $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
             }
 
             $var_location = new CodeLocation($statements_analyzer->getSource(), $var);
@@ -398,26 +410,9 @@ final class ArrayFetchAnalyzer
                 $var_location,
             );
 
-            $added_taints = 0;
-            $removed_taints = 0;
-
-            if ($context) {
-                $codebase = $statements_analyzer->getCodebase();
-                $event = new AddRemoveTaintsEvent($var, $context, $statements_analyzer, $codebase);
-
-                $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
-                $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
-
-                $taints = $added_taints & ~$removed_taints;
-                if ($taints !== 0 && !$graph instanceof VariableUseGraph) {
-                    $taint_source = $new_parent_node->setTaints($taints);
-                    $graph->addSource($taint_source);
-                }
-            }
-
             $array_key_node = null;
 
-            $graph->addNode($new_parent_node);
+            $statements_analyzer->data_flow_graph->addNode($new_parent_node);
 
             $dim_value = $offset_type->isSingleStringLiteral()
                 ? $offset_type->getSingleStringLiteral()->value
@@ -431,11 +426,11 @@ final class ArrayFetchAnalyzer
                     $var_location,
                 );
 
-                $graph->addNode($array_key_node);
+                $statements_analyzer->data_flow_graph->addNode($array_key_node);
             }
 
             foreach ($stmt_var_type->parent_nodes as $parent_node) {
-                $graph->addPath(
+                $statements_analyzer->data_flow_graph->addPath(
                     $parent_node,
                     $new_parent_node,
                     'arrayvalue-fetch' . ($dim_value !== null ? '-\'' . $dim_value . '\'' : ''),
@@ -444,7 +439,7 @@ final class ArrayFetchAnalyzer
                 );
 
                 if ($stmt_type->by_ref) {
-                    $graph->addPath(
+                    $statements_analyzer->data_flow_graph->addPath(
                         $new_parent_node,
                         $parent_node,
                         'arrayvalue-assignment' . ($dim_value !== null ? '-\'' . $dim_value . '\'' : ''),
@@ -454,7 +449,7 @@ final class ArrayFetchAnalyzer
                 }
 
                 if ($array_key_node) {
-                    $graph->addPath(
+                    $statements_analyzer->data_flow_graph->addPath(
                         $parent_node,
                         $array_key_node,
                         'arraykey-fetch',
@@ -549,15 +544,6 @@ final class ArrayFetchAnalyzer
                 $offset_type->removeType('null');
                 $offset_type->addType(Type::getAtomicStringFromLiteral(''));
             }
-        }
-
-        if ($codebase->literal_array_key_check && !$in_assignment) {
-            self::validateArrayOffset(
-                $statements_analyzer,
-                $stmt,
-                $array_type,
-                $offset_type,
-            );
         }
 
         if ($offset_type->isNullable() && !$context->inside_isset) {
@@ -922,37 +908,44 @@ final class ArrayFetchAnalyzer
         Context $context,
         StatementsAnalyzer $statements_analyzer,
     ): void {
-        if ($context->inside_isset || $context->inside_unset || !$offset_type->hasLiteralInt()) {
+        if ($context->inside_isset || $context->inside_unset) {
             return;
         }
 
-        foreach ($offset_type->getAtomicTypes() as $offset_type_part) {
-            if ($extended_var_id
-                && $offset_type_part instanceof TLiteralInt
-                && isset(
-                    $context->vars_in_scope[
-                        $extended_var_id . '[' . $offset_type_part->value . ']'
-                    ],
-                )
-                && !$context->vars_in_scope[
-                        $extended_var_id . '[' . $offset_type_part->value . ']'
-                    ]->possibly_undefined
-            ) {
-                return;
+        if ($offset_type->hasLiteralInt()) {
+            $found_match = false;
+
+            foreach ($offset_type->getAtomicTypes() as $offset_type_part) {
+                if ($extended_var_id
+                    && $offset_type_part instanceof TLiteralInt
+                    && isset(
+                        $context->vars_in_scope[
+                            $extended_var_id . '[' . $offset_type_part->value . ']'
+                        ],
+                    )
+                    && !$context->vars_in_scope[
+                            $extended_var_id . '[' . $offset_type_part->value . ']'
+                        ]->possibly_undefined
+                ) {
+                    $found_match = true;
+                    break;
+                }
+            }
+
+            if (!$found_match) {
+                IssueBuffer::maybeAdd(
+                    new PossiblyUndefinedIntArrayOffset(
+                        'Possibly undefined array offset \''
+                            . $offset_type->getId() . '\' '
+                            . 'is risky given expected type \''
+                            . $expected_offset_type->getId() . '\'.'
+                            . ' Consider using isset beforehand.',
+                        new CodeLocation($statements_analyzer->getSource(), $stmt),
+                    ),
+                    $statements_analyzer->getSuppressedIssues(),
+                );
             }
         }
-
-        IssueBuffer::maybeAdd(
-            new PossiblyUndefinedIntArrayOffset(
-                'Possibly undefined array offset \''
-                    . $offset_type->getId() . '\' '
-                    . 'is risky given expected type \''
-                    . $expected_offset_type->getId() . '\'.'
-                    . ' Consider using isset beforehand.',
-                new CodeLocation($statements_analyzer->getSource(), $stmt),
-            ),
-            $statements_analyzer->getSuppressedIssues(),
-        );
     }
 
     private static function checkLiteralStringArrayOffset(
@@ -1087,7 +1080,8 @@ final class ArrayFetchAnalyzer
             }
         }
 
-        if (($variable_use_graph = $statements_analyzer->variable_use_graph)
+        if (($data_flow_graph = $statements_analyzer->data_flow_graph)
+            && $data_flow_graph instanceof VariableUseGraph
             && ($stmt_var_type = $statements_analyzer->node_data->getType($stmt->var))
         ) {
             if ($stmt_var_type->parent_nodes) {
@@ -1095,14 +1089,14 @@ final class ArrayFetchAnalyzer
 
                 $new_parent_node = DataFlowNode::getForAssignment('mixed-var-array-access', $var_location);
 
-                $variable_use_graph->addNode($new_parent_node);
+                $data_flow_graph->addNode($new_parent_node);
 
                 foreach ($stmt_var_type->parent_nodes as $parent_node) {
-                    $variable_use_graph->addPath($parent_node, $new_parent_node, '=');
+                    $data_flow_graph->addPath($parent_node, $new_parent_node, '=');
 
-                    $variable_use_graph->addPath(
+                    $data_flow_graph->addPath(
                         $parent_node,
-                        DataFlowNode::getForVariableUse(),
+                        new DataFlowNode('variable-use', 'variable use', null),
                         'variable-use',
                     );
                 }
@@ -1155,7 +1149,7 @@ final class ArrayFetchAnalyzer
                     $from_mixed_array = $type->type_params[1]->isMixed();
 
                     // ok, type becomes a TKeyedArray
-                    $type = TKeyedArray::make(
+                    $type = new TKeyedArray(
                         [
                             $single_atomic->value => $from_mixed_array ? Type::getMixed() : Type::getNever(),
                         ],
@@ -1165,7 +1159,7 @@ final class ArrayFetchAnalyzer
                         $from_empty_array ? null : $type->type_params,
                     );
                 } elseif (!$stmt->dim && $from_empty_array && $replacement_type) {
-                    $type = TKeyedArray::make(
+                    $type = new TKeyedArray(
                         [$replacement_type],
                         null,
                         null,
@@ -1716,7 +1710,7 @@ final class ArrayFetchAnalyzer
 
                     if (!$stmt->dim) {
                         if ($type->is_list) {
-                            $type = TKeyedArray::make(
+                            $type = new TKeyedArray(
                                 $type->properties,
                                 null,
                                 [$new_key_type, $generic_params],
@@ -1764,36 +1758,6 @@ final class ArrayFetchAnalyzer
 
                 $array_access_type = Type::getMixed();
             }
-        }
-    }
-
-    public static function validateArrayOffset(
-        StatementsAnalyzer $statements_analyzer,
-        Expr $stmt,
-        Type\Union|Type\MutableUnion $array_type,
-        Type\Union|Type\MutableUnion $offset_type,
-    ): void {
-        $literal_offsets = array_keys($offset_type->getLiteralStrings());
-        if (!$literal_offsets) {
-            return;
-        }
-
-        foreach ($array_type->getAtomicTypes() as $t) {
-            if ($t instanceof TKeyedArray) {
-                return;
-            }
-            if ($t instanceof TArray && $t->type_params[0]->allLiterals()) {
-                return;
-            }
-        }
-        if (IssueBuffer::accepts(
-            new LiteralKeyUnshapedArray(
-                'Literal offset ' . implode('|', $literal_offsets) . ' was used on unshaped array '.$array_type,
-                new CodeLocation($statements_analyzer->getSource(), $stmt),
-            ),
-            $statements_analyzer->getSuppressedIssues(),
-        )) {
-            // fall through
         }
     }
 

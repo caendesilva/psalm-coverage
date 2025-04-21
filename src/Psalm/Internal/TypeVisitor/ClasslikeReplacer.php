@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypeVisitor;
 
-use Override;
 use Psalm\Type\Atomic\TClassConstant;
 use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TLiteralClassString;
@@ -28,7 +27,6 @@ final class ClasslikeReplacer extends MutableTypeVisitor
         $this->old = strtolower($old);
     }
 
-    #[Override]
     protected function enterNode(TypeNode &$type): ?int
     {
         if ($type instanceof TClassConstant) {

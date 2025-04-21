@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Config\Plugin\Hook;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Plugin\DynamicFunctionStorage;
 use Psalm\Plugin\DynamicTemplateProvider;
@@ -20,15 +19,13 @@ use function array_keys;
 use function array_map;
 use function count;
 
-final class CustomArrayMapFunctionStorageProvider implements DynamicFunctionStorageProviderInterface
+class CustomArrayMapFunctionStorageProvider implements DynamicFunctionStorageProviderInterface
 {
-    #[Override]
     public static function getFunctionIds(): array
     {
         return ['custom_array_map'];
     }
 
-    #[Override]
     public static function getFunctionStorage(DynamicFunctionStorageProviderEvent $event): ?DynamicFunctionStorage
     {
         $template_provider = $event->getTemplateProvider();

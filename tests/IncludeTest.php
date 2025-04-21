@@ -14,7 +14,7 @@ use function strpos;
 
 use const DIRECTORY_SEPARATOR;
 
-final class IncludeTest extends TestCase
+class IncludeTest extends TestCase
 {
     /**
      * @dataProvider providerTestValidIncludes

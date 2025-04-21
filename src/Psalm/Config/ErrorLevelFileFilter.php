@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Config;
 
-use Override;
 use Psalm\Config;
 use Psalm\Exception\ConfigException;
 use SimpleXMLElement;
@@ -18,7 +17,6 @@ final class ErrorLevelFileFilter extends FileFilter
 
     public int $suppressions = 0;
 
-    #[Override]
     public static function loadFromArray(
         array $config,
         string $base_dir,
@@ -39,7 +37,6 @@ final class ErrorLevelFileFilter extends FileFilter
         return $filter;
     }
 
-    #[Override]
     public static function loadFromXMLElement(
         SimpleXMLElement $e,
         string $base_dir,

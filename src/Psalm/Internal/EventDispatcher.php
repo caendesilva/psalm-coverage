@@ -433,23 +433,29 @@ final class EventDispatcher
         return null;
     }
 
-    public function dispatchAddTaints(AddRemoveTaintsEvent $event): int
+    /**
+     * @return list<string>
+     */
+    public function dispatchAddTaints(AddRemoveTaintsEvent $event): array
     {
-        $added_taints = 0;
+        $added_taints = [];
 
         foreach ($this->add_taints_checks as $handler) {
-            $added_taints |= $handler::addTaints($event);
+            $added_taints = [...$added_taints, ...$handler::addTaints($event)];
         }
 
         return $added_taints;
     }
 
-    public function dispatchRemoveTaints(AddRemoveTaintsEvent $event): int
+    /**
+     * @return list<string>
+     */
+    public function dispatchRemoveTaints(AddRemoveTaintsEvent $event): array
     {
-        $removed_taints = 0;
+        $removed_taints = [];
 
         foreach ($this->remove_taints_checks as $handler) {
-            $removed_taints |= $handler::removeTaints($event);
+            $removed_taints = [...$removed_taints, ...$handler::removeTaints($event)];
         }
 
         return $removed_taints;

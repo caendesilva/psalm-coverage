@@ -12,6 +12,7 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
@@ -87,11 +88,11 @@ final class ConcatAnalyzer
 
                     $origin_locations = [];
 
-                    if ($statements_analyzer->variable_use_graph) {
+                    if ($statements_analyzer->data_flow_graph instanceof VariableUseGraph) {
                         foreach ($left_type->parent_nodes as $parent_node) {
                             $origin_locations = [
                                 ...$origin_locations,
-                                ...$statements_analyzer->variable_use_graph->getOriginLocations($parent_node),
+                                ...$statements_analyzer->data_flow_graph->getOriginLocations($parent_node),
                             ];
                         }
                     }
@@ -114,11 +115,11 @@ final class ConcatAnalyzer
                     $arg_location = new CodeLocation($statements_analyzer->getSource(), $right);
                     $origin_locations = [];
 
-                    if ($statements_analyzer->variable_use_graph) {
+                    if ($statements_analyzer->data_flow_graph instanceof VariableUseGraph) {
                         foreach ($right_type->parent_nodes as $parent_node) {
                             $origin_locations = [
                                 ...$origin_locations,
-                                ...$statements_analyzer->variable_use_graph->getOriginLocations($parent_node),
+                                ...$statements_analyzer->data_flow_graph->getOriginLocations($parent_node),
                             ];
                         }
                     }
@@ -300,7 +301,7 @@ final class ConcatAnalyzer
             if ($known_operand->isSingle()) {
                 $known_operands_atomic = $known_operand->getSingleAtomic();
 
-                if ($known_operand->isNonEmptyString()) {
+                if ($known_operands_atomic instanceof TNonEmptyString) {
                     $result_type = Type::getNonEmptyString();
                 }
 
@@ -464,9 +465,7 @@ final class ConcatAnalyzer
         }
 
         if (!$operand_type_match
-            && (!$comparison_result->scalar_type_match_found
-                || (!$operand_type->isConcatSafe() && $config->strict_binary_operands)
-            )
+            && (!$comparison_result->scalar_type_match_found || $config->strict_binary_operands)
         ) {
             if ($has_valid_operand) {
                 IssueBuffer::maybeAdd(

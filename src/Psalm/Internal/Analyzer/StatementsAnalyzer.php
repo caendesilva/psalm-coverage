@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer;
 
 use InvalidArgumentException;
-use Override;
 use PhpParser;
-use PhpParser\Comment\Doc;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
@@ -39,7 +37,7 @@ use Psalm\Internal\Analyzer\Statements\ReturnAnalyzer;
 use Psalm\Internal\Analyzer\Statements\StaticAnalyzer;
 use Psalm\Internal\Analyzer\Statements\UnsetAnalyzer;
 use Psalm\Internal\Analyzer\Statements\UnusedAssignmentRemover;
-use Psalm\Internal\Codebase\CombinedFlowGraph;
+use Psalm\Internal\Codebase\DataFlowGraph;
 use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
@@ -139,9 +137,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
     private ?string $fake_this_class = null;
 
-    public ?TaintFlowGraph $taint_flow_graph = null;
-    public ?VariableUseGraph $variable_use_graph = null;
-    public TaintFlowGraph|CombinedFlowGraph|VariableUseGraph|null $data_flow_graph = null;
+    public ?DataFlowGraph $data_flow_graph = null;
 
     /**
      * Locations of foreach values
@@ -153,44 +149,18 @@ final class StatementsAnalyzer extends SourceAnalyzer
      */
     public array $foreach_var_locations = [];
 
-    private int $depth = 0;
-
-    public function __construct(
-        protected SourceAnalyzer $source,
-        public NodeDataProvider $node_data,
-        private readonly bool $root_scope,
-    ) {
+    public function __construct(protected SourceAnalyzer $source, public NodeDataProvider $node_data)
+    {
         $this->file_analyzer = $source->getFileAnalyzer();
         $this->codebase = $source->getCodebase();
 
-        if ($this->codebase->taint_flow_graph
-            && $root_scope
-            && $this->codebase->config->trackTaintsInPath($this->getFilePath())
-        ) {
-            $this->data_flow_graph = $this->taint_flow_graph = $this->codebase->taint_flow_graph;
-        }
-        if ($this->codebase->find_unused_variables) {
-            $this->data_flow_graph = $this->variable_use_graph = new VariableUseGraph();
-        }
-        if ($this->taint_flow_graph && $this->variable_use_graph) {
-            $this->data_flow_graph = new CombinedFlowGraph($this->variable_use_graph, $this->taint_flow_graph);
+        if ($this->codebase->taint_flow_graph) {
+            $this->data_flow_graph = new TaintFlowGraph();
+        } elseif ($this->codebase->find_unused_variables) {
+            $this->data_flow_graph = new VariableUseGraph();
         }
     }
 
-    public function getDataFlowGraphWithSuppressed(): TaintFlowGraph|CombinedFlowGraph|VariableUseGraph|null
-    {
-        if ($this->taint_flow_graph && in_array('TaintedInput', $this->getSuppressedIssues())) {
-            return $this->variable_use_graph;
-        }
-        return $this->data_flow_graph;
-    }
-    public function getTaintFlowGraphWithSuppressed(): ?TaintFlowGraph
-    {
-        if ($this->taint_flow_graph && in_array('TaintedInput', $this->getSuppressedIssues())) {
-            return null;
-        }
-        return $this->taint_flow_graph;
-    }
     /**
      * Checks an array of statements for validity
      *
@@ -201,57 +171,58 @@ final class StatementsAnalyzer extends SourceAnalyzer
         array $stmts,
         Context $context,
         ?Context $global_context = null,
+        bool $root_scope = false,
     ): ?bool {
         if (!$stmts) {
             return null;
         }
-        $this->depth++;
-        try {
-            // hoist functions to the top
-            $this->hoistFunctions($stmts, $context);
 
-            $codebase = $this->codebase;
+        // hoist functions to the top
+        $this->hoistFunctions($stmts, $context);
 
-            if ($codebase->config->hoist_constants) {
-                self::hoistConstants($this, $stmts, $context);
-            }
+        $project_analyzer = $this->getFileAnalyzer()->project_analyzer;
+        $codebase = $project_analyzer->getCodebase();
 
-            foreach ($stmts as $stmt) {
-                if (self::analyzeStatement($this, $stmt, $context, $global_context) === false) {
-                    return false;
-                }
-            }
-
-            if ($this->root_scope
-                && $this->depth === 1
-                && !$context->collect_initializations
-                && !$context->collect_mutations
-                && $codebase->find_unused_variables
-                && $context->check_variables
-            ) {
-                $this->checkUnreferencedVars($stmts, $context);
-            }
-
-            if ($codebase->alter_code
-                && $this->root_scope
-                && $this->depth === 1
-                && $this->vars_to_initialize
-            ) {
-                $file_contents = $codebase->getFileContents($this->getFilePath());
-
-                foreach ($this->vars_to_initialize as $var_id => $branch_point) {
-                    $newline_pos = (int)strrpos($file_contents, "\n", $branch_point - strlen($file_contents)) + 1;
-                    $indentation = substr($file_contents, $newline_pos, $branch_point - $newline_pos);
-                    FileManipulationBuffer::add($this->getFilePath(), [
-                        new FileManipulation($branch_point, $branch_point, $var_id . ' = null;' . "\n" . $indentation),
-                    ]);
-                }
-            }
-
-            return null;
-        } finally {
-            $this->depth--;
+        if ($codebase->config->hoist_constants) {
+            self::hoistConstants($this, $stmts, $context);
         }
+
+        foreach ($stmts as $stmt) {
+            if (self::analyzeStatement($this, $stmt, $context, $global_context) === false) {
+                return false;
+            }
+        }
+
+        if ($root_scope
+            && !$context->collect_initializations
+            && !$context->collect_mutations
+            && $codebase->find_unused_variables
+            && $context->check_variables
+        ) {
+            $this->checkUnreferencedVars($stmts, $context);
+        }
+
+        if ($codebase->alter_code && $root_scope && $this->vars_to_initialize) {
+            $file_contents = $codebase->getFileContents($this->getFilePath());
+
+            foreach ($this->vars_to_initialize as $var_id => $branch_point) {
+                $newline_pos = (int)strrpos($file_contents, "\n", $branch_point - strlen($file_contents)) + 1;
+                $indentation = substr($file_contents, $newline_pos, $branch_point - $newline_pos);
+                FileManipulationBuffer::add($this->getFilePath(), [
+                    new FileManipulation($branch_point, $branch_point, $var_id . ' = null;' . "\n" . $indentation),
+                ]);
+            }
+        }
+
+        if ($root_scope
+            && $this->data_flow_graph instanceof TaintFlowGraph
+            && $this->codebase->taint_flow_graph
+            && $codebase->config->trackTaintsInPath($this->getFilePath())
+        ) {
+            $this->codebase->taint_flow_graph->addGraph($this->data_flow_graph);
+        }
+
+        return null;
     }
 
     /**
@@ -384,12 +355,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         $traced_variables = [];
 
         $checked_types = [];
-        $hasParsed = false;
-        foreach ($stmt->getComments() as $docblock) {
-            if (!$docblock instanceof Doc) {
-                continue;
-            }
-            $hasParsed = true;
+        if ($docblock = $stmt->getDocComment()) {
             $statements_analyzer->parseStatementDocblock($docblock, $stmt, $context);
 
             if (isset($statements_analyzer->parsed_docblock->tags['psalm-trace'])) {
@@ -475,7 +441,6 @@ final class StatementsAnalyzer extends SourceAnalyzer
                     $var_comments = $codebase->config->disable_var_parsing
                         ? []
                         : CommentAnalyzer::arrayToDocblocks(
-                            $codebase,
                             $docblock,
                             $statements_analyzer->parsed_docblock,
                             $statements_analyzer->getSource(),
@@ -515,8 +480,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                     }
                 }
             }
-        }
-        if (!$hasParsed) {
+        } else {
             $statements_analyzer->parsed_docblock = null;
         }
 
@@ -631,10 +595,6 @@ final class StatementsAnalyzer extends SourceAnalyzer
             DeclareAnalyzer::analyze($statements_analyzer, $stmt, $context);
         } elseif ($stmt instanceof PhpParser\Node\Stmt\HaltCompiler) {
             $context->has_returned = true;
-        } elseif ($stmt instanceof PhpParser\Node\Stmt\Block) {
-            foreach ($stmt->stmts as $sub) {
-                self::analyzeStatement($statements_analyzer, $sub, $context, $global_context);
-            }
         } else {
             if (IssueBuffer::accepts(
                 new UnrecognizedStatement(
@@ -882,14 +842,14 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
         $unused_var_remover = new UnusedAssignmentRemover();
 
-        if ($this->variable_use_graph
+        if ($this->data_flow_graph instanceof VariableUseGraph
             && $codebase->config->limit_method_complexity
             && $source instanceof FunctionLikeAnalyzer
             && !$source instanceof ClosureAnalyzer
             && $function_storage
             && $function_storage->location
         ) {
-            [$count, , $unique_destinations, $mean] = $this->variable_use_graph->getEdgeStats();
+            [$count, , $unique_destinations, $mean] = $this->data_flow_graph->getEdgeStats();
 
             $average_destination_branches_converging = $unique_destinations > 0 ? $count / $unique_destinations : 0;
 
@@ -943,8 +903,8 @@ final class StatementsAnalyzer extends SourceAnalyzer
             if (!isset($this->byref_uses[$var_id])
                 && !isset($context->referenced_globals[$var_id])
                 && !VariableFetchAnalyzer::isSuperGlobal($var_id)
-                && $this->variable_use_graph
-                && !$this->variable_use_graph->isVariableUsed($assignment_node)
+                && $this->data_flow_graph instanceof VariableUseGraph
+                && !$this->data_flow_graph->isVariableUsed($assignment_node)
             ) {
                 $is_foreach_var = false;
 
@@ -1088,13 +1048,11 @@ final class StatementsAnalyzer extends SourceAnalyzer
         $this->vars_to_initialize[$var_id] = $branch_point;
     }
 
-    #[Override]
     public function getFileAnalyzer(): FileAnalyzer
     {
         return $this->file_analyzer;
     }
 
-    #[Override]
     public function getCodebase(): Codebase
     {
         return $this->codebase;
@@ -1180,7 +1138,6 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /** @psalm-mutation-free */
-    #[Override]
     public function getFQCLN(): ?string
     {
         if ($this->fake_this_class) {
@@ -1198,7 +1155,6 @@ final class StatementsAnalyzer extends SourceAnalyzer
     /**
      * @return NodeDataProvider
      */
-    #[Override]
     public function getNodeTypeProvider(): NodeTypeProvider
     {
         return $this->node_data;

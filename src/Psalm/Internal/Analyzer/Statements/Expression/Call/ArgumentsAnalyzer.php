@@ -20,7 +20,8 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
 use Psalm\Internal\Codebase\Functions;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
-use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Codebase\TaintFlowGraph;
+use Psalm\Internal\DataFlow\TaintSink;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Stubs\Generator\StubsGenerator;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -42,6 +43,7 @@ use Psalm\Storage\MethodStorage;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TCallable;
+use Psalm\Type\Atomic\TCallableKeyedArray;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralString;
@@ -51,11 +53,11 @@ use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
+use function array_map;
 use function array_reduce;
 use function array_reverse;
 use function array_slice;
 use function array_values;
-use function assert;
 use function count;
 use function in_array;
 use function is_string;
@@ -70,14 +72,6 @@ use function strtolower;
  */
 final class ArgumentsAnalyzer
 {
-    public const ARRAY_FILTERLIKE = [
-        'array_filter',
-        'array_find',
-        'array_find_key',
-        'array_any',
-        'array_all',
-    ];
-
     /**
      * @param   list<PhpParser\Node\Arg>          $args
      * @param   array<int, FunctionLikeParameter>|null  $function_params
@@ -268,7 +262,7 @@ final class ArgumentsAnalyzer
                 );
             }
 
-            if (($argument_offset === 0 && in_array($method_id, self::ARRAY_FILTERLIKE, true) && count($args) === 2)
+            if (($argument_offset === 0 && $method_id === 'array_filter' && count($args) === 2)
                 || ($argument_offset > 0 && $method_id === 'array_map' && count($args) >= 2)
             ) {
                 self::handleArrayMapFilterArrayArg(
@@ -390,7 +384,7 @@ final class ArgumentsAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        if (($argument_offset === 1 && in_array($method_id, self::ARRAY_FILTERLIKE, true) && count($args) === 2)
+        if (($argument_offset === 1 && $method_id === 'array_filter' && count($args) === 2)
             || ($argument_offset === 0 && $method_id === 'array_map' && count($args) >= 2)
         ) {
             $function_like_params = [];
@@ -421,21 +415,19 @@ final class ArgumentsAnalyzer
             $replaced_type = $param->type;
         }
 
-        $new_bounds = $template_result->template_types;
-        foreach ($template_result->lower_bounds as $k => $template_map) {
-            $new_bounds[$k] = [];
-            foreach ($template_map as $kk => $lower_bounds) {
-                $new_bounds[$k][$kk] = TemplateStandinTypeReplacer::getMostSpecificTypeFromBounds(
-                    $lower_bounds,
-                    $codebase,
-                );
-            }
-        }
         $replace_template_result = new TemplateResult(
-            $new_bounds,
+            array_map(
+                static fn(array $template_map): array => array_map(
+                    static fn(array $lower_bounds): Union => TemplateStandinTypeReplacer::getMostSpecificTypeFromBounds(
+                        $lower_bounds,
+                        $codebase,
+                    ),
+                    $template_map,
+                ),
+                $template_result->lower_bounds,
+            ),
             [],
         );
-        unset($new_bounds);
 
         $replaced_type = TemplateStandinTypeReplacer::replace(
             $replaced_type,
@@ -530,9 +522,7 @@ final class ArgumentsAnalyzer
                 $param_storage->type_inferred = true;
             }
 
-            if ($param_storage->type
-                && ($method_id === 'array_map' || in_array($method_id, self::ARRAY_FILTERLIKE, true))
-            ) {
+            if ($param_storage->type && ($method_id === 'array_map' || $method_id === 'array_filter')) {
                 $temp = Type::getMixed();
                 ArrayFetchAnalyzer::taintArrayFetch(
                     $statements_analyzer,
@@ -888,7 +878,7 @@ final class ArgumentsAnalyzer
             }
         }
 
-        if ($statements_analyzer->taint_flow_graph
+        if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph
             && $cased_method_id
         ) {
             foreach ($args as $argument_offset => $_) {
@@ -899,35 +889,32 @@ final class ArgumentsAnalyzer
                 foreach ($arg_function_params[$argument_offset] as $function_param) {
                     if ($function_param->sinks) {
                         if (!$function_storage || $function_storage->specialize_call) {
-                            $sink = DataFlowNode::getForMethodArgument(
+                            $sink = TaintSink::getForMethodArgument(
                                 $cased_method_id,
                                 $cased_method_id,
                                 $argument_offset,
                                 $function_param->location,
                                 $code_location,
-                                $function_param->sinks,
                             );
                         } else {
-                            $sink = DataFlowNode::getForMethodArgument(
+                            $sink = TaintSink::getForMethodArgument(
                                 $cased_method_id,
                                 $cased_method_id,
                                 $argument_offset,
                                 $function_param->location,
-                                null,
-                                $function_param->sinks,
                             );
                         }
 
-                        $statements_analyzer->taint_flow_graph->addSink($sink);
+                        $sink->taints = $function_param->sinks;
+
+                        $statements_analyzer->data_flow_graph->addSink($sink);
                     }
                 }
             }
         }
 
-        $f = in_array($method_id, self::ARRAY_FILTERLIKE, true);
-        if ($f || $method_id === 'array_map') {
-            assert(is_string($method_id));
-            if (!$f && count($args) < 2) {
+        if ($method_id === 'array_map' || $method_id === 'array_filter') {
+            if ($method_id === 'array_map' && count($args) < 2) {
                 IssueBuffer::maybeAdd(
                     new TooFewArguments(
                         'Too few arguments for ' . $method_id,
@@ -936,7 +923,7 @@ final class ArgumentsAnalyzer
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
-            } elseif ($f && count($args) < 1) {
+            } elseif ($method_id === 'array_filter' && count($args) < 1) {
                 IssueBuffer::maybeAdd(
                     new TooFewArguments(
                         'Too few arguments for ' . $method_id,
@@ -1644,7 +1631,9 @@ final class ArgumentsAnalyzer
 
                         foreach ($arg_value_type->getAtomicTypes() as $atomic_arg_type) {
                             $packed_var_definite_args_tmp = [];
-                            if ($atomic_arg_type instanceof TKeyedArray) {
+                            if ($atomic_arg_type instanceof TCallableKeyedArray) {
+                                $packed_var_definite_args_tmp[] = 2;
+                            } elseif ($atomic_arg_type instanceof TKeyedArray) {
                                 if ($atomic_arg_type->fallback_params !== null) {
                                     return;
                                 }

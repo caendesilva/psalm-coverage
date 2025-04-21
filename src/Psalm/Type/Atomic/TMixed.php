@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 
@@ -21,7 +20,6 @@ class TMixed extends Atomic
         parent::__construct($from_docblock);
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'mixed';
@@ -30,7 +28,6 @@ class TMixed extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -40,13 +37,11 @@ class TMixed extends Atomic
         return $analysis_php_version_id >= 8_00_00 ? 'mixed' : null;
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return $analysis_php_version_id >= 8_00_00;
     }
 
-    #[Override]
     public function getAssertionString(): string
     {
         return 'mixed';

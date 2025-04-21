@@ -7,11 +7,10 @@ namespace Psalm\Internal\Codebase;
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
+use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\ErrorHandler;
-use Psalm\Internal\Fork\InitScannerTask;
 use Psalm\Internal\Fork\Pool;
-use Psalm\Internal\Fork\ScannerTask;
-use Psalm\Internal\Fork\ShutdownScannerTask;
+use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
@@ -20,14 +19,11 @@ use Psalm\IssueBuffer;
 use Psalm\Progress\Progress;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FileStorage;
-use Psalm\Storage\FunctionStorage;
 use Psalm\Type;
-use Psalm\Type\Union;
 use ReflectionClass;
 use Throwable;
 use UnexpectedValueException;
 
-use function Amp\Future\await;
 use function array_filter;
 use function array_merge;
 use function array_pop;
@@ -80,9 +76,7 @@ use const PHP_EOL;
  *     classlike_storage:array<string, ClassLikeStorage>,
  *     file_storage:array<lowercase-string, FileStorage>,
  *     new_file_content_hashes: array<string, string>,
- *     taint_data: ?TaintFlowGraph,
- *     global_constants: array<string, Union>,
- *     global_functions: array<lowercase-string, FunctionStorage>
+ *     taint_data: ?TaintFlowGraph
  * }
  */
 
@@ -297,34 +291,83 @@ final class Scanner
         }
 
         if (!$this->is_forked && $pool_size > 1 && count($files_to_scan) > 512) {
-            $pool_size = (int) ceil(min($pool_size, count($files_to_scan) / 256));
+            $pool_size = ceil(min($pool_size, count($files_to_scan) / 256));
         } else {
             $pool_size = 1;
         }
 
         $this->progress->expand(count($files_to_scan));
         if ($pool_size > 1) {
+            $process_file_paths = [];
+
+            $i = 0;
+
+            foreach ($files_to_scan as $file_path) {
+                $process_file_paths[$i % $pool_size][] = $file_path;
+                ++$i;
+            }
+
             $this->progress->debug('Forking process for scanning' . PHP_EOL);
 
             // Run scanning one file at a time, splitting the set of
             // files up among a given number of child processes.
             $pool = new Pool(
-                $pool_size,
-                $this->config->long_scan_warning,
-                $this->progress,
+                $this->config,
+                $process_file_paths,
+                function (): void {
+                    $this->progress->debug('Initialising forked process for scanning' . PHP_EOL);
+
+                    $project_analyzer = ProjectAnalyzer::getInstance();
+                    $codebase = $project_analyzer->getCodebase();
+                    $statements_provider = $codebase->statements_provider;
+
+                    $codebase->scanner->isForked();
+                    FileStorageProvider::deleteAll();
+                    ClassLikeStorageProvider::deleteAll();
+
+                    $statements_provider->resetDiffs();
+
+                    $this->progress->debug('Have initialised forked process for scanning' . PHP_EOL);
+                },
+                $this->scanAPath(...),
+                /**
+                 * @return PoolData
+                 */
+                function () {
+                    $this->progress->debug('Collecting data from forked scanner process' . PHP_EOL);
+                    $project_analyzer = ProjectAnalyzer::getInstance();
+                    $codebase = $project_analyzer->getCodebase();
+                    $statements_provider = $codebase->statements_provider;
+
+                    return [
+                        'classlikes_data' => $codebase->classlikes->getThreadData(),
+                        'scanner_data' => $codebase->scanner->getThreadData(),
+                        'issues' => IssueBuffer::getIssuesData(),
+                        'changed_members' => $statements_provider->getChangedMembers(),
+                        'unchanged_signature_members' => $statements_provider->getUnchangedSignatureMembers(),
+                        'diff_map' => $statements_provider->getDiffMap(),
+                        'deletion_ranges' => $statements_provider->getDeletionRanges(),
+                        'errors' => $statements_provider->getErrors(),
+                        'classlike_storage' => $codebase->classlike_storage_provider->getAll(),
+                        'file_storage' => $codebase->file_storage_provider->getAll(),
+                        'new_file_content_hashes' => $statements_provider->parser_cache_provider
+                            ? $statements_provider->parser_cache_provider->getNewFileContentHashes()
+                            : [],
+                        'taint_data' => $codebase->taint_flow_graph,
+                    ];
+                },
+                function (): void {
+                    $this->progress->taskDone(0);
+                },
             );
 
-            await($pool->runAll(new InitScannerTask));
-            $pool->run($files_to_scan, ScannerTask::class, function (): void {
-                $this->progress->taskDone(0);
-            });
-
             // Wait for all tasks to complete and collect the results.
-            $forked_pool_data = $pool->runAll(new ShutdownScannerTask);
+            /**
+             * @var array<int, PoolData>
+             */
+            $forked_pool_data = $pool->wait();
 
             foreach ($forked_pool_data as $pool_data) {
-                $pool_data = $pool_data->await();
-
                 IssueBuffer::addIssues($pool_data['issues']);
 
                 $this->codebase->statements_provider->addChangedMembers(
@@ -357,19 +400,40 @@ final class Scanner
                         $pool_data['new_file_content_hashes'],
                     );
                 }
-
-                $this->codebase->addGlobalConstantTypes($pool_data['global_constants']);
-                $this->codebase->functions->addGlobalFunctions($pool_data['global_functions']);
             }
         } else {
+            $i = 0;
+
             foreach ($files_to_scan as $file_path => $_) {
-                $this->scanAPath($file_path);
                 $this->progress->taskDone(0);
+                $this->scanAPath($i, $file_path);
+                ++$i;
             }
         }
 
         if ($this->codebase->statements_provider->parser_cache_provider) {
             $this->codebase->statements_provider->parser_cache_provider->saveFileContentHashes();
+        }
+
+        foreach ($files_to_scan as $scanned_file) {
+            if ($this->config->hasStubFile($scanned_file)) {
+                $file_storage = $this->file_storage_provider->get($scanned_file);
+
+                foreach ($file_storage->functions as $function_storage) {
+                    if ($function_storage->cased_name
+                        && !$this->codebase->functions->hasStubbedFunction($function_storage->cased_name)
+                    ) {
+                        $this->codebase->functions->addGlobalFunction(
+                            $function_storage->cased_name,
+                            $function_storage,
+                        );
+                    }
+                }
+
+                foreach ($file_storage->constants as $name => $type) {
+                    $this->codebase->addGlobalConstantType($name, $type);
+                }
+            }
         }
 
         $this->file_reference_provider->addClassLikeFiles($this->classlike_files);
@@ -506,9 +570,7 @@ final class Scanner
                 $this->queueClassLikeForScanning($fq_classlike_name, false, false);
             }
 
-            if ($this->codebase->register_autoload_files
-                || $this->codebase->all_functions_global
-            ) {
+            if ($this->codebase->register_autoload_files) {
                 foreach ($file_storage->functions as $function_storage) {
                     if ($function_storage->cased_name
                         && !$this->codebase->functions->hasStubbedFunction($function_storage->cased_name)
@@ -519,10 +581,7 @@ final class Scanner
                         );
                     }
                 }
-            }
-            if ($this->codebase->register_autoload_files
-                || $this->codebase->all_constants_global
-            ) {
+
                 foreach ($file_storage->constants as $name => $type) {
                     $this->codebase->addGlobalConstantType($name, $type);
                 }
@@ -699,7 +758,7 @@ final class Scanner
         $this->is_forked = true;
     }
 
-    public function scanAPath(string $file_path): void
+    private function scanAPath(int $_, string $file_path): void
     {
         $this->scanFile(
             $file_path,

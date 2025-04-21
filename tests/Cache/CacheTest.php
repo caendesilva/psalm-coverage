@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Cache;
 
-use Override;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -25,19 +24,8 @@ use function str_replace;
 
 use const DIRECTORY_SEPARATOR;
 
-final class CacheTest extends TestCase
+class CacheTest extends TestCase
 {
-    #[Override]
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-
-        // hack to isolate Psalm from PHPUnit cli arguments
-        global $argv;
-        $argv = [];
-    }
-
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -45,7 +33,6 @@ final class CacheTest extends TestCase
         RuntimeCaches::clearAll();
     }
 
-    #[Override]
     public function tearDown(): void
     {
         RuntimeCaches::clearAll();
@@ -141,7 +128,7 @@ final class CacheTest extends TestCase
                     'files' => [
                         'src/A.php' => <<<'PHP'
                             <?php
-                            final class A {
+                            class A {
                                 public function do(B $b): void
                                 {
                                     $b->do();
@@ -150,7 +137,7 @@ final class CacheTest extends TestCase
                             PHP,
                         'src/B.php' => <<<'PHP'
                             <?php
-                            final class B {
+                            class B {
                                 public function do(): void
                                 {
                                     echo 'B';
@@ -178,7 +165,7 @@ final class CacheTest extends TestCase
                     'files' => [
                         'src/A.php' => <<<'PHP'
                             <?php
-                            final class A {
+                            class A {
                                 public function foo(B $b): int
                                 {
                                     return $b->value;
@@ -187,7 +174,7 @@ final class CacheTest extends TestCase
                             PHP,
                         'src/B.php' => <<<'PHP'
                             <?php
-                            final class B {
+                            class B {
                                 public ?int $value = 0;
                             }
                             PHP,
@@ -203,7 +190,7 @@ final class CacheTest extends TestCase
                     'files' => [
                         'src/B.php' => <<<'PHP'
                             <?php
-                            final class B {
+                            class B {
                                 public int $value = 0;
                             }
                             PHP,
@@ -223,7 +210,7 @@ final class CacheTest extends TestCase
                             /**
                              * @template T
                              */
-                            final class A {
+                            class A {
                                 /**
                                  * @param T $baz
                                  */
@@ -235,7 +222,7 @@ final class CacheTest extends TestCase
                         'src/B.php' => <<<'PHP'
                             <?php
 
-                            final class B {
+                            class B {
                                 public function foo(): void
                                 {
                                     (new A)->foo(1);
@@ -253,7 +240,7 @@ final class CacheTest extends TestCase
                             /**
                              * @template K
                              */
-                            final class A {
+                            class A {
                                 /**
                                  * @param T $baz
                                  */
@@ -281,7 +268,7 @@ final class CacheTest extends TestCase
                     'files' => [
                         'src/A.php' => <<<'PHP'
                             <?php
-                            final class A {
+                            class A {
                                 public function __construct(private string $foo)
                                 {
                                 }
@@ -298,7 +285,7 @@ final class CacheTest extends TestCase
                     'files' => [
                         'src/A.php' => <<<'PHP'
                             <?php
-                            final class A
+                            class A
                             {
                                 public function __construct()
                                 {

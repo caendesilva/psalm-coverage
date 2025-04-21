@@ -13,7 +13,6 @@ use Psalm\Internal\Composer;
 use Psalm\Internal\ErrorHandler;
 use Psalm\Internal\Fork\PsalmRestarter;
 use Psalm\Internal\IncludeCollector;
-use Psalm\Internal\Preloader;
 use Psalm\Internal\Provider\ClassLikeStorageCacheProvider;
 use Psalm\Internal\Provider\FileProvider;
 use Psalm\Internal\Provider\FileStorageCacheProvider;
@@ -49,6 +48,7 @@ use function implode;
 use function in_array;
 use function is_array;
 use function is_dir;
+use function is_numeric;
 use function is_string;
 use function microtime;
 use function pathinfo;
@@ -87,7 +87,7 @@ final class Psalter
     private const LONG_OPTIONS = [
         'help', 'debug', 'debug-by-line', 'debug-emitted-issues', 'config:', 'file:', 'root:',
         'plugin:', 'issues:', 'list-supported-issues', 'php-version:', 'dry-run', 'safe-types',
-        'find-unused-code', 'threads:', 'scan-threads:', 'codeowner:',
+        'find-unused-code', 'threads:', 'codeowner:',
         'allow-backwards-incompatible-changes:',
         'add-newline-between-docblock-annotations:',
         'no-cache',
@@ -237,14 +237,10 @@ final class Psalter
             'uopz',
             'pcov',
             'blackfire',
-            // Issues w/ parallel forking
-            'uv',
         ]);
 
         // If Xdebug is enabled, restart without it
         $ini_handler->check();
-
-        Preloader::preload();
 
         $paths_to_check = CliUtils::getPathsToCheck($options['f'] ?? null);
 
@@ -267,13 +263,10 @@ final class Psalter
             $current_dir = $config->base_dir;
             chdir($current_dir);
         }
-        
-        $in_ci = CliUtils::runningInCI();
 
-        $threads = Psalm::getThreads($options, $config, $in_ci, false);
-        $scanThreads = Psalm::getThreads($options, $config, $in_ci, true);
+        $threads = isset($options['threads']) && is_numeric($options['threads']) ? (int)$options['threads'] : 1;
 
-        if ($config->cache_directory === null) {
+        if (isset($options['no-cache'])) {
             $providers = new Providers(
                 new FileProvider(),
             );
@@ -311,7 +304,6 @@ final class Psalter
             $stdout_report_options,
             [],
             $threads,
-            $scanThreads,
             $progress,
         );
 

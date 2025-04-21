@@ -69,7 +69,6 @@ use function assert;
 use function in_array;
 use function is_string;
 use function reset;
-use function stripos;
 use function strtolower;
 
 /**
@@ -96,7 +95,6 @@ final class ForeachAnalyzer
         if ($doc_comment) {
             try {
                 $var_comments = CommentAnalyzer::getTypeFromComment(
-                    $codebase,
                     $doc_comment,
                     $statements_analyzer->getSource(),
                     $statements_analyzer->getSource()->getAliases(),
@@ -285,8 +283,9 @@ final class ForeachAnalyzer
         $foreach_context->inside_loop = true;
         $foreach_context->break_types[] = 'loop';
 
-        if ($codebase->alter_code && $foreach_context->branch_point === null) {
-            $foreach_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+        if ($codebase->alter_code) {
+            $foreach_context->branch_point =
+                $foreach_context->branch_point ?: (int) $stmt->getAttribute('startFilePos');
         }
 
         if ($stmt->keyVar instanceof PhpParser\Node\Expr\Variable && is_string($stmt->keyVar->name)) {
@@ -703,9 +702,7 @@ final class ForeachAnalyzer
             if ($has_valid_iterator) {
                 IssueBuffer::maybeAdd(
                     new PossiblyInvalidIterator(
-                        stripos($invalid_iterator_types[0], 'generator<') === 0
-                            ? 'Cannot iterate over generator with non-null send() type ' . $invalid_iterator_types[0]
-                            : 'Cannot iterate over ' . $invalid_iterator_types[0],
+                        'Cannot iterate over ' . $invalid_iterator_types[0],
                         new CodeLocation($statements_analyzer->getSource(), $expr),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -713,9 +710,7 @@ final class ForeachAnalyzer
             } else {
                 IssueBuffer::maybeAdd(
                     new InvalidIterator(
-                        stripos($invalid_iterator_types[0], 'generator<') === 0
-                            ? 'Cannot iterate over generator with non-null send() type ' . $invalid_iterator_types[0]
-                            : 'Cannot iterate over ' . $invalid_iterator_types[0],
+                        'Cannot iterate over ' . $invalid_iterator_types[0],
                         new CodeLocation($statements_analyzer->getSource(), $expr),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -906,11 +901,7 @@ final class ForeachAnalyzer
                     && strtolower($iterator_atomic_type->value) === 'generator'
                 ) {
                     $type_params = $iterator_atomic_type->type_params;
-                    if (isset($type_params[2])
-                        && !$type_params[2]->isNullable()
-                        && !$type_params[2]->isVoid()
-                        && !$type_params[2]->isMixed()
-                    ) {
+                    if (isset($type_params[2]) && !$type_params[2]->isNullable() && !$type_params[2]->isMixed()) {
                         $invalid_iterator_types[] = $iterator_atomic_type->getKey();
                     } else {
                         $has_valid_iterator = true;

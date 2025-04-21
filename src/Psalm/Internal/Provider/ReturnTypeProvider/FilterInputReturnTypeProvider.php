@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
-use Override;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
@@ -35,18 +34,16 @@ use const INPUT_SERVER;
 /**
  * @internal
  */
-final class FilterInputReturnTypeProvider implements FunctionReturnTypeProviderInterface
+class FilterInputReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
      * @return array<lowercase-string>
      */
-    #[Override]
     public static function getFunctionIds(): array
     {
         return ['filter_input'];
     }
 
-    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): ?Union
     {
         $statements_analyzer = $event->getStatementsSource();
@@ -243,7 +240,8 @@ final class FilterInputReturnTypeProvider implements FunctionReturnTypeProviderI
             [$_, $input_type] = $array_atomic->type_params;
             $input_type = $input_type->setPossiblyUndefined(true);
         } else {
-            return null;
+            // this is impossible
+            throw new UnexpectedValueException('This should not happen');
         }
 
         return FilterUtils::getReturnType(

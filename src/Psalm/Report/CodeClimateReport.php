@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Report;
 
-use Override;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Json\Json;
@@ -24,7 +23,6 @@ use function md5;
  */
 final class CodeClimateReport extends Report
 {
-    #[Override]
     public function create(): string
     {
         $options = $this->pretty ? Json::PRETTY : Json::DEFAULT;

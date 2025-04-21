@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Psalm\Report;
 
-use Override;
 use Psalm\Internal\Json\Json;
 use Psalm\Report;
 
 final class JsonSummaryReport extends Report
 {
-    #[Override]
     public function create(): string
     {
         $type_counts = [];

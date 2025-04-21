@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
-use Override;
 use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
 use Psalm\Internal\Provider\NodeDataProvider;
@@ -23,7 +22,6 @@ final class TypeMappingVisitor extends NodeVisitorAbstract
     /**
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
      */
-    #[Override]
     public function enterNode(Node $node)
     {
         $origNode = $node;

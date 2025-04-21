@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Loop;
 
-use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class ForeachTest extends TestCase
+class ForeachTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -432,7 +430,7 @@ final class ForeachTest extends TestCase
                     'MixedAssignment',
                 ],
             ],
-            'noMixedAssignmentWithIfAssertion' => [
+            'noMixedAssigmentWithIfAssertion' => [
                 'code' => '<?php
                     $object = new stdClass();
                     $reflection = new ReflectionClass($object);
@@ -445,7 +443,7 @@ final class ForeachTest extends TestCase
                         }
                     }',
             ],
-            'noMixedAssignmentWithAssertion' => [
+            'noMixedAssigmentWithAssertion' => [
                 'code' => '<?php
                     $object = new stdClass();
                     $reflection = new ReflectionClass($object);
@@ -1195,21 +1193,6 @@ final class ForeachTest extends TestCase
                     foreach ($gen as $i) {}
                 PHP,
             ],
-            'generatorWithVoidSend' => [
-                'code' => <<<'PHP'
-                    <?php
-
-                    /**
-                     * @return Generator<string, int, void, void>
-                     */
-                    function test(): Generator {
-                        yield 'test' => 1;
-                    }
-
-                    foreach (test() as $_) {
-                    }
-                PHP,
-            ],
             'nullableGenerator' => [
                 'code' => <<<'PHP'
                     <?php
@@ -1248,7 +1231,6 @@ final class ForeachTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

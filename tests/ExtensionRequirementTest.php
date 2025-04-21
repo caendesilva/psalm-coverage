@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-final class ExtensionRequirementTest extends TestCase
+class ExtensionRequirementTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
     use InvalidCodeAnalysisTestTrait;
 
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -40,7 +38,6 @@ final class ExtensionRequirementTest extends TestCase
         );
     }
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -57,7 +54,6 @@ final class ExtensionRequirementTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

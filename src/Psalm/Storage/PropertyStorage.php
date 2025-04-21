@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
-use Override;
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Type\Union;
@@ -81,7 +80,6 @@ final class PropertyStorage implements HasAttributesInterface
     /**
      * @return list<AttributeStorage>
      */
-    #[Override]
     public function getAttributeStorages(): array
     {
         return $this->attributes;

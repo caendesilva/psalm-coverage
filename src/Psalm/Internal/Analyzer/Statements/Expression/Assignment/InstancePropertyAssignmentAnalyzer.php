@@ -24,8 +24,8 @@ use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnaly
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
-use Psalm\Internal\Codebase\DataFlowGraph;
 use Psalm\Internal\Codebase\Methods;
+use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
@@ -474,7 +474,9 @@ final class InstancePropertyAssignmentAnalyzer
             );
 
             if ($var_id) {
-                if (!$graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
+                if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph
+                    && in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
+                ) {
                     $context->vars_in_scope[$var_id] =
                         $context->vars_in_scope[$var_id]->setParentNodes([]);
                     return;
@@ -487,7 +489,7 @@ final class InstancePropertyAssignmentAnalyzer
                     $var_location,
                 );
 
-                $graph->addNode($var_node);
+                $data_flow_graph->addNode($var_node);
 
                 $property_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
 
@@ -496,20 +498,14 @@ final class InstancePropertyAssignmentAnalyzer
                     $property_location,
                 );
 
-                $graph->addNode($property_node);
+                $data_flow_graph->addNode($property_node);
 
                 $event = new AddRemoveTaintsEvent($stmt, $context, $statements_analyzer, $codebase);
 
                 $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
                 $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
 
-                $taints = $added_taints & ~$removed_taints;
-                if ($taints !== 0 && !$graph instanceof VariableUseGraph) {
-                    $taint_source = $property_node->setTaints($taints);
-                    $graph->addSource($taint_source);
-                }
-
-                $graph->addPath(
+                $data_flow_graph->addPath(
                     $property_node,
                     $var_node,
                     'property-assignment'
@@ -539,7 +535,9 @@ final class InstancePropertyAssignmentAnalyzer
                 }
             }
         } else {
-            if (!$graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
+            if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph
+                && in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
+            ) {
                 $assignment_value_type = $assignment_value_type->setParentNodes([]);
                 return;
             }
@@ -552,7 +550,6 @@ final class InstancePropertyAssignmentAnalyzer
 
             self::taintUnspecializedProperty(
                 $statements_analyzer,
-                $graph,
                 $stmt,
                 $property_id,
                 $class_storage,
@@ -565,7 +562,6 @@ final class InstancePropertyAssignmentAnalyzer
 
     public static function taintUnspecializedProperty(
         StatementsAnalyzer $statements_analyzer,
-        DataFlowGraph $graph,
         PhpParser\Node\Expr $stmt,
         string $property_id,
         ClassLikeStorage $class_storage,
@@ -575,6 +571,12 @@ final class InstancePropertyAssignmentAnalyzer
     ): void {
         $codebase = $statements_analyzer->getCodebase();
 
+        $data_flow_graph = $statements_analyzer->data_flow_graph;
+
+        if (!$data_flow_graph) {
+            return;
+        }
+
         $property_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
 
         $localized_property_node = DataFlowNode::getForAssignment(
@@ -582,29 +584,23 @@ final class InstancePropertyAssignmentAnalyzer
             $property_location,
         );
 
-        $graph->addNode($localized_property_node);
+        $data_flow_graph->addNode($localized_property_node);
 
-        $property_node = DataFlowNode::make(
+        $property_node = new DataFlowNode(
             $property_id,
             $property_id,
             null,
             null,
         );
 
-        $graph->addNode($property_node);
+        $data_flow_graph->addNode($property_node);
 
         $event = new AddRemoveTaintsEvent($stmt, $context, $statements_analyzer, $codebase);
 
         $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
         $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
 
-        $taints = $added_taints & ~$removed_taints;
-        if ($taints !== 0 && $statements_analyzer->taint_flow_graph) {
-            $taint_source = $property_node->setTaints($taints);
-            $statements_analyzer->taint_flow_graph->addSource($taint_source);
-        }
-
-        $graph->addPath(
+        $data_flow_graph->addPath(
             $localized_property_node,
             $property_node,
             'property-assignment',
@@ -614,7 +610,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         if ($assignment_value_type->parent_nodes) {
             foreach ($assignment_value_type->parent_nodes as $parent_node) {
-                $graph->addPath(
+                $data_flow_graph->addPath(
                     $parent_node,
                     $localized_property_node,
                     '=',
@@ -630,23 +626,23 @@ final class InstancePropertyAssignmentAnalyzer
             $statements_analyzer,
         );
 
-        if ($statements_analyzer->taint_flow_graph
+        if ($statements_analyzer->data_flow_graph instanceof TaintFlowGraph
             && $declaring_property_class
             && $declaring_property_class !== $class_storage->name
             && ($stmt instanceof PhpParser\Node\Expr\PropertyFetch
                 || $stmt instanceof PhpParser\Node\Expr\StaticPropertyFetch)
             && $stmt->name instanceof PhpParser\Node\Identifier
         ) {
-            $declaring_property_node = DataFlowNode::make(
+            $declaring_property_node = new DataFlowNode(
                 $declaring_property_class . '::$' . $stmt->name,
                 $declaring_property_class . '::$' . $stmt->name,
                 null,
                 null,
             );
 
-            $graph->addNode($declaring_property_node);
+            $data_flow_graph->addNode($declaring_property_node);
 
-            $graph->addPath(
+            $data_flow_graph->addPath(
                 $property_node,
                 $declaring_property_node,
                 'property-assignment',
@@ -1093,7 +1089,7 @@ final class InstancePropertyAssignmentAnalyzer
              * If we have an explicit list of all allowed magic properties on the class, and we're
              * not in that list, fall through
              */
-            if ($var_id === null || !$class_storage->hasSealedProperties($codebase->config)) {
+            if (!$class_storage->hasSealedProperties($codebase->config)) {
                 if (!$context->collect_initializations && !$context->collect_mutations) {
                     self::taintProperty(
                         $statements_analyzer,
@@ -1394,11 +1390,11 @@ final class InstancePropertyAssignmentAnalyzer
             if (!$class_property_type->hasMixed() && $assignment_value_type->hasMixed()) {
                 $origin_locations = [];
 
-                if ($statements_analyzer->variable_use_graph) {
+                if ($statements_analyzer->data_flow_graph instanceof VariableUseGraph) {
                     foreach ($assignment_value_type->parent_nodes as $parent_node) {
                         $origin_locations = [
                             ...$origin_locations,
-                            ...$statements_analyzer->variable_use_graph->getOriginLocations($parent_node),
+                            ...$statements_analyzer->data_flow_graph->getOriginLocations($parent_node),
                         ];
                     }
                 }

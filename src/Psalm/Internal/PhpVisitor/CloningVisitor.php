@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
-use Override;
 use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
 
@@ -17,7 +16,6 @@ use PhpParser\NodeVisitorAbstract;
  */
 final class CloningVisitor extends NodeVisitorAbstract
 {
-    #[Override]
     public function enterNode(Node $node): Node
     {
         $node = clone $node;

@@ -10,6 +10,8 @@ interface RemoveTaintsInterface
 {
     /**
      * Called to see what taints should be removed
+     *
+     * @return list<string>
      */
-    public static function removeTaints(AddRemoveTaintsEvent $event): int;
+    public static function removeTaints(AddRemoveTaintsEvent $event): array;
 }

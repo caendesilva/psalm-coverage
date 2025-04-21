@@ -8,7 +8,7 @@ use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
 
-final class ThrowsInGlobalScopeTest extends TestCase
+class ThrowsInGlobalScopeTest extends TestCase
 {
     public function testUncaughtDocumentedThrowCall(): void
     {

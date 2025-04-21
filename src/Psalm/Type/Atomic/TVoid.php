@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 
@@ -16,7 +15,6 @@ use Psalm\Type\Atomic;
 final class TVoid extends Atomic
 {
     use UnserializeMemoryUsageSuppressionTrait;
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'void';
@@ -25,7 +23,6 @@ final class TVoid extends Atomic
     /**
      * @param  array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
@@ -35,7 +32,6 @@ final class TVoid extends Atomic
         return $analysis_php_version_id >= 7_01_00 ? $this->getKey() : null;
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return true;

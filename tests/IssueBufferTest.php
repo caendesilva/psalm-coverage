@@ -17,7 +17,7 @@ use function microtime;
 use function ob_get_clean;
 use function ob_start;
 
-final class IssueBufferTest extends TestCase
+class IssueBufferTest extends TestCase
 {
 
     public function testFinishDoesNotCorruptInternalState(): void
@@ -120,14 +120,14 @@ final class IssueBufferTest extends TestCase
         $codebase->analyzer = $analyzer;
         $codebase->config = $config;
 
-        $projectAnalyzer = $this->createMock(ProjectAnalyzer::class);
-        $projectAnalyzer->method('getCodebase')->willReturn($codebase);
+        $projectAnalzyer = $this->createMock(ProjectAnalyzer::class);
+        $projectAnalzyer->method('getCodebase')->willReturn($codebase);
 
-        $projectAnalyzer->stdout_report_options = new ReportOptions();
-        $projectAnalyzer->generated_report_options = [];
+        $projectAnalzyer->stdout_report_options = new ReportOptions();
+        $projectAnalzyer->generated_report_options = [];
 
         ob_start();
-        IssueBuffer::finish($projectAnalyzer, false, microtime(true), false, $baseline);
+        IssueBuffer::finish($projectAnalzyer, false, microtime(true), false, $baseline);
         $output = (string) ob_get_clean();
         $this->assertStringNotContainsString("ERROR", $output, "all issues baselined");
         IssueBuffer::clear();

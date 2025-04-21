@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Storage\Assertion;
 
-use Override;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
@@ -18,13 +17,11 @@ final class DoesNotHaveMethod extends Assertion
     {
     }
 
-    #[Override]
     public function isNegation(): bool
     {
         return true;
     }
 
-    #[Override]
     public function getNegation(): Assertion
     {
         return new HasMethod($this->method);
@@ -35,7 +32,6 @@ final class DoesNotHaveMethod extends Assertion
         return '!method-exists-' . $this->method;
     }
 
-    #[Override]
     public function isNegationOf(Assertion $assertion): bool
     {
         return $assertion instanceof HasMethod && $assertion->method === $this->method;

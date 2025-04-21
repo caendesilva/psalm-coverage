@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -18,19 +17,9 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 use function dirname;
 use function getcwd;
 
-final class VariadicTest extends TestCase
+class VariadicTest extends TestCase
 {
     use ValidCodeAnalysisTestTrait;
-
-    #[Override]
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-
-        // hack to isolate Psalm from PHPUnit cli arguments
-        global $argv;
-        $argv = [];
-    }
 
     public function testVariadicArrayBadParam(): void
     {
@@ -86,7 +75,6 @@ final class VariadicTest extends TestCase
     /**
      * @return iterable<string,array{code: string}>
      */
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [

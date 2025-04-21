@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
-use Override;
-
 use function max;
 use function min;
 
@@ -28,13 +26,11 @@ final class TIntRange extends TInt
         parent::__construct($from_docblock);
     }
 
-    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return 'int<' . ($this->min_bound ?? 'min') . ', ' . ($this->max_bound ?? 'max') . '>';
     }
 
-    #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
         return false;
@@ -43,7 +39,6 @@ final class TIntRange extends TInt
     /**
      * @param array<lowercase-string, string> $aliased_classes
      */
-    #[Override]
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,

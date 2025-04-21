@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
-use Override;
 use PhpParser;
 
 use function is_string;
@@ -19,7 +18,6 @@ final class ShortClosureVisitor extends PhpParser\NodeVisitorAbstract
      */
     private array $used_variables = [];
 
-    #[Override]
     public function enterNode(PhpParser\Node $node): ?int
     {
         if ($node instanceof PhpParser\Node\Expr\Variable && is_string($node->name)) {

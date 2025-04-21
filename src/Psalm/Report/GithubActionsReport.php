@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Report;
 
-use Override;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Report;
 
@@ -13,7 +12,6 @@ use function strtr;
 
 final class GithubActionsReport extends Report
 {
-    #[Override]
     public function create(): string
     {
         $output = '';

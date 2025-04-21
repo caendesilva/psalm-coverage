@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use DateTime;
-use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -14,7 +13,7 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-final class PropertyTypeTest extends TestCase
+class PropertyTypeTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
@@ -553,7 +552,6 @@ final class PropertyTypeTest extends TestCase
         $this->analyzeFile('somefile.php', new Context());
     }
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -1353,7 +1351,7 @@ final class PropertyTypeTest extends TestCase
                         }
                     }',
             ],
-            'allowMixedAssignmentWhenDesired' => [
+            'allowMixedAssignmetWhenDesired' => [
                 'code' => '<?php
                     class A {
                         /**
@@ -1759,7 +1757,7 @@ final class PropertyTypeTest extends TestCase
                     class B extends A {}
                     class C extends B {}',
             ],
-            'uninitializedPropertySuppressPropertyNotSetInConstructor' => [
+            'unitializedPropertySuppressPropertyNotSetInConstructor' => [
                 'code' => '<?php
                     class A {
                         /** @var string */
@@ -1777,7 +1775,7 @@ final class PropertyTypeTest extends TestCase
                 'assertions' => [],
                 'ignored_issues' => ['PropertyNotSetInConstructor'],
             ],
-            'uninitializedPropertySuppressPropertyNotSetInAbstractConstructor' => [
+            'unitializedPropertySuppressPropertyNotSetInAbstractConstructor' => [
                 'code' => '<?php
                     abstract class A {
                           /** @readonly */
@@ -2419,7 +2417,7 @@ final class PropertyTypeTest extends TestCase
 
                     echo (new A)->foo;',
             ],
-            'promotedPublicPropertyWithoutDefault' => [
+            'promotedPublicPropertyWitoutDefault' => [
                 'code' => '<?php
                     class A {
                         public function __construct(public int $foo) {}
@@ -2545,7 +2543,6 @@ final class PropertyTypeTest extends TestCase
             ],
             'ignoreUndefinedMethodOnUnion' => [
                 'code' => '<?php
-                    /** @psalm-no-seal-properties */
                     class NullObject {
                         /**
                          * @return null
@@ -2748,7 +2745,6 @@ final class PropertyTypeTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -3490,7 +3486,7 @@ final class PropertyTypeTest extends TestCase
                     Y::$b = 5;',
                 'error_message' => 'InvalidPropertyAssignmentValue',
             ],
-            'uninitializedProperty' => [
+            'unitializedProperty' => [
                 'code' => '<?php
                     class A {
                         /** @var string */
@@ -3503,7 +3499,7 @@ final class PropertyTypeTest extends TestCase
                     }',
                 'error_message' => 'UninitializedProperty',
             ],
-            'uninitializedPropertyWithoutType' => [
+            'unitializedPropertyWithoutType' => [
                 'code' => '<?php
                     class A {
                         public $foo;
@@ -3516,7 +3512,7 @@ final class PropertyTypeTest extends TestCase
                 'error_message' => 'UninitializedProperty',
                 'ignored_issues' => ['MixedArgument', 'MissingPropertyType'],
             ],
-            'uninitializedObjectProperty' => [
+            'unitializedObjectProperty' => [
                 'code' => '<?php
                     class Foo {
                         /** @var int */
@@ -3549,7 +3545,6 @@ final class PropertyTypeTest extends TestCase
             ],
             'noCrashOnMagicCall' => [
                 'code' => '<?php
-                    /** @method void setA() */
                     class A {
                         /** @var string */
                         private $a;
@@ -3560,7 +3555,7 @@ final class PropertyTypeTest extends TestCase
 
                         public function __call(string $var, array $args) {}
                     }',
-                'error_message' => 'PropertyNotSetInConstructor - src' . DIRECTORY_SEPARATOR . 'somefile.php:5',
+                'error_message' => 'PropertyNotSetInConstructor - src' . DIRECTORY_SEPARATOR . 'somefile.php:4',
             ],
             'reportGoodLocationForPropertyError' => [
                 'code' => '<?php

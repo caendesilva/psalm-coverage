@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\FileManipulation;
 
-use Override;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
@@ -16,11 +15,10 @@ use Psalm\Tests\TestConfig;
 
 use function strpos;
 
-final class PropertyMoveTest extends TestCase
+class PropertyMoveTest extends TestCase
 {
     protected ProjectAnalyzer $project_analyzer;
 
-    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();

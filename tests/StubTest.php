@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -16,9 +15,12 @@ use Psalm\Internal\IncludeCollector;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
+use Psalm\Internal\VersionUtils;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
 use function assert;
+use function define;
+use function defined;
 use function dirname;
 use function explode;
 use function getcwd;
@@ -30,23 +32,23 @@ use function substr;
 
 use const DIRECTORY_SEPARATOR;
 
-final class StubTest extends TestCase
+class StubTest extends TestCase
 {
     protected static TestConfig $config;
 
-    #[Override]
     public static function setUpBeforeClass(): void
     {
-        parent::setUpBeforeClass();
-
-        // hack to isolate Psalm from PHPUnit cli arguments
-        global $argv;
-        $argv = [];
-
         self::$config = new TestConfig();
+
+        if (!defined('PSALM_VERSION')) {
+            define('PSALM_VERSION', VersionUtils::getPsalmVersion());
+        }
+
+        if (!defined('PHP_PARSER_VERSION')) {
+            define('PHP_PARSER_VERSION', VersionUtils::getPhpParserVersion());
+        }
     }
 
-    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();
@@ -1290,7 +1292,7 @@ final class StubTest extends TestCase
         $this->addFile(
             $file_path,
             '<?php
-                final class MyClass extends \SomeVendor\VendorClass {
+                class MyClass extends \SomeVendor\VendorClass {
                     public function foo() : void {}
                 }
 

@@ -7,7 +7,6 @@ namespace Psalm\Internal\PhpVisitor\Reflector;
 use AssertionError;
 use PhpParser;
 use Psalm\CodeLocation;
-use Psalm\Codebase;
 use Psalm\DocComment;
 use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\IncorrectDocblockException;
@@ -17,6 +16,7 @@ use Psalm\Internal\Scanner\FunctionDocblockComment;
 use Psalm\Internal\Scanner\ParsedDocblock;
 use Psalm\Issue\InvalidDocblock;
 use Psalm\IssueBuffer;
+use Psalm\Type\TaintKindGroup;
 
 use function array_keys;
 use function array_shift;
@@ -53,7 +53,6 @@ final class FunctionLikeDocblockParser
      * @throws DocblockParseException if there was a problem parsing the docblock
      */
     public static function parse(
-        Codebase $codebase,
         PhpParser\Comment\Doc $comment,
         CodeLocation $code_location,
         string $cased_function_id,
@@ -247,10 +246,7 @@ final class FunctionLikeDocblockParser
                 }
 
                 if (count($param_parts) >= 2) {
-                    $t = $codebase->getOrRegisterTaint($param_parts[0], $code_location);
-                    if ($t !== null) {
-                        $info->taint_sink_params[] = ['name' => $param_parts[1], 'taint' => $t];
-                    }
+                    $info->taint_sink_params[] = ['name' => $param_parts[1], 'taint' => $param_parts[0]];
                 } else {
                     IssueBuffer::maybeAdd(
                         new InvalidDocblock(
@@ -275,10 +271,17 @@ final class FunctionLikeDocblockParser
 
                     if (str_starts_with($taint_type, 'exec_')) {
                         $taint_type = substr($taint_type, 5);
-                        $t = $codebase->getOrRegisterTaint($taint_type, $code_location);
-                        if ($t !== null) {
-                            $info->taint_sink_params[] = ['name' => $param_parts[0], 'taint' => $t];
+
+                        if ($taint_type === 'tainted') {
+                            $taint_type = TaintKindGroup::GROUP_INPUT;
                         }
+
+                        if ($taint_type === 'misc') {
+                            // @todo `text` is semantically not defined in `TaintKind`, maybe drop it
+                            $taint_type = 'text';
+                        }
+
+                        $info->taint_sink_params[] = ['name' => $param_parts[0], 'taint' => $taint_type];
                     }
                 }
             }
@@ -292,10 +295,7 @@ final class FunctionLikeDocblockParser
                 }
 
                 if ($param_parts[0]) {
-                    $t = $codebase->getOrRegisterTaint($param_parts[0], $code_location);
-                    if ($t !== null) {
-                        $info->taint_source_types |= $t;
-                    }
+                    $info->taint_source_types[] = $param_parts[0];
                 } else {
                     IssueBuffer::maybeAdd(
                         new InvalidDocblock(
@@ -314,11 +314,17 @@ final class FunctionLikeDocblockParser
                 }
 
                 if ($param_parts[0]) {
+                    if ($param_parts[0] === 'tainted') {
+                        $param_parts[0] = TaintKindGroup::GROUP_INPUT;
+                    }
+
+                    if ($param_parts[0] === 'misc') {
+                        // @todo `text` is semantically not defined in `TaintKind`, maybe drop it
+                        $param_parts[0] = 'text';
+                    }
+
                     if ($param_parts[0] !== 'none') {
-                        $t = $codebase->getOrRegisterTaint($param_parts[0], $code_location);
-                        if ($t !== null) {
-                            $info->taint_source_types |= $t;
-                        }
+                        $info->taint_source_types[] = $param_parts[0];
                     }
                 }
             }

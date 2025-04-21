@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\FileManipulation;
 
-use Override;
-
-final class ParamNameMismatchTest extends FileManipulationTestCase
+class ParamNameMismatchTest extends FileManipulationTestCase
 {
-    #[Override]
     public function providerValidCodeParse(): array
     {
         return [

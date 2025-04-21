@@ -12,7 +12,6 @@ use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\FileIncludeException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
-use Psalm\Internal\Analyzer\Statements\Expression\Call\ArgumentsAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\IncludeAnalyzer;
@@ -162,12 +161,7 @@ final class ExpressionScanner
                     $doc_comment = $second_arg_value->getDocComment();
                     if ($doc_comment) {
                         try {
-                            $var_comments = CommentAnalyzer::getTypeFromComment(
-                                $codebase,
-                                $doc_comment,
-                                $file_scanner,
-                                $aliases,
-                            );
+                            $var_comments = CommentAnalyzer::getTypeFromComment($doc_comment, $file_scanner, $aliases);
                             foreach ($var_comments as $var_comment) {
                                 if ($var_comment->type) {
                                     $const_type = $var_comment->type;
@@ -194,10 +188,8 @@ final class ExpressionScanner
                         $file_storage->declaring_constants[$const_name] = $file_storage->file_path;
                     }
 
-                    if (($codebase->register_stub_files
-                        || $codebase->register_autoload_files
-                        || $codebase->all_constants_global
-                        ) && (!defined($const_name) || !$const_type->isMixed())
+                    if (($codebase->register_stub_files || $codebase->register_autoload_files)
+                        && (!defined($const_name) || $const_type->isMixed())
                     ) {
                         $codebase->addGlobalConstantType($const_name, $const_type);
                     }
@@ -208,7 +200,7 @@ final class ExpressionScanner
         $mapping_function_ids = [];
 
         if (($function_id === 'array_map' && isset($node->getArgs()[0]))
-            || (in_array($function_id, ArgumentsAnalyzer::ARRAY_FILTERLIKE, true) && isset($node->getArgs()[1]))
+            || ($function_id === 'array_filter' && isset($node->getArgs()[1]))
         ) {
             $node_arg_value = $function_id === 'array_map' ? $node->getArgs()[0]->value : $node->getArgs()[1]->value;
 

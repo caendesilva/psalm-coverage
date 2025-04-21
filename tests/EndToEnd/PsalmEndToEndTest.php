@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Tests\EndToEnd;
 
 use Exception;
-use Override;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
@@ -37,13 +36,12 @@ use const PHP_BINARY;
  *
  * This is primarily intended to test the code in `psalm`, `src/psalm.php` and related files.
  */
-final class PsalmEndToEndTest extends TestCase
+class PsalmEndToEndTest extends TestCase
 {
     use PsalmRunnerTrait;
 
     private static string $tmpDir;
 
-    #[Override]
     public static function setUpBeforeClass(): void
     {
         self::$tmpDir = tempnam(sys_get_temp_dir(), 'PsalmEndToEndTest_');
@@ -62,14 +60,12 @@ final class PsalmEndToEndTest extends TestCase
         $process->mustRun();
     }
 
-    #[Override]
     public static function tearDownAfterClass(): void
     {
         self::recursiveRemoveDirectory(self::$tmpDir);
         parent::tearDownAfterClass();
     }
 
-    #[Override]
     public function setUp(): void
     {
         mkdir(self::$tmpDir . '/src');
@@ -81,7 +77,6 @@ final class PsalmEndToEndTest extends TestCase
         parent::setUp();
     }
 
-    #[Override]
     public function tearDown(): void
     {
         @unlink(self::$tmpDir . '/psalm.xml');
@@ -196,7 +191,7 @@ final class PsalmEndToEndTest extends TestCase
 
         $this->assertStringContainsString('TaintedHtml', $result['STDOUT']);
         $this->assertStringContainsString('TaintedTextWithQuotes', $result['STDOUT']);
-        $this->assertStringContainsString('4 errors', $result['STDOUT']);
+        $this->assertStringContainsString('2 errors', $result['STDOUT']);
         $this->assertSame(2, $result['CODE']);
     }
 
@@ -222,7 +217,7 @@ final class PsalmEndToEndTest extends TestCase
 
         $this->assertStringContainsString('TaintedHtml', $result['STDOUT']);
         $this->assertStringContainsString('TaintedTextWithQuotes', $result['STDOUT']);
-        $this->assertStringContainsString('4 errors', $result['STDOUT']);
+        $this->assertStringContainsString('2 errors', $result['STDOUT']);
         $this->assertSame(2, $result['CODE']);
     }
 

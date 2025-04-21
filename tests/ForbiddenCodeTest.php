@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -17,22 +16,11 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 use function dirname;
 use function getcwd;
 
-final class ForbiddenCodeTest extends TestCase
+class ForbiddenCodeTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
-    #[Override]
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-
-        // hack to isolate Psalm from PHPUnit cli arguments
-        global $argv;
-        $argv = [];
-    }
-
-    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -64,7 +52,6 @@ final class ForbiddenCodeTest extends TestCase
         ];
     }
 
-    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -128,33 +115,6 @@ final class ForbiddenCodeTest extends TestCase
             $file_path,
             '<?php
                 echo "hello";',
-        );
-
-        $this->analyzeFile($file_path, new Context());
-    }
-
-    public function testForbiddenCodeConstantViaConstant(): void
-    {
-        $this->expectExceptionMessage('ForbiddenCode');
-        $this->expectException(CodeException::class);
-        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
-            TestConfig::loadFromXML(
-                dirname(__DIR__, 2),
-                '<?xml version="1.0"?>
-                <psalm>
-                    <forbiddenConstants>
-                        <constant name="FILTER_VALIDATE_URL" />
-                    </forbiddenConstants>
-                </psalm>',
-            ),
-        );
-
-        $file_path = (string) getcwd() . '/src/somefile.php';
-
-        $this->addFile(
-            $file_path,
-            '<?php
-                filter_var("http://example.com/image.jpg", FILTER_VALIDATE_URL);',
         );
 
         $this->analyzeFile($file_path, new Context());

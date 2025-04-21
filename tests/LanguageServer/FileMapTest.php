@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\LanguageServer;
 
-use Override;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -18,11 +17,10 @@ use Psalm\Tests\TestConfig;
 
 use function count;
 
-final class FileMapTest extends TestCase
+class FileMapTest extends TestCase
 {
     protected Codebase $codebase;
 
-    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -47,7 +45,6 @@ final class FileMapTest extends TestCase
             $providers,
             null,
             [],
-            1,
             1,
             null,
             $this->codebase,
