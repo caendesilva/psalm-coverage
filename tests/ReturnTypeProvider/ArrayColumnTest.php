@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\ReturnTypeProvider;
 
+use Override;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-class ArrayColumnTest extends TestCase
+final class ArrayColumnTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         yield 'arrayColumnObjectWithProperties' => [
@@ -143,6 +145,7 @@ class ArrayColumnTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         yield 'arrayColumnWithArrayAndColumnNameNull' => [

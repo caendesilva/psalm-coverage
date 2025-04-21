@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Context;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\InvalidCodeAnalysisWithIssuesTestTrait;
@@ -11,7 +12,7 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class MethodCallTest extends TestCase
+final class MethodCallTest extends TestCase
 {
     use InvalidCodeAnalysisWithIssuesTestTrait;
     use InvalidCodeAnalysisTestTrait;
@@ -197,6 +198,7 @@ class MethodCallTest extends TestCase
         $this->analyzeFile('somefile.php', new Context());
     }
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -272,6 +274,7 @@ class MethodCallTest extends TestCase
             ],
             'magicCall' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-methods */
                     class A {
                         public function __call(string $method_name, array $args) : string {
                             return "hello";
@@ -286,6 +289,7 @@ class MethodCallTest extends TestCase
             ],
             'canBeCalledOnMagic' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-methods */
                     class A {
                       public function __call(string $method, array $args) {}
                     }
@@ -300,6 +304,7 @@ class MethodCallTest extends TestCase
             ],
             'canBeCalledOnMagicWithMethod' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-methods */
                     class A {
                       public function __call(string $method, array $args) {}
                     }
@@ -865,7 +870,7 @@ class MethodCallTest extends TestCase
             ],
             'dateTimeSecondArg' => [
                 'code' => '<?php
-                    $date = new DateTime(null, new DateTimeZone("Pacific/Nauru"));
+                    $date = new DateTime("now", new DateTimeZone("Pacific/Nauru"));
                     echo $date->format("Y-m-d H:i:sP") . "\n";',
             ],
             'noCrashOnGetClassMethodCallWithNull' => [
@@ -1173,6 +1178,7 @@ class MethodCallTest extends TestCase
             ],
             'parentMagicMethodCall' => [
                 'code' => '<?php
+                    /** @psalm-no-seal-methods */
                     class Model {
                         /**
                          * @return static
@@ -1258,6 +1264,7 @@ class MethodCallTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

@@ -422,7 +422,12 @@ final class FunctionLikeNodeScanner
         if ($doc_comment) {
             try {
                 $code_location = new CodeLocation($this->file_scanner, $stmt, null, true);
-                $docblock_info = FunctionLikeDocblockParser::parse($doc_comment, $code_location, $cased_function_id);
+                $docblock_info = FunctionLikeDocblockParser::parse(
+                    $this->codebase,
+                    $doc_comment,
+                    $code_location,
+                    $cased_function_id,
+                );
             } catch (IncorrectDocblockException $e) {
                 $storage->docblock_issues[] = new MissingDocblockType(
                     $e->getMessage() . ' in docblock for ' . $cased_function_id,
@@ -489,7 +494,8 @@ final class FunctionLikeNodeScanner
             && $function_id
             && $storage instanceof FunctionStorage
         ) {
-            if ($this->codebase->register_stub_files
+            if ($this->codebase->all_functions_global
+                || $this->codebase->register_stub_files
                 || ($this->codebase->register_autoload_files
                     && !$this->codebase->functions->hasStubbedFunction($function_id))
             ) {
@@ -576,6 +582,7 @@ final class FunctionLikeNodeScanner
                     ;
 
                     $var_comments = CommentAnalyzer::getTypeFromComment(
+                        $this->codebase,
                         $doc_comment,
                         $this->file_scanner,
                         $this->aliases,
@@ -683,6 +690,7 @@ final class FunctionLikeNodeScanner
                 }
 
                 if ($attribute->fq_class_name === 'Psalm\\Deprecated'
+                    || $attribute->fq_class_name === 'Deprecated'
                     || $attribute->fq_class_name === 'JetBrains\\PhpStorm\\Deprecated'
                 ) {
                     $storage->deprecated = true;
@@ -914,7 +922,10 @@ final class FunctionLikeNodeScanner
 
             $storage = $this->storage = new FunctionStorage();
 
-            if ($this->codebase->register_stub_files || $this->codebase->register_autoload_files) {
+            if ($this->codebase->register_stub_files
+                || $this->codebase->register_autoload_files
+                || $this->codebase->all_functions_global
+            ) {
                 if (isset($this->file_storage->functions[$function_id])
                     && ($this->codebase->register_stub_files
                         || !$this->codebase->functions->hasStubbedFunction($function_id))
@@ -1018,6 +1029,7 @@ final class FunctionLikeNodeScanner
                     try {
                         $code_location = new CodeLocation($this->file_scanner, $stmt, null, true);
                         $docblock_info = FunctionLikeDocblockParser::parse(
+                            $this->codebase,
                             $doc_comment,
                             $code_location,
                             $cased_function_id,
@@ -1129,7 +1141,7 @@ final class FunctionLikeNodeScanner
                 }
             }
         } else {
-            throw new UnexpectedValueException('Unrecognized functionlike');
+            throw new UnexpectedValueException("Unrecognized functionlike of type ".($stmt::class));
         }
 
         return [

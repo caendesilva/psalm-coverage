@@ -25,7 +25,7 @@ use Psalm\Type\Atomic\TString;
 
 use function spl_object_id;
 
-class AlgebraTest extends TestCase
+final class AlgebraTest extends TestCase
 {
     public function testNegateFormula(): void
     {
@@ -113,7 +113,7 @@ class AlgebraTest extends TestCase
 
         $file_analyzer = new FileAnalyzer($this->project_analyzer, 'somefile.php', 'somefile.php');
         $file_analyzer->context = new Context();
-        $statements_analyzer = new StatementsAnalyzer($file_analyzer, new NodeDataProvider());
+        $statements_analyzer = new StatementsAnalyzer($file_analyzer, new NodeDataProvider(), false);
 
         $dnf_clauses = FormulaGenerator::getFormula(
             spl_object_id($dnf_stmt->expr),

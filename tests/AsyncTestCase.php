@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Amp\PHPUnit\AsyncTestCase as BaseAsyncTestCase;
+use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\FileAnalyzer;
@@ -14,6 +15,7 @@ use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
+use Psalm\Internal\VersionUtils;
 use Psalm\IssueBuffer;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 use Psalm\Type\Union;
@@ -30,23 +32,24 @@ use function is_string;
 use const ARRAY_FILTER_USE_KEY;
 use const DIRECTORY_SEPARATOR;
 
-class AsyncTestCase extends BaseAsyncTestCase
+abstract class AsyncTestCase extends BaseAsyncTestCase
 {
     protected static string $src_dir_path;
     protected ProjectAnalyzer $project_analyzer;
     protected FakeFileProvider $file_provider;
     protected Config $testConfig;
 
+    #[Override]
     public static function setUpBeforeClass(): void
     {
         ini_set('memory_limit', '-1');
 
         if (!defined('PSALM_VERSION')) {
-            define('PSALM_VERSION', '5.0.0');
+            define('PSALM_VERSION', VersionUtils::getPsalmVersion());
         }
 
         if (!defined('PHP_PARSER_VERSION')) {
-            define('PHP_PARSER_VERSION', '5.0.0');
+            define('PHP_PARSER_VERSION', VersionUtils::getPhpParserVersion());
         }
 
         parent::setUpBeforeClass();
@@ -58,6 +61,7 @@ class AsyncTestCase extends BaseAsyncTestCase
         return new TestConfig();
     }
 
+    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -81,6 +85,7 @@ class AsyncTestCase extends BaseAsyncTestCase
         $this->project_analyzer->setPhpVersion('7.4', 'tests');
     }
 
+    #[Override]
     public function tearDown(): void
     {
         unset($this->project_analyzer, $this->file_provider, $this->testConfig);
@@ -124,7 +129,7 @@ class AsyncTestCase extends BaseAsyncTestCase
         $file_analyzer->analyze($context);
 
         if ($codebase->taint_flow_graph) {
-            $codebase->taint_flow_graph->connectSinksAndSources();
+            $codebase->taint_flow_graph->connectSinksAndSources($codebase->progress);
         }
 
         if ($track_unused_suppressions) {

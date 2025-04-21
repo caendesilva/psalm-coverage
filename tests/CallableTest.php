@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
-class CallableTest extends TestCase
+final class CallableTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -2295,7 +2297,7 @@ class CallableTest extends TestCase
             ],
             'callableArrayTypes' => [
                 'code' => '<?php
-                    /** @var callable-array $c */
+                    /** @var callable-list $c */
                     $c;
                     [$a, $b] = $c;
                     ',
@@ -2382,9 +2384,25 @@ class CallableTest extends TestCase
                 f($ca);
                 PHP,
             ],
+            'callableWithoutArray' => [
+                'code' => '<?php
+                    /**
+                     * @param array|(callable():array) $var
+                     */
+                    function text($var): array
+                    {
+                        if (is_array($var)) {
+                            return $var;
+                        }
+
+                        //callable-string can\'t specify return type but it doesn\'t error
+                        return call_user_func($var);
+                    }',
+            ],
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [
@@ -3390,7 +3408,7 @@ class CallableTest extends TestCase
                     }',
                 'error_message' => 'InvalidArgument',
             ],
-            'inexistantCallableinCallableString' => [
+            'inexistentCallableinCallableString' => [
                 'code' => '<?php
                     /**
                      * @param callable-string $c

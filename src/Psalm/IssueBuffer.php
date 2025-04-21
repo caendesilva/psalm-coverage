@@ -263,7 +263,6 @@ final class IssueBuffer
     {
         $config = Config::getInstance();
         $project_analyzer = ProjectAnalyzer::getInstance();
-        $codebase = $project_analyzer->getCodebase();
 
         $fqcn_parts = explode('\\', $e::class);
         $issue_type = array_pop($fqcn_parts);
@@ -273,10 +272,6 @@ final class IssueBuffer
         }
 
         $is_tainted = str_starts_with($issue_type, 'Tainted');
-
-        if ($codebase->taint_flow_graph && !$is_tainted) {
-            return false;
-        }
 
         $reporting_level = $config->getReportingLevelForIssue($e);
 
@@ -653,7 +648,7 @@ final class IssueBuffer
             if ($is_full && !$codebase->diff_run) {
                 foreach ($codebase->config->getIssueHandlers() as $type => $handler) {
                     foreach ($handler->getFilters() as $filter) {
-                        if ($filter->suppressions > 0 && $filter->getErrorLevel() == Config::REPORT_SUPPRESS) {
+                        if ($filter->suppressions > 0 || $filter->getErrorLevel() != Config::REPORT_SUPPRESS) {
                             continue;
                         }
                         $issues_data['config'][] = new IssueData(
@@ -1111,5 +1106,13 @@ final class IssueBuffer
     final public static function captureServer(array $server): void
     {
         self::$server = $server;
+    }
+    /**
+     * @internal
+     * @return array<array-key,mixed>
+     */
+    final public static function getServer(): array
+    {
+        return self::$server;
     }
 }

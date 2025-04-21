@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
+use Override;
 use PhpParser;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\Expression\AssertionFinder;
@@ -55,11 +56,13 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
     /**
      * @return array<lowercase-string>
      */
+    #[Override]
     public static function getFunctionIds(): array
     {
         return ['array_map'];
     }
 
+    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): Union
     {
         $statements_source = $event->getStatementsSource();
@@ -120,7 +123,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
                         static fn(?Union $t) => $t ?? $null,
                         $sub,
                     );
-                    return new Union([new TKeyedArray($sub, null, null, true)]);
+                    return new Union([TKeyedArray::make($sub, null, null, true)]);
                 },
                 $array_arg_types,
             );
@@ -129,7 +132,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
                 return Type::getEmptyArray();
             }
 
-            return new Union([new TKeyedArray($array_arg_types, null, null, true)]);
+            return new Union([TKeyedArray::make($array_arg_types, null, null, true)]);
         }
 
         $array_arg = $call_args[1] ?? null;
@@ -231,7 +234,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
 
         if ($mapping_return_type && $generic_key_type) {
             if ($array_arg_atomic_type instanceof TKeyedArray && count($call_args) === 2) {
-                $atomic_type = new TKeyedArray(
+                $atomic_type = TKeyedArray::make(
                     array_map(
                         static fn(Union $in): Union => $mapping_return_type->setPossiblyUndefined(
                             $in->possibly_undefined,

@@ -779,6 +779,7 @@ final class ClassLikeNodeScanner
 
                 if ($attribute->fq_class_name === 'Psalm\\Deprecated'
                     || $attribute->fq_class_name === 'JetBrains\\PhpStorm\\Deprecated'
+                    || $attribute->fq_class_name === 'Deprecated'
                 ) {
                     $storage->deprecated = true;
                 }
@@ -1277,6 +1278,7 @@ final class ClassLikeNodeScanner
 
             try {
                 $var_comments = CommentAnalyzer::getTypeFromComment(
+                    $this->codebase,
                     $comment,
                     $this->file_scanner,
                     $this->aliases,
@@ -1343,7 +1345,7 @@ final class ClassLikeNodeScanner
             $attributes = [];
             foreach ($stmt->attrGroups as $attr_group) {
                 foreach ($attr_group->attrs as $attr) {
-                    $attributes[] = AttributeResolver::resolve(
+                    $attributes[] = $attr = AttributeResolver::resolve(
                         $this->codebase,
                         $this->file_scanner,
                         $this->file_storage,
@@ -1351,6 +1353,13 @@ final class ClassLikeNodeScanner
                         $attr,
                         $this->storage->name ?? null,
                     );
+
+                    if ($attr->fq_class_name === 'Psalm\\Deprecated'
+                        || $attr->fq_class_name === 'JetBrains\\PhpStorm\\Deprecated'
+                        || $attr->fq_class_name === 'Deprecated'
+                    ) {
+                        $deprecated = true;
+                    }
                 }
             }
             $unresolved_node = null;
@@ -1497,6 +1506,7 @@ final class ClassLikeNodeScanner
             foreach ($attrs as $attribute) {
                 if ($attribute->fq_class_name === 'Psalm\\Deprecated'
                     || $attribute->fq_class_name === 'JetBrains\\PhpStorm\\Deprecated'
+                    || $attribute->fq_class_name === 'Deprecated'
                 ) {
                     $case->deprecated = true;
                     break;
@@ -1581,6 +1591,7 @@ final class ClassLikeNodeScanner
 
             try {
                 $var_comments = CommentAnalyzer::getTypeFromComment(
+                    $this->codebase,
                     $comment,
                     $this->file_scanner,
                     $this->aliases,
@@ -1781,6 +1792,7 @@ final class ClassLikeNodeScanner
             foreach ($attrs as $attribute) {
                 if ($attribute->fq_class_name === 'Psalm\\Deprecated'
                     || $attribute->fq_class_name === 'JetBrains\\PhpStorm\\Deprecated'
+                    || $attribute->fq_class_name === 'Deprecated'
                 ) {
                     $property_storage->deprecated = true;
                 }

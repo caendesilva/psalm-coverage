@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\FileUpdates;
 
+use Override;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
@@ -21,8 +22,9 @@ use function strpos;
 
 use const DIRECTORY_SEPARATOR;
 
-class CachedStorageTest extends TestCase
+final class CachedStorageTest extends TestCase
 {
+    #[Override]
     public function setUp(): void
     {
         parent::setUp();

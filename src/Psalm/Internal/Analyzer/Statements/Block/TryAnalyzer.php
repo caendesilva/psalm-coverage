@@ -11,7 +11,6 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\ScopeAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
-use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Scope\FinallyScope;
 use Psalm\Issue\InvalidCatch;
@@ -67,8 +66,8 @@ final class TryAnalyzer
 
         $try_context = clone $context;
 
-        if ($codebase->alter_code) {
-            $try_context->branch_point = $try_context->branch_point ?: (int) $stmt->getAttribute('startFilePos');
+        if ($codebase->alter_code && $try_context->branch_point === null) {
+            $try_context->branch_point = (int) $stmt->getAttribute('startFilePos');
         }
 
         if ($stmt->finally) {
@@ -310,13 +309,11 @@ final class TryAnalyzer
                         ])
                     ;
 
-                    if ($statements_analyzer->data_flow_graph instanceof VariableUseGraph) {
-                        $statements_analyzer->data_flow_graph->addPath(
+                        $statements_analyzer->variable_use_graph?->addPath(
                             $catch_var_node,
-                            new DataFlowNode('variable-use', 'variable use', null),
+                            DataFlowNode::getForVariableUse(),
                             'variable-use',
                         );
-                    }
                 }
             }
 

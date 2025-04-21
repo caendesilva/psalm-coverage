@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
+use Override;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
@@ -32,11 +33,13 @@ final class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderIn
     /**
      * @return array<lowercase-string>
      */
+    #[Override]
     public static function getFunctionIds(): array
     {
         return ['array_merge', 'array_replace'];
     }
 
+    #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): Union
     {
         $statements_source = $event->getStatementsSource();
@@ -260,7 +263,7 @@ final class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderIn
             && ($generic_property_count < $max_keyed_array_size * 2
                 || $generic_property_count < 16)
         ) {
-            $objectlike = new TKeyedArray(
+            $objectlike = TKeyedArray::make(
                 $generic_properties,
                 $class_strings ?: null,
                 $all_keyed_arrays || $inner_key_type === null || $inner_value_type === null

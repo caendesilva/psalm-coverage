@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -12,11 +13,12 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class AnnotationTest extends TestCase
+final class AnnotationTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function setUp(): void
     {
         parent::setUp();
@@ -171,6 +173,7 @@ class AnnotationTest extends TestCase
         $this->analyzeFile('somefile.php', new Context());
     }
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -494,7 +497,7 @@ class AnnotationTest extends TestCase
 
                     $arr["a"]();',
             ],
-            'multipeLineGenericArray' => [
+            'multipleLineGenericArray' => [
                 'code' => '<?php
                     /**
                      * @psalm-type MiddlewareArray = array<
@@ -515,7 +518,7 @@ class AnnotationTest extends TestCase
                      */
                     class A {}',
             ],
-            'multipeLineGenericArray2' => [
+            'multipleLineGenericArray2' => [
                 'code' => '<?php
                     /**
                      * @psalm-type TRelAlternate =
@@ -1453,6 +1456,7 @@ class AnnotationTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

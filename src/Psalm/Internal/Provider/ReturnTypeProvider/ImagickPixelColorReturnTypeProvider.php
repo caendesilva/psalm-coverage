@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
+use Override;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Plugin\EventHandler\Event\MethodReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\MethodReturnTypeProviderInterface;
@@ -20,11 +21,13 @@ use function in_array;
  */
 final class ImagickPixelColorReturnTypeProvider implements MethodReturnTypeProviderInterface
 {
+    #[Override]
     public static function getClassLikeNames(): array
     {
         return ['imagickpixel'];
     }
 
+    #[Override]
     public static function getMethodReturnType(MethodReturnTypeProviderEvent $event): ?Union
     {
         $source = $event->getSource();
@@ -57,7 +60,7 @@ final class ImagickPixelColorReturnTypeProvider implements MethodReturnTypeProvi
         $types = [];
         if (isset($formats[0])) {
             $types []= new Union([
-                new TKeyedArray([
+                TKeyedArray::make([
                     'r' => Type::getIntRange(0, 255),
                     'g' => Type::getIntRange(0, 255),
                     'b' => Type::getIntRange(0, 255),
@@ -67,7 +70,7 @@ final class ImagickPixelColorReturnTypeProvider implements MethodReturnTypeProvi
         }
         if (isset($formats[1])) {
             $types []= new Union([
-                new TKeyedArray([
+                TKeyedArray::make([
                     'r' => Type::getFloat(),
                     'g' => Type::getFloat(),
                     'b' => Type::getFloat(),
@@ -77,7 +80,7 @@ final class ImagickPixelColorReturnTypeProvider implements MethodReturnTypeProvi
         }
         if (isset($formats[2])) {
             $types []= new Union([
-                new TKeyedArray([
+                TKeyedArray::make([
                     'r' => Type::getIntRange(0, 255),
                     'g' => Type::getIntRange(0, 255),
                     'b' => Type::getIntRange(0, 255),

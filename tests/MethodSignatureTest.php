@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
@@ -12,7 +13,7 @@ use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class MethodSignatureTest extends TestCase
+final class MethodSignatureTest extends TestCase
 {
     use InvalidCodeAnalysisWithIssuesTestTrait;
     use ValidCodeAnalysisTestTrait;
@@ -293,6 +294,7 @@ class MethodSignatureTest extends TestCase
         $this->analyzeFile('somefile.php', new Context());
     }
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -754,7 +756,7 @@ class MethodSignatureTest extends TestCase
                         public function getTraceAsString(): string;
                     }',
             ],
-            'allowExecptionToStringWithNoType' => [
+            'allowExceptionToStringWithNoType' => [
                 'code' => '<?php
                     class E extends Exception {
                         public function __toString() {
@@ -762,7 +764,7 @@ class MethodSignatureTest extends TestCase
                         }
                     }',
             ],
-            'allowExecptionToStringIn71' => [
+            'allowExceptionToStringIn71' => [
                 'code' => '<?php
                     class E extends Exception {
                         public function __toString() : string {
@@ -849,12 +851,12 @@ class MethodSignatureTest extends TestCase
                 'code' => '<?php
                     final class B extends A
                     {
-                        public static function doCretate1(): self
+                        public static function doCreate1(): self
                         {
                             return self::create1();
                         }
 
-                        public static function doCretate2(): self
+                        public static function doCreate2(): self
                         {
                             return self::create2();
                         }
@@ -994,6 +996,7 @@ class MethodSignatureTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

@@ -4,18 +4,36 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use PhpParser\Comment\Doc;
 use Psalm\Aliases;
+use Psalm\Codebase;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
+use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Provider\FakeFileProvider;
+use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Internal\Scanner\FileScanner;
+use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
-class CommentAnalyzerTest extends BaseTestCase
+final class CommentAnalyzerTest extends BaseTestCase
 {
+    private Codebase $codebase;
+
+    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();
+
+        $file_provider = new FakeFileProvider();
+        $this->codebase = (new ProjectAnalyzer(
+            new TestConfig(),
+            new Providers(
+                $file_provider,
+                new FakeParserCacheProvider(),
+            ),
+        ))->getCodebase();
     }
 
     public function testDocblockVarDescription(): void
@@ -25,7 +43,7 @@ class CommentAnalyzerTest extends BaseTestCase
  */
 ';
         $php_parser_doc = new Doc($doc);
-        $comment_docblock = CommentAnalyzer::getTypeFromComment($php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
+        $comment_docblock = CommentAnalyzer::getTypeFromComment($this->codebase, $php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
         $this->assertSame('Some Description', $comment_docblock[0]->description);
     }
 
@@ -36,7 +54,7 @@ class CommentAnalyzerTest extends BaseTestCase
  */
 ';
         $php_parser_doc = new Doc($doc);
-        $comment_docblock = CommentAnalyzer::getTypeFromComment($php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
+        $comment_docblock = CommentAnalyzer::getTypeFromComment($this->codebase, $php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
         $this->assertSame('Some Description', $comment_docblock[0]->description);
     }
 
@@ -48,7 +66,7 @@ class CommentAnalyzerTest extends BaseTestCase
  */
 ';
         $php_parser_doc = new Doc($doc);
-        $comment_docblock = CommentAnalyzer::getTypeFromComment($php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
+        $comment_docblock = CommentAnalyzer::getTypeFromComment($this->codebase, $php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
         $this->assertSame('Some Description with a long description.', $comment_docblock[0]->description);
     }
 
@@ -61,7 +79,7 @@ class CommentAnalyzerTest extends BaseTestCase
  */
 ';
         $php_parser_doc = new Doc($doc);
-        $comment_docblock = CommentAnalyzer::getTypeFromComment($php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
+        $comment_docblock = CommentAnalyzer::getTypeFromComment($this->codebase, $php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
         $this->assertSame('Some Description', $comment_docblock[0]->description);
     }
 
@@ -74,7 +92,7 @@ class CommentAnalyzerTest extends BaseTestCase
  */
 ';
         $php_parser_doc = new Doc($doc);
-        $comment_docblock = CommentAnalyzer::getTypeFromComment($php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
+        $comment_docblock = CommentAnalyzer::getTypeFromComment($this->codebase, $php_parser_doc, new FileScanner('somefile.php', 'somefile.php', false), new Aliases);
         $this->assertSame('Use a string', $comment_docblock[0]->description);
     }
 

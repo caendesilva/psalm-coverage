@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
@@ -15,10 +16,11 @@ use UnexpectedValueException;
 use function count;
 use function strpos;
 
-class FileReferenceTest extends TestCase
+final class FileReferenceTest extends TestCase
 {
     protected ProjectAnalyzer $project_analyzer;
 
+    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();

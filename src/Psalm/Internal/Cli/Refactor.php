@@ -36,11 +36,8 @@ use function getcwd;
 use function getopt;
 use function implode;
 use function in_array;
-use function ini_set;
 use function is_array;
-use function is_numeric;
 use function is_string;
-use function max;
 use function microtime;
 use function preg_last_error_msg;
 use function preg_replace;
@@ -71,7 +68,6 @@ final class Refactor
     public static function run(array $argv): void
     {
         CliUtils::checkRuntimeRequirements();
-        ini_set('memory_limit', '8192M');
 
         gc_collect_cycles();
         gc_disable();
@@ -83,7 +79,7 @@ final class Refactor
         $valid_short_options = ['f:', 'm', 'h', 'r:', 'c:'];
         $valid_long_options = [
             'help', 'debug', 'debug-by-line', 'debug-emitted-issues', 'config:', 'root:',
-            'threads:', 'move:', 'into:', 'rename:', 'to:',
+            'scan-threads:', 'threads:', 'move:', 'into:', 'rename:', 'to:',
         ];
 
         // get options from command line
@@ -172,6 +168,7 @@ final class Refactor
         if (isset($options['root'])) {
             $options['r'] = $options['root'];
         }
+        CliUtils::setMemoryLimit($options);
 
         $current_dir = (string) getcwd();
 
@@ -310,9 +307,10 @@ final class Refactor
             chdir($current_dir);
         }
 
-        $threads = isset($options['threads']) && is_numeric($options['threads'])
-            ? (int)$options['threads']
-            : max(1, ProjectAnalyzer::getCpuCount() - 2);
+        $in_ci = CliUtils::runningInCI();
+
+        $threads = Psalm::getThreads($options, $config, $in_ci, false);
+        $scanThreads = Psalm::getThreads($options, $config, $in_ci, true);
 
         $providers = new Providers(
             new FileProvider(),
@@ -338,6 +336,7 @@ final class Refactor
             new ReportOptions(),
             [],
             $threads,
+            $scanThreads,
             $progress,
         );
 

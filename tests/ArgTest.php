@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class ArgTest extends TestCase
+final class ArgTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -123,7 +125,7 @@ class ArgTest extends TestCase
                 'assertions' => [
                     '$a' => 'array{a: int, b: int}',
                     '$b' => 'non-empty-list<int>',
-                    '$c' => 'list<never>',
+                    '$c' => 'array<never, never>',
                 ],
             ],
             'arrayModificationFunctions' => [
@@ -374,6 +376,7 @@ class ArgTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Tests\Traits\InvalidCodeAnalysisTestTrait;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 
 use const DIRECTORY_SEPARATOR;
 
-class InterfaceTest extends TestCase
+final class InterfaceTest extends TestCase
 {
     use InvalidCodeAnalysisTestTrait;
     use ValidCodeAnalysisTestTrait;
 
+    #[Override]
     public function providerValidCodeParse(): iterable
     {
         return [
@@ -397,7 +399,7 @@ class InterfaceTest extends TestCase
 
                     $blah = (new B())->blah();',
             ],
-            'interfaceExtendsTraversible' => [
+            'interfaceExtendsTraversable' => [
                 'code' => '<?php
                     /**
                      * @extends IteratorAggregate<mixed, mixed>
@@ -741,6 +743,7 @@ class InterfaceTest extends TestCase
         ];
     }
 
+    #[Override]
     public function providerInvalidCodeParse(): iterable
     {
         return [

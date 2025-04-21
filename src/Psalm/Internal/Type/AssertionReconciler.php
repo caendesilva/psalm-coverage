@@ -50,6 +50,7 @@ use Psalm\Type\Atomic\TLowercaseString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNonEmptyLowercaseString;
+use Psalm\Type\Atomic\TNonEmptyNonspecificLiteralString;
 use Psalm\Type\Atomic\TNonEmptyString;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TNumeric;
@@ -516,7 +517,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * This method receives two types. The goal is to use datas in the new type to reduce the existing_type to a more
+     * This method receives two types. The goal is to use data in the new type to reduce the existing_type to a more
      * precise version. For example: new is `array<int>` old is `list<mixed>` so the result is `list<int>`
      */
     private static function filterTypeWithAnother(
@@ -638,7 +639,7 @@ final class AssertionReconciler extends Reconciler
                     return null;
                 }
 
-                return new TKeyedArray(
+                return TKeyedArray::make(
                     $type_2_atomic->properties,
                     null,
                     [Type::getInt(), $type_2_value],
@@ -664,7 +665,7 @@ final class AssertionReconciler extends Reconciler
                     return null;
                 }
 
-                return new TKeyedArray(
+                return TKeyedArray::make(
                     $type_1_atomic->properties,
                     null,
                     [Type::getInt(), $type_1_value],
@@ -783,7 +784,7 @@ final class AssertionReconciler extends Reconciler
                 $fallback_types = [$type_1_atomic->fallback_params[0], $type_2_param];
             }
 
-            $matching_atomic_type = new TKeyedArray(
+            $matching_atomic_type = TKeyedArray::make(
                 $type_1_properties,
                 $type_1_atomic->class_strings,
                 $fallback_types,
@@ -811,6 +812,14 @@ final class AssertionReconciler extends Reconciler
         // Lowercase-string and non-empty-string are compatible but none is contained into the other completely
         if (($type_2_atomic instanceof TLowercaseString && $type_1_atomic instanceof TNonEmptyString) ||
             ($type_2_atomic instanceof TNonEmptyString && $type_1_atomic instanceof TLowercaseString)
+        ) {
+            $matching_atomic_type = new TNonEmptyLowercaseString();
+        }
+
+        // Lowercase-string and non-empty-string are compatible but none is contained into the other completely
+        if (($type_2_atomic instanceof TLowercaseString
+            && $type_1_atomic instanceof TNonEmptyNonspecificLiteralString) ||
+            ($type_2_atomic instanceof TNonEmptyNonspecificLiteralString && $type_1_atomic instanceof TLowercaseString)
         ) {
             $matching_atomic_type = new TNonEmptyLowercaseString();
         }

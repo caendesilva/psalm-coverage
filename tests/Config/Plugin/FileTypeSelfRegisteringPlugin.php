@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Config\Plugin;
 
+use Override;
 use Psalm\Plugin\FileExtensionsInterface;
 use Psalm\Plugin\PluginFileExtensionsInterface;
 use SimpleXMLElement;
 use stdClass;
 
-class FileTypeSelfRegisteringPlugin implements PluginFileExtensionsInterface
+final class FileTypeSelfRegisteringPlugin implements PluginFileExtensionsInterface
 {
     public const FLAG_SCANNER_TWICE = 1;
     public const FLAG_ANALYZER_TWICE = 2;
@@ -24,6 +25,7 @@ class FileTypeSelfRegisteringPlugin implements PluginFileExtensionsInterface
 
     public static int $flags = 0;
 
+    #[Override]
     public function processFileExtensions(FileExtensionsInterface $fileExtensions, ?SimpleXMLElement $config = null): void
     {
         if (self::$flags & self::FLAG_SCANNER_INVALID) {

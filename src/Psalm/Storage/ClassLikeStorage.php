@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
+use Override;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -179,6 +180,8 @@ final class ClassLikeStorage implements HasAttributesInterface
      * @var array<lowercase-string, MethodStorage>
      */
     public array $pseudo_static_methods = [];
+
+    public bool $has_children = false;
 
     /**
      * Maps pseudo method names to the original declaring method identifier
@@ -396,6 +399,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * @return list<AttributeStorage>
      */
+    #[Override]
     public function getAttributeStorages(): array
     {
         return $this->attributes;
@@ -441,12 +445,12 @@ final class ClassLikeStorage implements HasAttributesInterface
 
     public function hasSealedProperties(Config $config): bool
     {
-        return $this->sealed_properties ?? $config->seal_all_properties;
+        return $this->sealed_properties ?? ($this->user_defined ? $config->seal_all_properties : false);
     }
 
     public function hasSealedMethods(Config $config): bool
     {
-        return $this->sealed_methods ?? $config->seal_all_methods;
+        return $this->sealed_methods ?? ($this->user_defined ? $config->seal_all_methods : false);
     }
 
     private function hasAttribute(string $fq_class_name): bool

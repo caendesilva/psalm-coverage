@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Override;
 use Psalm\Codebase;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -26,8 +27,9 @@ use function mb_substr;
 use function print_r;
 use function stripos;
 
-class TypeParseTest extends TestCase
+final class TypeParseTest extends TestCase
 {
+    #[Override]
     public function setUp(): void
     {
         RuntimeCaches::clearAll();
@@ -129,7 +131,7 @@ class TypeParseTest extends TestCase
         $this->assertSame('array<int|string, string>', (string) Type::parseString('array<int|string, string>'));
     }
 
-    public function testNonEmptyArrray(): void
+    public function testNonEmptyArray(): void
     {
         $this->assertSame('non-empty-array<array-key, int>', (string) Type::parseString('non-empty-array<int>'));
     }
@@ -154,7 +156,7 @@ class TypeParseTest extends TestCase
         $this->assertSame('I1&I2|null', (string) Type::parseString('null|I1&I2'));
     }
 
-    public function testInteratorAndTraversable(): void
+    public function testIteratorAndTraversable(): void
     {
         $this->assertSame('Iterator<mixed, int>&Traversable', (string) Type::parseString('Iterator<int>&Traversable'));
     }
@@ -487,7 +489,7 @@ class TypeParseTest extends TestCase
     public function testTKeyedCallableArrayNonList(): void
     {
         $this->assertSame(
-            'callable-array{class-string, string}',
+            'callable-array{0: class-string, 1: string}',
             (string)Type::parseString('callable-array{0: class-string, 1: string}'),
         );
     }
@@ -1176,7 +1178,6 @@ class TypeParseTest extends TestCase
             }
         }
 
-        /** @psalm-suppress InvalidArgument Psalm couldn't detect the function exists */
         $reflectionFunc = new ReflectionFunction('Psalm\Tests\someFunction');
         $reflectionParams = $reflectionFunc->getParameters();
 
