@@ -40,7 +40,7 @@
         "symfony/filesystem": "^5.4 || ^6.0 || ^7.0"
     },
     "provide": {
-        "psalm/psalm": "self.version"
+        "vimeo/psalm": "self.version"
     },
     "require-dev": {
         "ext-curl": "*",
